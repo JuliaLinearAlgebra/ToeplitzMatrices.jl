@@ -132,7 +132,7 @@ end
 # *(A::Toeplitz, B::VecOrMat) = tril(A)*B + triu(A, 1)*B
 (*)(A::Toeplitz, b::Vector) = irfft(rfft([A.vc, reverse(A.vr[2:end])]).*rfft([b,zeros(length(b)-1)]),2length(b) - 1)[1:length(b)]
 
-solve!(A::Toeplitz, b::StridedVector) = gmres(A,zeros(length(b)),b,strang(A),5,20,100eps())[1]
+solve!(A::Toeplitz, b::StridedVector) = cgs(A,zeros(length(b)),b,strang(A),1000,100eps())[1]
 
 # Symmetric
 type SymmetricToeplitz{T<:BlasFloat} <: AbstractToeplitz{T}
@@ -196,7 +196,7 @@ levinson!(x::AbstractVector, A::SymmetricToeplitz, b::AbstractVector) = levinson
 levinson(r::AbstractVector, b::AbstractVector) = levinson!(zeros(length(b)), r, copy(b))
 levinson(A::AbstractToeplitz, b::AbstractVector) = levinson!(zeros(length(b)), A, copy(b))
 
-solve!(A::SymmetricToeplitz,b::StridedVector) = gmres(A,zeros(length(b)),b,strang(A),5,20,100eps())[1]
+solve!(A::SymmetricToeplitz,b::StridedVector) = cg(A,zeros(length(b)),b,strang(A),1000,100eps())[1]
 
 # Curculant
 type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
@@ -244,7 +244,10 @@ function solve!{T<:BlasReal}(C::Circulant{T}, b::AbstractVector{T})
 	return b
 end
 
-inv{T<:BlasFloat}(C::Circulant{T}) = Circulant(convert(Vector{T}, ifft(1/fft(C.vc))))
+function inv{T<:BlasReal}(C::Circulant{T})
+	vdft = 1/C.vc_dft
+	return Circulant(real(C.idft(vdft)), copy(vdft), similar(vdft), C.dft, C.idft)
+end
 
 # Triangular
 type TriangularToeplitz{T<:Number} <: AbstractToeplitz{T}
@@ -285,14 +288,13 @@ Ac_mul_B(A::TriangularToeplitz, b::AbstractVector) = *(TriangularToeplitz(A.ve, 
 
 # NB! only valid for loser trianggular
 function smallinv{T<:BlasFloat}(A::TriangularToeplitz{T})
-	if A.uplo == 'U' error("Not implemented yet") end
 	n = size(A, 1)
 	b = zeros(T, n)
 	b[1] = 1/A.ve[1]
 	for k = 2:n
 		tmp = zero(T)
 		for i = 1:k-1
-			tmp += A.ve[k-i+1]*b[i]
+			tmp += A.uplo == 'L' ? A.ve[k-i+1]*b[i] : A.ve[i+1]*b[k-i]
 		end
 		b[k] = -tmp/A.ve[1]
 	end
@@ -309,7 +311,8 @@ function inv{T}(A::TriangularToeplitz{T})
 	return TriangularToeplitz([a1, -(TriangularToeplitz(a1, symbol(A.uplo))*(Toeplitz(A.ve[nd2+1:end], A.ve[nd2+1:-1:2])*a1))], symbol(A.uplo))
 end
 
-solve!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
+# solve!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
+solve!(A::TriangularToeplitz,b::StridedVector) = cgs(A,zeros(length(b)),b,chan(A),1000,100eps())[1]
 
 # function solve_cg!(A::TriangularToeplitz, b::Vector, x::Vector, maxiter::Int, xtol::Float64)
 # 	r0 = A'b - A'*(A*x)
