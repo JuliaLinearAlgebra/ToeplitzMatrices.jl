@@ -1,10 +1,12 @@
 module ToeplitzMatrices
 
+using IterativeLinearSolvers
+
 import Base: full, getindex, print_matrix, size, tril, triu, *, inv, A_mul_B, Ac_mul_B
 import Base.LinAlg: BlasFloat, BlasReal, DimensionMismatch
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, 
-	   chan, strang, A_mul_B!, Ac_mul_B!, solve!
+	   chan, strang, A_mul_B!, Ac_mul_B!, solve!, levinson
 
 solve(A::AbstractMatrix, b::AbstractVector) = solve!(zeros(length(b)), A, b)
 solve!(x::AbstractVector, A::AbstractMatrix, b::AbstractVector) = x[:] = A\b
@@ -130,10 +132,12 @@ end
 # *(A::Toeplitz, B::VecOrMat) = tril(A)*B + triu(A, 1)*B
 (*)(A::Toeplitz, b::Vector) = irfft(rfft([A.vc, reverse(A.vr[2:end])]).*rfft([b,zeros(length(b)-1)]),2length(b) - 1)[1:length(b)]
 
+solve!(A::Toeplitz, b::StridedVector) = gmres(A,zeros(length(b)),b,strang(A),5,20,100eps())[1]
+
 # Symmetric
 type SymmetricToeplitz{T<:BlasFloat} <: AbstractToeplitz{T}
 	vc::Vector{T}
-	vc_dft::Vector{T}
+	vc_dft::Vector{Complex{T}}
 	tmp::Vector{Complex{T}}
 	dft::Function
 	idft::Function
@@ -150,7 +154,7 @@ getindex(A::SymmetricToeplitz, i::Integer, j::Integer) = A.vc[abs(i-j)+1]
 
 *{T<:BlasFloat}(A::SymmetricToeplitz{T}, x::Vector{T}) = A_mul_B!(one(T),A,x,zero(T),zeros(T, length(x)))
 
-function solve_levinson!{T<:BlasFloat}(x::AbstractVector{T}, r::AbstractVector{T}, b::AbstractVector{T})
+function levinson!{T<:BlasFloat}(x::AbstractVector{T}, r::AbstractVector{T}, b::AbstractVector{T})
 	n = length(b)
 	if n != length(r) throw(DimensionMismatch("")) end
 	x[1] = b[1]
@@ -188,15 +192,12 @@ function solve_levinson!{T<:BlasFloat}(x::AbstractVector{T}, r::AbstractVector{T
 	end
 	return x
 end
-solve_levinson!(x::AbstractVector, A::SymmetricToeplitz, b::AbstractVector) = solve_levinson!(x, A.vc, b)
-solve_levinson(r::AbstractVector, b::AbstractVector) = solve_levinson!(zeros(length(b)), r, copy(b))
-solve_levinson(A::AbstractMatrix, b::AbstractVector) = solve_levinson!(zeros(length(b)), A, copy(b))
+levinson!(x::AbstractVector, A::SymmetricToeplitz, b::AbstractVector) = levinson!(x, A.vc, b)
+levinson(r::AbstractVector, b::AbstractVector) = levinson!(zeros(length(b)), r, copy(b))
+levinson(A::AbstractToeplitz, b::AbstractVector) = levinson!(zeros(length(b)), A, copy(b))
 
-function solve!(x::AbstractVector, A::SymmetricToeplitz, b::AbstractVector, method::Symbol=:Levinson)
-	if method == :Levinson return solve_levinson!(x,A,b) end
-	if method == :CG return solve_cg!(x,A,b) end
-	error("No such method")
-end
+solve!(A::SymmetricToeplitz,b::StridedVector) = gmres(A,zeros(length(b)),b,strang(A),5,20,100eps())[1]
+
 # Curculant
 type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
 	vc::Vector{T}
@@ -256,7 +257,7 @@ type TriangularToeplitz{T<:Number} <: AbstractToeplitz{T}
 end
 function TriangularToeplitz{T<:BlasReal}(ve::Vector{T}, uplo::Symbol)
 	n = length(ve)
-	tmp = uplo == :L ? complex([ve, zeros(n)]) : complex([ve[1], zeros(T, n - 1), ve[2:end]])
+	tmp = uplo == :L ? complex([ve, zeros(n)]) : complex([ve[1], zeros(T, n), reverse(ve[2:end])])
 	dft = plan_fft!(tmp)
 	return TriangularToeplitz(ve, string(uplo)[1], dft(tmp), similar(tmp), dft, plan_ifft!(tmp))
 end
@@ -308,21 +309,7 @@ function inv{T}(A::TriangularToeplitz{T})
 	return TriangularToeplitz([a1, -(TriangularToeplitz(a1, symbol(A.uplo))*(Toeplitz(A.ve[nd2+1:end], A.ve[nd2+1:-1:2])*a1))], symbol(A.uplo))
 end
 
-function inv2{T}(A::TriangularToeplitz{T})
-	n = size(A, 1)
-	if n <= 64 return smallinv(A) end
-	np2 = nextpow2(n)
-	if n != np2 return TriangularToeplitz(inv2(TriangularToeplitz([A.ve, zeros(T, np2 - n)], symbol(A.uplo))).ve[1:n], symbol(A.uplo)) end
-	nd2 = div(n, 2)
-	a = TriangularToeplitz(A.ve[1:nd2], A.uplo)
-	ainv = inv2(a)
-	while LinAlg.BLAS.asum(a.ve)*LinAlg.BLAS.asum(ainv.ve) > 1e9
-		a.ve[1] += eps()
-		a = TriangularToeplitz(A.ve[1:nd2], A.uplo)
-		ainv = inv2(a)
-	end
-	return TriangularToeplitz([ainv.ve, -(ainv*(Toeplitz(A.ve[nd2+1:end], A.ve[nd2+1:-1:2])*ainv.ve))], A.uplo)
-end
+solve!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
 
 # function solve_cg!(A::TriangularToeplitz, b::Vector, x::Vector, maxiter::Int, xtol::Float64)
 # 	r0 = A'b - A'*(A*x)
