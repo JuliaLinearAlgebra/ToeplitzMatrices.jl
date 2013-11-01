@@ -2,14 +2,14 @@ module ToeplitzMatrices
 
 using IterativeLinearSolvers
 
-import Base: full, getindex, print_matrix, size, tril, triu, *, inv, A_mul_B, Ac_mul_B
+import Base: full, getindex, print_matrix, size, tril, triu, *, inv, A_mul_B!, Ac_mul_B, A_ldiv_B!
 import Base.LinAlg: BlasFloat, BlasReal, DimensionMismatch
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, 
-	   chan, strang, A_mul_B!, Ac_mul_B!, solve!, levinson
+	   chan, strang, A_mul_B!, Ac_mul_B!, levinson
 
-solve(A::AbstractMatrix, b::AbstractVector) = solve!(zeros(length(b)), A, b)
-solve!(x::AbstractVector, A::AbstractMatrix, b::AbstractVector) = x[:] = A\b
+solve(A::AbstractMatrix, b::AbstractVector) = A_ldiv_B!(zeros(length(b)), A, b)
+A_ldiv_B!(x::AbstractVector, A::AbstractMatrix, b::AbstractVector) = x[:] = A\b
 
 # Abstract
 abstract AbstractToeplitz{T<:Number} <: AbstractMatrix{T}
@@ -132,7 +132,7 @@ end
 # *(A::Toeplitz, B::VecOrMat) = tril(A)*B + triu(A, 1)*B
 (*)(A::Toeplitz, b::Vector) = irfft(rfft([A.vc, reverse(A.vr[2:end])]).*rfft([b,zeros(length(b)-1)]),2length(b) - 1)[1:length(b)]
 
-solve!(A::Toeplitz, b::StridedVector) = cgs(A,zeros(length(b)),b,strang(A),1000,100eps())[1]
+A_ldiv_B!(A::Toeplitz, b::StridedVector) = cgs(A,zeros(length(b)),b,strang(A),1000,100eps())[1]
 
 # Symmetric
 type SymmetricToeplitz{T<:BlasFloat} <: AbstractToeplitz{T}
@@ -152,9 +152,34 @@ size(A::SymmetricToeplitz, dim::Int) = 1 <= dim <=2 ? length(A.vc)  : error("arr
 
 getindex(A::SymmetricToeplitz, i::Integer, j::Integer) = A.vc[abs(i-j)+1]
 
-*{T<:BlasFloat}(A::SymmetricToeplitz{T}, x::Vector{T}) = A_mul_B!(one(T),A,x,zero(T),zeros(T, length(x)))
+(*){T<:BlasFloat}(A::SymmetricToeplitz{T}, x::Vector{T}) = A_mul_B!(one(T),A,x,zero(T),zeros(T, length(x)))
 
-function levinson!{T<:BlasFloat}(x::AbstractVector{T}, r::AbstractVector{T}, b::AbstractVector{T})
+function durbin!{T<:BlasFloat}(r::AbstractVector{T}, y::AbstractVector{T})
+	n = length(r)
+	if n != length(y) throw(DimensionMismatch("Vector must have same length")) end
+	y[1] = -r[1]
+	β = one(T)
+	α = -r[1]
+	for k = 1:n-1
+		β *= one(T) - α*α
+		α = -r[k+1]
+		for j = 1:k
+			α -= r[k-j+2]*y[j]
+		end
+		α /= β
+		for j = 1:div(k,2)
+			tmp = y[j]
+			y[j] += α*y[k-j+1]
+			y[k-j+1] += α*tmp
+		end
+		if isodd(k) y[div(k,2)+1] *= one(T) + α end
+		y[k+1] = α
+	end
+	return y
+end
+durbin(r::AbstractVector) = durbin!(r, zeros(length(r)))
+
+function levinson!{T<:BlasFloat}(r::AbstractVector{T}, b::AbstractVector{T}, x::AbstractVector{T})
 	n = length(b)
 	if n != length(r) throw(DimensionMismatch("")) end
 	x[1] = b[1]
@@ -192,13 +217,13 @@ function levinson!{T<:BlasFloat}(x::AbstractVector{T}, r::AbstractVector{T}, b::
 	end
 	return x
 end
-levinson!(x::AbstractVector, A::SymmetricToeplitz, b::AbstractVector) = levinson!(x, A.vc, b)
-levinson(r::AbstractVector, b::AbstractVector) = levinson!(zeros(length(b)), r, copy(b))
-levinson(A::AbstractToeplitz, b::AbstractVector) = levinson!(zeros(length(b)), A, copy(b))
+levinson!(x::AbstractVector, A::SymmetricToeplitz, b::AbstractVector) = levinson!(A.vc, b, x)
+levinson(r::AbstractVector, b::AbstractVector) = levinson!(r, copy(b), zeros(length(b)))
+levinson(A::AbstractToeplitz, b::AbstractVector) = levinson!(A, copy(b), zeros(length(b)))
 
-solve!(A::SymmetricToeplitz,b::StridedVector) = cg(A,zeros(length(b)),b,strang(A),1000,100eps())[1]
+A_ldiv_B!(A::SymmetricToeplitz,b::StridedVector) = cg(A,zeros(length(b)),b,strang(A),1000,100eps())[1]
 
-# Curculant
+# Circulant
 type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
 	vc::Vector{T}
 	vc_dft::Vector{Complex{T}}
@@ -227,9 +252,9 @@ function Ac_mul_B(A::Circulant,B::Circulant)
 	return Circulant(real(A.idft(tmp)), tmp, A.tmp, A.dft, A.idft)
 end
 
-function solve!{T<:BlasReal}(C::Circulant{T}, b::AbstractVector{T})
+function A_ldiv_B!{T<:BlasReal}(C::Circulant{T}, b::AbstractVector{T})
 	n = length(b)
-	if size(C, 1) != n throw(DimensionMismatch("")) end
+	size(C, 1) == n || throw(DimensionMismatch(""))
 	for i = 1:n
 		C.tmp[i] = b[i]
 	end
@@ -243,6 +268,7 @@ function solve!{T<:BlasReal}(C::Circulant{T}, b::AbstractVector{T})
 	end
 	return b
 end
+(\)(C::Circulant, b::AbstractVector) = A_ldiv_B!(C, copy(b))
 
 function inv{T<:BlasReal}(C::Circulant{T})
 	vdft = 1/C.vc_dft
@@ -311,95 +337,36 @@ function inv{T}(A::TriangularToeplitz{T})
 	return TriangularToeplitz([a1, -(TriangularToeplitz(a1, symbol(A.uplo))*(Toeplitz(A.ve[nd2+1:end], A.ve[nd2+1:-1:2])*a1))], symbol(A.uplo))
 end
 
-# solve!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
-solve!(A::TriangularToeplitz,b::StridedVector) = cgs(A,zeros(length(b)),b,chan(A),1000,100eps())[1]
+# A_ldiv_B!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
+A_ldiv_B!(A::TriangularToeplitz,b::StridedVector) = cgs(A,zeros(length(b)),b,chan(A),1000,100eps())[1]
 
-# function solve_cg!(A::TriangularToeplitz, b::Vector, x::Vector, maxiter::Int, xtol::Float64)
-# 	r0 = A'b - A'*(A*x)
-# 	p = r0
-# 	for i = 1:maxiter
-# 		Ap = A*p
-# 		a = dot(r0,r0)/dot(Ap,Ap)
-# 		x += a*p
-# 		r1 = r0 - a*(A'Ap)
-# 		if norm(r1) < xtol break end
-# 		b = dot(r1,r1)/dot(r0,r0)
-# 		p = r1 + b*p
-# 		r0 = copy(r1)
-# 		# println(i)
-# 	end
-# 	return x
+# BlockTriangular
+# type BlockTriangularToeplitz{T<:BlasReal} <: AbstractMatrix{T}
+# 	Mc::Array{T,3}
+# 	uplo::Char
+# 	Mc_dft::Array{Complex{T},3}
+# 	tmp::Vector{Complex{T}}
+# 	dft::Function
+# 	idft::Function
 # end
-
-# function solve_cg2!{T<:BlasFloat}(x::Vector{T}, A::TriangularToeplitz{T}, b::AbstractVector{T}, maxiter::Int=100, xtol::T=length(b)*eps(typeof(b[1])), p = Array(T,length(b)), Ap = zeros(T,length(b)))
-# 	n = length(b)
-# 	rr0 = one(T)
-# 	rr1 = one(T)
-# 	xtolnb = xtol*norm(b)
-
-# 	k = 0
-# 	A_mul_B!(-one(T),A,x,one(T),b)
-# 	while norm(b) > xtolnb && k < maxiter
-# 		k += 1
-# 		if k == 1
-# 			Ac_mul_B!(one(T),A,b,zero(T),p)
-# 			rr1 = one(T)
-# 		else
-# 			Ac_mul_B!(one(T),A,b,zero(T),Ap)
-# 			rr1 = dot(Ap,Ap)
-# 			β = rr1/rr0
-# 			p[:] *= β
-# 			p[:] += Ap
+# function BlockTriangularToeplitz{T<:BlasReal}(Mc::Array{T,3}, uplo::Symbol)
+# 	n, p, _ = size(Mc)
+# 	tmp = zeros(Complex{T}, 2n)
+# 	dft = plan_fft!(tmp)
+# 	idft = plan_ifft!(tmp)
+# 	Mc_dft = Array(Complex{T}, 2n, p, p)
+# 	for j = 1:p
+# 		for i = 1:p
+# 			Mc_dft[1,i,j] = complex(Mc[1,i,j])
+# 			for t = 2:n
+# 				Mc_dft[t,i,j] = uplo == :L ? complex(Mc[t,i,j]) : zero(Complex{T})
+# 			end
+# 			Mc_dft[n+1,i,j] = zero(Complex{T})
+# 			for t = n+2:2n
+# 				Mc_dft[t,i,j] = uplo == :L ? zero(Complex{T}) : complex(Mc[2n-t+2,i,j])
+# 			end
+# 			dft(sub(Mc_dft, 1:2n, 1:p, 1:p))
 # 		end
-# 		A_mul_B!(one(T),A,p,zero(T),Ap)
-# 		α = rr1/dot(Ap,Ap)
-# 		for i = 1:n
-# 			x[i] += α*p[i]
-# 			b[i] -= α*Ap[i]
-# 		end
-# 		rr0 = rr1
 # 	end
-# 	return x, k
-# end
-# solve_cg2(A::TriangularToeplitz, b::AbstractVector) = solve_cg2!(zeros(length(b)), A, copy(b))
-
-# function solve_pcg!{T<:BlasFloat}(x::Vector{T}, A::TriangularToeplitz{T}, b::AbstractVector{T}, M::AbstractMatrix{T}, maxiter::Int=100, xtol::T=length(b)*eps(typeof(b[1])), p = zeros(T,length(b)), Ap = zeros(T,length(b)), z = zeros(T,length(b)))
-# 	n = length(b)
-# 	rz0 = one(T)
-# 	rz1 = one(T)
-# 	xtolnb = xtol*norm(b)
-
-# 	k = 0
-# 	A_mul_B!(-one(T),A,x,one(T),b)
-# 	while norm(b) > xtolnb && k < maxiter
-# 		solve!(z,M,b)
-# 		k += 1
-# 		if k == 1
-# 			Ac_mul_B!(one(T),A,z,zero(T),p)
-# 			rz1 = one(T)
-# 		else
-# 			rz1 = dot(b,z)
-# 			β = rz1/rz0
-# 			Ac_mul_B!(one(T),A,z,β,p)
-# 		end
-# 		α = rz1/dot(p,p)
-# 		A_mul_B!(one(T),A,p,zero(T),Ap)
-# 		for i = 1:n
-# 			x[i] += α*p[i]
-# 			b[i] -= α*Ap[i]
-# 		end
-# 		rz0 = rz1
-# 	end
-# 	return x, k
-# end
-
-# function richardson(A::TriangularToeplitz, b::Vector, x0::Vector, omega::Float64, maxiter::Int, xtol::Float64)
-# 	x = copy(x0)
-# 	for i = 1:maxiter
-# 		r = b - A*x
-# 		if norm(r) < xtol break end
-# 		x += omega*r
-# 	end
-# 	return x
-# end
+# 	return BlockTriangularToeplitz(Mc, string(uplo)[1], Mc_dft, tmp, dft, idft)
 end
