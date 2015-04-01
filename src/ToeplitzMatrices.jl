@@ -271,7 +271,7 @@ end
 (\)(C::Circulant, b::AbstractVector) = A_ldiv_B!(C, copy(b))
 
 function inv{T<:BlasReal}(C::Circulant{T})
-	vdft = 1/C.vc_dft
+	vdft = 1 ./ C.vc_dft
 	return Circulant(real(C.idft(vdft)), copy(vdft), similar(vdft), C.dft, C.idft)
 end
 
@@ -316,7 +316,7 @@ Ac_mul_B(A::TriangularToeplitz, b::AbstractVector) = *(TriangularToeplitz(A.ve, 
 function smallinv{T<:BlasFloat}(A::TriangularToeplitz{T})
 	n = size(A, 1)
 	b = zeros(T, n)
-	b[1] = 1/A.ve[1]
+	b[1] = 1 ./ A.ve[1]
 	for k = 2:n
 		tmp = zero(T)
 		for i = 1:k-1
