@@ -3,6 +3,7 @@ module ToeplitzMatrices
 using IterativeLinearSolvers
 
 import Base: full, getindex, print_matrix, size, tril, triu, *, inv, A_mul_B!, Ac_mul_B, A_ldiv_B!
+import Base.\
 import Base.LinAlg: BlasFloat, BlasReal, DimensionMismatch
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, 
@@ -48,11 +49,11 @@ function A_mul_B!{T<:BlasFloat}(α::T, A::AbstractToeplitz{T}, x::StridedVector{
 	for i = n+1:n2
 		A.tmp[i] = zero(Complex{T})
 	end
-	A.dft(A.tmp)
+	A_mul_B!(A.tmp, A.dft, A.tmp)
 	for i = 1:n2
 		A.tmp[i] *= A.vc_dft[i]
 	end
-	A.idft(A.tmp)
+	A_mul_B!(A.tmp, A.idft, A.tmp)
 	for i = 1:n
 		y[i] *= β
 		y[i] += α*real(A.tmp[i])
@@ -89,16 +90,16 @@ type Toeplitz{T<:Number} <: AbstractToeplitz{T}
 	vr::Vector{T}
 	vc_dft::Vector{Complex{T}}
 	tmp::Vector{Complex{T}}
-	dft::Function
-	idft::Function
+	dft::Base.DFT.Plan{Complex{T}}
+	idft::Base.DFT.Plan{Complex{T}}
 end
 function Toeplitz{T<:BlasReal}(vc::Vector{T}, vr::Vector{T})
 	n = length(vc)
 	if length(vr) != n throw(DimensionMismatch("")) end
 	if vc[1] != vr[1] error("First element of the vectors must be the same") end
-	tmp = complex([vc, zero(T), reverse(vr[2:end])])
+	tmp = complex([vc; zero(T); reverse(vr[2:end])])
 	dft = plan_fft!(tmp)
-	return Toeplitz(vc, vr, dft(tmp), similar(tmp), dft, plan_ifft!(tmp))
+	return Toeplitz(vc, vr, dft*tmp, similar(tmp), dft, plan_ifft!(tmp))
 end
 
 size(A::Toeplitz, dim::Int) = dim == 1 ? length(A.vc) : (dim == 2 ? length(A.vr) : (dim > 2 ? 1 : error("arraysize: dimension out of range")))
@@ -130,7 +131,16 @@ end
 
 
 # *(A::Toeplitz, B::VecOrMat) = tril(A)*B + triu(A, 1)*B
-(*)(A::Toeplitz, b::Vector) = irfft(rfft([A.vc, reverse(A.vr[2:end])]).*rfft([b,zeros(length(b)-1)]),2length(b) - 1)[1:length(b)]
+(*)(A::Toeplitz, b::Vector) = irfft(
+	rfft([
+		A.vc;
+		reverse(A.vr[2:end])]
+	).*rfft([
+		b;
+		zeros(length(b)-1)
+	]),
+	2length(b) - 1
+)[1:length(b)]
 
 A_ldiv_B!(A::Toeplitz, b::StridedVector) = cgs(A,zeros(length(b)),b,strang(A),1000,100eps())[1]
 
@@ -139,13 +149,13 @@ type SymmetricToeplitz{T<:BlasFloat} <: AbstractToeplitz{T}
 	vc::Vector{T}
 	vc_dft::Vector{Complex{T}}
 	tmp::Vector{Complex{T}}
-	dft::Function
-	idft::Function
+	dft::Base.DFT.Plan
+	idft::Base.DFT.Plan
 end
 function SymmetricToeplitz{T<:BlasFloat}(vc::Vector{T})
-	tmp = convert(Array{Complex{T}}, [vc, zero(T), reverse(vc[2:end])])
+	tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
 	dft = plan_fft!(tmp)
-	return SymmetricToeplitz(vc, dft(tmp), similar(tmp), dft, plan_ifft!(tmp))
+	return SymmetricToeplitz(vc, dft*tmp, similar(tmp), dft, plan_ifft!(tmp))
 end
 
 size(A::SymmetricToeplitz, dim::Int) = 1 <= dim <=2 ? length(A.vc)  : error("arraysize: dimension out of range")
@@ -228,8 +238,8 @@ type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
 	vc::Vector{T}
 	vc_dft::Vector{Complex{T}}
 	tmp::Vector{Complex{T}}
-	dft::Function
-	idft::Function
+	dft::Base.DFT.Plan
+	idft::Base.DFT.Plan
 end
 function Circulant{T<:BlasReal}(vc::Vector{T})
 	tmp = zeros(Complex{T}, length(vc))
@@ -258,11 +268,11 @@ function A_ldiv_B!{T<:BlasReal}(C::Circulant{T}, b::AbstractVector{T})
 	for i = 1:n
 		C.tmp[i] = b[i]
 	end
-	C.dft(C.tmp)
+	A_mul_B!(C.tmp, C.dft, C.tmp)
 	for i = 1:n
 		C.tmp[i] /= C.vc_dft[i]
 	end
-	C.idft(C.tmp)
+	A_mul_B!(C.tmp, C.idft, C.tmp)
 	for i = 1:n
 		b[i] = real(C.tmp[i])
 	end
@@ -281,14 +291,14 @@ type TriangularToeplitz{T<:Number} <: AbstractToeplitz{T}
 	uplo::Char
 	vc_dft::Vector{Complex{T}}
 	tmp::Vector{Complex{T}}
-	dft::Function
-	idft::Function
+	dft::Base.DFT.Plan
+	idft::Base.DFT.Plan
 end
 function TriangularToeplitz{T<:BlasReal}(ve::Vector{T}, uplo::Symbol)
 	n = length(ve)
-	tmp = uplo == :L ? complex([ve, zeros(n)]) : complex([ve[1], zeros(T, n), reverse(ve[2:end])])
+	tmp = uplo == :L ? complex([ve; zeros(n)]) : complex([ve[1]; zeros(T, n); reverse(ve[2:end])])
 	dft = plan_fft!(tmp)
-	return TriangularToeplitz(ve, string(uplo)[1], dft(tmp), similar(tmp), dft, plan_ifft!(tmp))
+	return TriangularToeplitz(ve, string(uplo)[1], dft*tmp, similar(tmp), dft, plan_ifft!(tmp))
 end
 
 size(A::TriangularToeplitz, dim::Int) = (dim == 1) | (dim == 2) ? length(A.ve) : (dim > 2 ? 1 : error("arraysize: dimension out of range"))
@@ -346,8 +356,8 @@ A_ldiv_B!(A::TriangularToeplitz,b::StridedVector) = cgs(A,zeros(length(b)),b,cha
 # 	uplo::Char
 # 	Mc_dft::Array{Complex{T},3}
 # 	tmp::Vector{Complex{T}}
-# 	dft::Function
-# 	idft::Function
+# 	dft::Base.DFT.Plan
+# 	idft::Base.DFT.Plan
 # end
 # function BlockTriangularToeplitz{T<:BlasReal}(Mc::Array{T,3}, uplo::Symbol)
 # 	n, p, _ = size(Mc)
