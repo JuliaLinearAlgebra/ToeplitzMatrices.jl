@@ -6,7 +6,7 @@ import Base: full, getindex, print_matrix, size, tril, triu, *, inv, A_mul_B!, A
 import Base.\
 import Base.LinAlg: BlasFloat, BlasReal, DimensionMismatch
 
-export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, 
+export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz,
 	   chan, strang, A_mul_B!, Ac_mul_B!, levinson
 
 solve(A::AbstractMatrix, b::AbstractVector) = A_ldiv_B!(zeros(length(b)), A, b)
@@ -229,9 +229,9 @@ function levinson!{T<:BlasFloat}(r::AbstractVector{T}, b::AbstractVector{T}, x::
 end
 levinson!(x::AbstractVector, A::SymmetricToeplitz, b::AbstractVector) = levinson!(A.vc, b, x)
 levinson(r::AbstractVector, b::AbstractVector) = levinson!(r, copy(b), zeros(length(b)))
-levinson(A::AbstractToeplitz, b::AbstractVector) = levinson!(A, copy(b), zeros(length(b)))
+levinson(A::AbstractToeplitz, b::AbstractVector) = levinson!(zeros(length(b)), A, copy(b))
 
-A_ldiv_B!(A::SymmetricToeplitz,b::StridedVector) = cg(A,zeros(length(b)),b,strang(A),1000,100eps())[1]
+A_ldiv_B!(A::SymmetricToeplitz, b::StridedVector) = cg(A,zeros(length(b)),b,strang(A),1000,100eps())[1]
 
 # Circulant
 type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
