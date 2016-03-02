@@ -23,12 +23,12 @@ Al = SymmetricToeplitz(0.9.^(0:nl-1))
 @test_approx_eq As*xs full(As)*xs
 @test_approx_eq Ab*xs full(Ab)*xs
 @test_approx_eq Al*xl full(Al)*xl
-@test_approx_eq A_ldiv_B!(As,copy(xs)) full(As)\xs
-@test_approx_eq A_ldiv_B!(Ab,copy(xs)) full(Ab)\xs
-@test_approx_eq A_ldiv_B!(Al,copy(xl)) full(Al)\xl
-@test_approx_eq levinson(As,xs) full(As)\xs
-@test_approx_eq levinson(Ab,xs) full(Ab)\xs
-@test_approx_eq levinson(Al,xl) full(Al)\xl
+@test_approx_eq A_ldiv_B!(As, copy(xs)) full(As)\xs
+@test_approx_eq A_ldiv_B!(Ab, copy(xs)) full(Ab)\xs
+@test_approx_eq A_ldiv_B!(Al, copy(xl)) full(Al)\xl
+@test_approx_eq StatsBase.levinson(As, xs) full(As)\xs
+@test_approx_eq StatsBase.levinson(Ab, xs) full(Ab)\xs
+@test_approx_eq StatsBase.levinson(Al, xl) full(Al)\xl
 @printf("OK!\n")
 
 @printf("Circulant: ")
