@@ -6,7 +6,7 @@ import Base: full, getindex, print_matrix, size, tril, triu, *, inv, A_mul_B!, A
 import Base.\
 import Base.LinAlg: BlasFloat, BlasReal, DimensionMismatch
 
-export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz,
+export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
 	   chan, strang, A_mul_B!, Ac_mul_B!, levinson
 
 solve(A::AbstractMatrix, b::AbstractVector) = A_ldiv_B!(zeros(length(b)), A, b)
@@ -393,7 +393,7 @@ end
 size(H::Hankel)=size(H,1),size(H,2)
 size(H::Hankel,dim::Int) = dim==1?H.n:(dim==2?H.m:error("arraysize: dimension out of range"))
 getindex(H::Hankel, i::Integer) = H[mod(i, size(H,1)), div(i, size(H,1)) + 1]
-function full{T}(H::Hankel{T})
+function full{T}(A::Hankel{T})
 	m, n = size(A)
 	Af = Array(T, m, n)
 	for j = 1:n
