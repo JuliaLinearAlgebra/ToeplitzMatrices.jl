@@ -379,4 +379,41 @@ A_ldiv_B!(A::TriangularToeplitz,b::StridedVector) = cgs(A,zeros(length(b)),b,cha
 # 		end
 # 	end
 # 	return BlockTriangularToeplitz(Mc, string(uplo)[1], Mc_dft, tmp, dft, idft)
+
+
+# Hankel
+
+
+type Hankel{T<:Number} <: AbstractMatrix{T}
+    v::Vector{T}
+    n::Int
+    m::Int
 end
+
+size(H::Hankel)=size(H,1),size(H,2)
+size(H::Hankel,dim::Int) = dim==1?H.n:(dim==2?H.m:error("arraysize: dimension out of range"))
+getindex(H::Hankel, i::Integer) = H[mod(i, size(H,1)), div(i, size(H,1)) + 1]
+function full{T}(H::Hankel{T})
+	m, n = size(A)
+	Af = Array(T, m, n)
+	for j = 1:n
+		for i = 1:m
+			Af[i,j] = A[i,j]
+		end
+	end
+	return Af
+end
+
+function getindex{T}(A::Hankel{T}, i::Integer, j::Integer)
+	n,m = size(A)
+	if i > n || j > m error("BoundsError()") end
+	return i+j-1≤length(A.v)?A.v[i+j-1]:zero(T)
+end
+
+end #module
+
+
+
+
+
+
