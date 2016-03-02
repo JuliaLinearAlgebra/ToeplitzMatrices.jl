@@ -1,14 +1,14 @@
 module ToeplitzMatrices
 
+import StatsBase
 using IterativeLinearSolvers
 
-import Base: full, getindex, print_matrix, size, tril, triu, *, inv, A_mul_B!, Ac_mul_B,
+import Base: *, \, full, getindex, print_matrix, size, tril, triu, inv, A_mul_B!, Ac_mul_B,
     A_ldiv_B!
-import Base.\
 import Base.LinAlg: BlasFloat, BlasReal, DimensionMismatch
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz,
-       chan, strang, A_mul_B!, Ac_mul_B!, levinson
+       chan, strang
 
 solve(A::AbstractMatrix, b::AbstractVector) = A_ldiv_B!(zeros(length(b)), A, b)
 A_ldiv_B!(x::AbstractVector, A::AbstractMatrix, b::AbstractVector) = x[:] = A\b
@@ -202,74 +202,8 @@ getindex(A::SymmetricToeplitz, i::Integer, j::Integer) = A.vc[abs(i - j) + 1]
 (*){T<:BlasFloat}(A::SymmetricToeplitz{T}, x::Vector{T}) =
     A_mul_B!(one(T), A, x, zero(T), zeros(T, length(x)))
 
-function durbin!{T<:BlasFloat}(r::AbstractVector{T}, y::AbstractVector{T})
-    n = length(r)
-    if n != length(y) throw(DimensionMismatch("Vector must have same length")) end
-    y[1] = -r[1]
-    β = one(T)
-    α = -r[1]
-    for k = 1:n-1
-        β *= one(T) - α*α
-        α = -r[k+1]
-        for j = 1:k
-            α -= r[k-j+2]*y[j]
-        end
-        α /= β
-        for j = 1:div(k,2)
-            tmp = y[j]
-            y[j] += α*y[k-j+1]
-            y[k-j+1] += α*tmp
-        end
-        if isodd(k) y[div(k,2)+1] *= one(T) + α end
-        y[k+1] = α
-    end
-    return y
-end
-durbin(r::AbstractVector) = durbin!(r, zeros(length(r)))
-
-function levinson!{T<:BlasFloat}(r::AbstractVector{T}, b::AbstractVector{T}, x::AbstractVector{T})
-    n = length(b)
-    if n != length(r) throw(DimensionMismatch("")) end
-    x[1] = b[1]
-    b[1] = -r[2]/r[1]
-    β = one(T)
-    α = -r[2]/r[1]
-    for k = 1:n-1
-        β *= one(T) - α*α
-        μ = b[k+1]
-        for j = 2:k+1
-            μ -= r[j]/r[1]*x[k-j+2]
-        end
-        μ /= β
-        for j = 1:k
-            x[j] += μ*b[k-j+1]
-        end
-        x[k+1] = μ
-        if k < n - 1
-            α = -r[k+2]
-            for j = 2:k+1
-                α -= r[j]*b[k-j+2]
-            end
-            α /= β*r[1]
-            for j = 1:div(k,2)
-                tmp = b[j]
-                b[j] += α*b[k-j+1]
-                b[k-j+1] += α*tmp
-            end
-            if isodd(k) b[div(k,2)+1] *= one(T) + α end
-            b[k+1] = α
-        end
-    end
-    for i = 1:n
-        x[i] /= r[1]
-    end
-    return x
-end
-levinson!(x::AbstractVector, A::SymmetricToeplitz, b::AbstractVector) = levinson!(A.vc, b, x)
-levinson(r::AbstractVector, b::AbstractVector) = levinson!(r, copy(b), zeros(length(b)))
-levinson(A::AbstractToeplitz, b::AbstractVector) = levinson!(zeros(length(b)), A, copy(b))
-
-A_ldiv_B!(A::SymmetricToeplitz, b::StridedVector) = cg(A,zeros(length(b)),b,strang(A),1000,100eps())[1]
+A_ldiv_B!(A::SymmetricToeplitz, b::StridedVector) =
+    cg(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1]
 
 # Circulant
 type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
@@ -413,6 +347,14 @@ end
 # A_ldiv_B!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
 A_ldiv_B!(A::TriangularToeplitz,b::StridedVector) =
     cgs(A, zeros(length(b)), b, chan(A), 1000, 100eps())[1]
+
+# extend levinson
+StatsBase.levinson!(x::AbstractVector, A::SymmetricToeplitz, b::AbstractVector) =
+    StatsBase.levinson!(A.vc, b, x)
+StatsBase.levinson(r::AbstractVector, b::AbstractVector) =
+    StatsBase.levinson!(r, copy(b), zeros(length(b)))
+StatsBase.levinson(A::AbstractToeplitz, b::AbstractVector) =
+    StatsBase.levinson!(zeros(length(b)), A, copy(b))
 
 # BlockTriangular
 # type BlockTriangularToeplitz{T<:BlasReal} <: AbstractMatrix{T}
