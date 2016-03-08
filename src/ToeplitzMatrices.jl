@@ -5,14 +5,11 @@ using IterativeLinearSolvers
 
 import Base: *, \, full, getindex, print_matrix, size, tril, triu, inv, A_mul_B!, Ac_mul_B,
     A_ldiv_B!, convert
-import Base.LinAlg: BlasFloat, BlasReal, DimensionMismatch
+import Base.LinAlg: BlasReal, DimensionMismatch
+
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
        chan, strang
-
-solve(A::AbstractMatrix, b::AbstractVector) = A_ldiv_B!(zeros(length(b)), A, b)
-A_ldiv_B!(x::AbstractVector, A::AbstractMatrix, b::AbstractVector) = x[:] = A\b
-
 
 
 # Abstract
@@ -31,8 +28,8 @@ function full{T}(A::AbstractToeplitz{T})
     return Af
 end
 
-function A_mul_B!{T<:BlasFloat}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
-        y::AbstractVector{T})
+function A_mul_B!{T<:BlasReal}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
+        y::StridedVector{T})
     n = length(y)
     n2 = length(A.vc_dft)
     if n != size(A,1)
@@ -61,36 +58,33 @@ function A_mul_B!{T<:BlasFloat}(α::T, A::AbstractToeplitz{T}, x::StridedVector{
     for i = 1:n2
         A.tmp[i] *= A.vc_dft[i]
     end
-    A_mul_B!(A.tmp, A.idft, A.tmp)
+    A.dft \ A.tmp
     for i = 1:n
         y[i] *= β
         y[i] += α * real(A.tmp[i])
     end
     return y
 end
-(*){T}(A::AbstractToeplitz{T}, x::AbstractVector{T}) =
-    A_mul_B!(one(T), A, x, zero(T), zeros(T, length(x)))
-
-function strang{T}(A::AbstractMatrix{T})
-    n = size(A, 1)
-    v = Array(T, n)
-    n2 = div(n, 2)
-    for i = 1:n
-        if i <= n2 + 1
-            v[i] = A[i,1]
-        else
-            v[i] = A[1, n - i + 2]
-        end
+function A_mul_B!{T<:BlasReal}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix{T}, β::T,
+    C::StridedMatrix{T})
+    n = size(B, 2)
+    if size(C, 2) != n
+        throw(DimensionMismatch("input and output matrices must have same number of columns"))
     end
-    return Circulant(v)
+    for j = 1:n
+        A_mul_B!(α, A, sub(B, :, j), β, sub(C, :, j))
+    end
+    return C
 end
-function chan{T}(A::AbstractMatrix{T})
-    n = size(A, 1)
-    v = Array(T, n)
-    for i = 1:n
-        v[i] = ((n - i + 1) * A[i, 1] + (i - 1) * A[1, min(n - i + 2, n)]) / n
+
+(*){T}(A::AbstractToeplitz{T}, B::StridedVecOrMat{T}) =
+    A_mul_B!(one(T), A, B, zero(T), zeros(T, size(B)))
+
+function A_ldiv_B!(A::AbstractToeplitz, B::StridedMatrix)
+    for j = 1:size(B, 2)
+        A_ldiv_B!(A, sub(B, :, j))
     end
-    return Circulant(v)
+    return B
 end
 
 # General
@@ -100,7 +94,6 @@ type Toeplitz{T<:Number} <: AbstractToeplitz{T}
     vc_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan{Complex{T}}
-    idft::Base.DFT.Plan{Complex{T}}
 end
 function Toeplitz{T<:Number}(vc::Vector{T}, vr::Vector{T})
     n = length(vc)
@@ -113,7 +106,7 @@ function Toeplitz{T<:Number}(vc::Vector{T}, vr::Vector{T})
 
     tmp = complex([vc; zero(T); reverse(vr[2:end])])
     dft = plan_fft!(tmp)
-    return Toeplitz(vc, vr, dft*tmp, similar(tmp), dft, plan_ifft!(tmp))
+    return Toeplitz(vc, vr, dft*tmp, similar(tmp), dft)
 end
 
 Toeplitz{T<:Integer}(vc::Vector{T}, vr::Vector{T})=Toeplitz(Vector{Float64}(vc),Vector{Float64}(vr))
@@ -170,33 +163,20 @@ function triu{T}(A::Toeplitz{T}, k::Integer)
     return Al
 end
 
-
-# *(A::Toeplitz, B::VecOrMat) = tril(A)*B + triu(A, 1)*B
-(*)(A::Toeplitz, b::Vector) = irfft(
-    rfft([
-        A.vc;
-        reverse(A.vr[2:end])]
-    ) .* rfft([
-        b;
-        zeros(length(b) - 1)
-    ]),
-    2 * length(b) - 1
-)[1:length(b)]
-
-A_ldiv_B!(A::Toeplitz, b::StridedVector) = cgs(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1]
+A_ldiv_B!(A::Toeplitz, b::StridedVector) =
+    copy!(b, cgs(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
 
 # Symmetric
-type SymmetricToeplitz{T<:BlasFloat} <: AbstractToeplitz{T}
+type SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
     vc::Vector{T}
     vc_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
-    idft::Base.DFT.Plan
 end
-function SymmetricToeplitz{T<:BlasFloat}(vc::Vector{T})
+function SymmetricToeplitz{T<:BlasReal}(vc::Vector{T})
     tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
     dft = plan_fft!(tmp)
-    return SymmetricToeplitz(vc, dft*tmp, similar(tmp), dft, plan_ifft!(tmp))
+    return SymmetricToeplitz(vc, dft*tmp, similar(tmp), dft)
 end
 
 function size(A::SymmetricToeplitz, dim::Int)
@@ -209,11 +189,8 @@ end
 
 getindex(A::SymmetricToeplitz, i::Integer, j::Integer) = A.vc[abs(i - j) + 1]
 
-(*){T<:BlasFloat}(A::SymmetricToeplitz{T}, x::Vector{T}) =
-    A_mul_B!(one(T), A, x, zero(T), zeros(T, length(x)))
-
 A_ldiv_B!(A::SymmetricToeplitz, b::StridedVector) =
-    cg(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1]
+    copy!(b, cg(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
 
 # Circulant
 type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
@@ -221,11 +198,10 @@ type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
     vc_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
-    idft::Base.DFT.Plan
 end
 function Circulant{T<:BlasReal}(vc::Vector{T})
     tmp = zeros(Complex{T}, length(vc))
-    return Circulant(vc, fft(vc), tmp, plan_fft!(tmp), plan_ifft!(tmp))
+    return Circulant(vc, fft(vc), tmp, plan_fft!(tmp))
 end
 
 function size(C::Circulant, dim::Integer)
@@ -249,7 +225,7 @@ function Ac_mul_B(A::Circulant,B::Circulant)
     for i = 1:length(tmp)
         tmp[i] = conj(A.vc_dft[i]) * B.vc_dft[i]
     end
-    return Circulant(real(A.idft(tmp)), tmp, A.tmp, A.dft, A.idft)
+    return Circulant(real(A.dft \ tmp), tmp, A.tmp, A.dft)
 end
 
 function A_ldiv_B!{T<:BlasReal}(C::Circulant{T}, b::AbstractVector{T})
@@ -258,11 +234,11 @@ function A_ldiv_B!{T<:BlasReal}(C::Circulant{T}, b::AbstractVector{T})
     for i = 1:n
         C.tmp[i] = b[i]
     end
-    A_mul_B!(C.tmp, C.dft, C.tmp)
+    C.dft * C.tmp
     for i = 1:n
         C.tmp[i] /= C.vc_dft[i]
     end
-    A_mul_B!(C.tmp, C.idft, C.tmp)
+    C.dft \ C.tmp
     for i = 1:n
         b[i] = real(C.tmp[i])
     end
@@ -272,7 +248,29 @@ end
 
 function inv{T<:BlasReal}(C::Circulant{T})
     vdft = 1 ./ C.vc_dft
-    return Circulant(real(C.idft(vdft)), copy(vdft), similar(vdft), C.dft, C.idft)
+    return Circulant(real(C.dft \ vdft), copy(vdft), similar(vdft), C.dft)
+end
+
+function strang{T}(A::AbstractMatrix{T})
+    n = size(A, 1)
+    v = Array(T, n)
+    n2 = div(n, 2)
+    for i = 1:n
+        if i <= n2 + 1
+            v[i] = A[i,1]
+        else
+            v[i] = A[1, n - i + 2]
+        end
+    end
+    return Circulant(v)
+end
+function chan{T}(A::AbstractMatrix{T})
+    n = size(A, 1)
+    v = Array(T, n)
+    for i = 1:n
+        v[i] = ((n - i + 1) * A[i, 1] + (i - 1) * A[1, min(n - i + 2, n)]) / n
+    end
+    return Circulant(v)
 end
 
 # Triangular
@@ -282,7 +280,6 @@ type TriangularToeplitz{T<:Number} <: AbstractToeplitz{T}
     vc_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
-    idft::Base.DFT.Plan
 end
 
 function Toeplitz(A::TriangularToeplitz)
@@ -298,7 +295,7 @@ function TriangularToeplitz{T<:Number}(ve::Vector{T}, uplo::Symbol)
     n = length(ve)
     tmp = uplo == :L ? complex([ve; zeros(n)]) : complex([ve[1]; zeros(T, n); reverse(ve[2:end])])
     dft = plan_fft!(tmp)
-    return TriangularToeplitz(ve, string(uplo)[1], dft * tmp, similar(tmp), dft, plan_ifft!(tmp))
+    return TriangularToeplitz(ve, string(uplo)[1], dft * tmp, similar(tmp), dft)
 end
 
 function size(A::TriangularToeplitz, dim::Int)
@@ -334,14 +331,14 @@ Ac_mul_B(A::TriangularToeplitz, b::AbstractVector) =
     TriangularToeplitz(A.ve, A.uplo == 'U' ? :L : :U) * b
 
 # NB! only valid for lower triangular
-function smallinv{T<:BlasFloat}(A::TriangularToeplitz{T})
+function smallinv{T<:BlasReal}(A::TriangularToeplitz{T})
     n = size(A, 1)
     b = zeros(T, n)
     b[1] = 1 ./ A.ve[1]
     for k = 2:n
         tmp = zero(T)
         for i = 1:k-1
-            tmp += A.uplo == 'L' ? A.ve[k-i+1]*b[i] : A.ve[i+1]*b[k-i]
+            tmp += A.uplo == 'L' ? A.ve[k - i + 1]*b[i] : A.ve[i + 1] * b[k - i]
         end
         b[k] = -tmp/A.ve[1]
     end
@@ -365,16 +362,24 @@ function inv{T}(A::TriangularToeplitz{T})
 end
 
 # A_ldiv_B!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
-A_ldiv_B!(A::TriangularToeplitz,b::StridedVector) =
-    cgs(A, zeros(length(b)), b, chan(A), 1000, 100eps())[1]
+A_ldiv_B!(A::TriangularToeplitz, b::StridedVector) =
+    copy!(b, cgs(A, zeros(length(b)), b, chan(A), 1000, 100eps())[1])
 
 # extend levinson
-StatsBase.levinson!(x::AbstractVector, A::SymmetricToeplitz, b::AbstractVector) =
+StatsBase.levinson!(x::StridedVector, A::SymmetricToeplitz, b::StridedVector) =
     StatsBase.levinson!(A.vc, b, x)
-StatsBase.levinson(r::AbstractVector, b::AbstractVector) =
-    StatsBase.levinson!(r, copy(b), zeros(length(b)))
-StatsBase.levinson(A::AbstractToeplitz, b::AbstractVector) =
-    StatsBase.levinson!(zeros(length(b)), A, copy(b))
+function StatsBase.levinson!(C::StridedMatrix, A::SymmetricToeplitz, B::StridedMatrix)
+    n = size(B, 2)
+    if n != size(C, 2)
+        throw(DimensionMismatch("input and output matrices must have same number of columns"))
+    end
+    for j = 1:n
+        StatsBase.levinson!(sub(C, :, j), A, sub(B, :, j))
+    end
+    C
+end
+StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
+    StatsBase.levinson!(zeros(size(B)), A, copy(B))
 
 # BlockTriangular
 # type BlockTriangularToeplitz{T<:BlasReal} <: AbstractMatrix{T}
@@ -383,13 +388,11 @@ StatsBase.levinson(A::AbstractToeplitz, b::AbstractVector) =
 #     Mc_dft::Array{Complex{T},3}
 #     tmp::Vector{Complex{T}}
 #     dft::Base.DFT.Plan
-#     idft::Base.DFT.Plan
 # end
 # function BlockTriangularToeplitz{T<:BlasReal}(Mc::Array{T,3}, uplo::Symbol)
 #     n, p, _ = size(Mc)
 #     tmp = zeros(Complex{T}, 2n)
 #     dft = plan_fft!(tmp)
-#     idft = plan_ifft!(tmp)
 #     Mc_dft = Array(Complex{T}, 2n, p, p)
 #     for j = 1:p
 #         for i = 1:p
