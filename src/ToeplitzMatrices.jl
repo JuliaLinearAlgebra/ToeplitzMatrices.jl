@@ -109,8 +109,10 @@ function Toeplitz{T<:Number}(vc::Vector{T}, vr::Vector{T})
     return Toeplitz(vc, vr, dft*tmp, similar(tmp), dft)
 end
 
-Toeplitz{T<:Integer}(vc::Vector{T}, vr::Vector{T})=Toeplitz(Vector{Float64}(vc),Vector{Float64}(vr))
-Toeplitz{T<:Integer}(vc::Vector{Complex{T}}, vr::Vector{Complex{T}})=Toeplitz(Vector{Complex128}(vc),Vector{Complex128}(vr))
+Toeplitz{T<:Integer}(vc::Vector{T}, vr::Vector{T}) =
+            Toeplitz(Vector{Float64}(vc),Vector{Float64}(vr))
+Toeplitz{T<:Integer}(vc::Vector{Complex{T}}, vr::Vector{Complex{T}}) =
+            Toeplitz(Vector{Complex128}(vc),Vector{Complex128}(vr))
 
 function Toeplitz{T1<:Number,T2<:Number}(vc::Vector{T1},vr::Vector{T2})
     T=promote_type(T1,T2)
@@ -431,9 +433,9 @@ type Hankel{T<:Number} <: AbstractMatrix{T}
 end
 
 
-Hankel(vc,vr)=Hankel(Toeplitz(vr,reverse(vc)))
+Hankel(vc,vr) = Hankel(Toeplitz(vr,reverse(vc)))
 
-size(H::Hankel,k...)=size(H.T,k...)
+size(H::Hankel,k...) = size(H.T,k...)
 
 getindex(H::Hankel, i::Integer) = H[mod(i, size(H,1)), div(i, size(H,1)) + 1]
 
@@ -448,9 +450,9 @@ function full{T}(A::Hankel{T})
 	return Af
 end
 
-getindex(A::Hankel, i::Integer, j::Integer)=A.T[i,end-j+1]
+getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
 
-*(A::Hankel,b::AbstractVector)=A.T*reverse(b)
+*(A::Hankel,b::AbstractVector) = A.T*reverse(b)
 
 end #module
 
