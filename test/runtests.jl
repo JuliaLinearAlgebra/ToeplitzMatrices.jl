@@ -57,4 +57,19 @@ Al = TriangularToeplitz(0.9.^(0:nl-1),:L)
 @test_approx_eq A_ldiv_B!(As,copy(xs)) full(As)\xs
 @test_approx_eq A_ldiv_B!(Al,copy(xl)) full(Al)\xl
 
+
+
+@printf("Hankel: ")
+H=Hankel([1.0,2,3,4,5],[5.0,6,7,8,0])
+x=ones(5)
+@test_approx_eq full(H)*x H*x
+
+
+@printf("BigFloat: ")
+if Pkg.installed("ApproxFun") > v"0.1.0+"
+    using ApproxFun
+    T=Toeplitz(BigFloat[1,2,3,4,5],BigFloat[1,6,7,8,0])
+    @test_approx_eq T*ones(BigFloat,5) [22,24,19,16,15]
+end
+
 @printf("OK!\n")
