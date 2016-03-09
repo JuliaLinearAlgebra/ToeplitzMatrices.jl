@@ -440,24 +440,37 @@ size(H::Hankel,k...) = size(H.T,k...)
 getindex(H::Hankel, i::Integer) = H[mod(i, size(H,1)), div(i, size(H,1)) + 1]
 
 function full{T}(A::Hankel{T})
-	m, n = size(A)
-	Af = Array(T, m, n)
-	for j = 1:n
-		for i = 1:m
-			Af[i,j] = A[i,j]
-		end
-	end
-	return Af
+    m, n = size(A)
+    Af = Array(T, m, n)
+    for j = 1:n
+        for i = 1:m
+            Af[i,j] = A[i,j]
+        end
+    end
+    return Af
 end
 
 getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
 
 *(A::Hankel,b::AbstractVector) = A.T*reverse(b)
 
+
+
+
+## BigFloat support
+
+(*){T<:BigFloat}(A::Toeplitz{T}, b::Vector) = irfft(
+    rfft([
+        A.vc;
+        reverse(A.vr[2:end])]
+    ) .* rfft([
+        b;
+        zeros(length(b) - 1)
+    ]),
+    2 * length(b) - 1
+)[1:length(b)]
+
 end #module
-
-
-
 
 
 
