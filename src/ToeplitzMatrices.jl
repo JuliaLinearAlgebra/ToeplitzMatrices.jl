@@ -4,11 +4,13 @@ import StatsBase
 using IterativeLinearSolvers
 
 import Base: *, \, full, getindex, print_matrix, size, tril, triu, inv, A_mul_B!, Ac_mul_B,
-    A_ldiv_B!
+    A_ldiv_B!, convert
 import Base.LinAlg: BlasReal, DimensionMismatch
 
-export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz,
+
+export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
        chan, strang
+
 
 # Abstract
 abstract AbstractToeplitz{T<:Number} <: AbstractMatrix{T}
@@ -93,7 +95,7 @@ type Toeplitz{T<:Number} <: AbstractToeplitz{T}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan{Complex{T}}
 end
-function Toeplitz{T<:BlasReal}(vc::Vector{T}, vr::Vector{T})
+function Toeplitz{T<:Number}(vc::Vector{T}, vr::Vector{T})
     n = length(vc)
     if length(vr) != n
         throw(DimensionMismatch(""))
@@ -105,6 +107,16 @@ function Toeplitz{T<:BlasReal}(vc::Vector{T}, vr::Vector{T})
     tmp = complex([vc; zero(T); reverse(vr[2:end])])
     dft = plan_fft!(tmp)
     return Toeplitz(vc, vr, dft*tmp, similar(tmp), dft)
+end
+
+Toeplitz{T<:Integer}(vc::Vector{T}, vr::Vector{T}) =
+            Toeplitz(Vector{Float64}(vc),Vector{Float64}(vr))
+Toeplitz{T<:Integer}(vc::Vector{Complex{T}}, vr::Vector{Complex{T}}) =
+            Toeplitz(Vector{Complex128}(vc),Vector{Complex128}(vr))
+
+function Toeplitz{T1<:Number,T2<:Number}(vc::Vector{T1},vr::Vector{T2})
+    T=promote_type(T1,T2)
+    Toeplitz(Vector{T}(vc),Vector{T}(vr))
 end
 
 function size(A::Toeplitz, dim::Int)
@@ -271,7 +283,17 @@ type TriangularToeplitz{T<:Number} <: AbstractToeplitz{T}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
 end
-function TriangularToeplitz{T<:BlasReal}(ve::Vector{T}, uplo::Symbol)
+
+function Toeplitz(A::TriangularToeplitz)
+    if A.uplo == 'L'
+        Toeplitz(A.ve,[A.ve[1];zeros(length(A.ve)-1)])
+    else
+        @assert A.uplo == 'U'
+        Toeplitz([A.ve[1];zeros(length(A.ve)-1)],A.ve)
+    end
+end
+
+function TriangularToeplitz{T<:Number}(ve::Vector{T}, uplo::Symbol)
     n = length(ve)
     tmp = uplo == :L ? complex([ve; zeros(n)]) : complex([ve[1]; zeros(T, n); reverse(ve[2:end])])
     dft = plan_fft!(tmp)
@@ -387,5 +409,68 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
 #             dft(sub(Mc_dft, 1:2n, 1:p, 1:p))
 #         end
 #     end
-#     return BlockTriangularToeplitz(Mc, string(uplo)[1], Mc_dft, tmp, dft)
+#     return BlockTriangularToeplitz(Mc, string(uplo)[1], Mc_dft, tmp, dft, idft)
+# end
+
+## Hankel
+#  A hankel matrix has the form
+#
+#   [a_0 a_1 a_2;
+#    a_1 a_2 a_3;
+#    a_2 a_3 a_4]
+#
+#  This is precisely a Toeplitz matrix with the columns changed:
+#
+#   [a_2 a_1 a_0;
+#    a_3 a_2 a_1;
+#    a_4 a_3 a_2] * [0 0 1; 0 1 0; 1 0 0]
+#
+#  We represent the Hankel matrix by wrapping the corresponding Toeplitz matrix
+#
+
+type Hankel{T<:Number} <: AbstractMatrix{T}
+    T::Toeplitz{T}
 end
+
+
+Hankel(vc,vr) = Hankel(Toeplitz(vr,reverse(vc)))
+
+size(H::Hankel,k...) = size(H.T,k...)
+
+getindex(H::Hankel, i::Integer) = H[mod(i, size(H,1)), div(i, size(H,1)) + 1]
+
+function full{T}(A::Hankel{T})
+    m, n = size(A)
+    Af = Array(T, m, n)
+    for j = 1:n
+        for i = 1:m
+            Af[i,j] = A[i,j]
+        end
+    end
+    return Af
+end
+
+getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
+
+*(A::Hankel,b::AbstractVector) = A.T*reverse(b)
+
+
+
+
+## BigFloat support
+
+(*){T<:BigFloat}(A::Toeplitz{T}, b::Vector) = irfft(
+    rfft([
+        A.vc;
+        reverse(A.vr[2:end])]
+    ) .* rfft([
+        b;
+        zeros(length(b) - 1)
+    ]),
+    2 * length(b) - 1
+)[1:length(b)]
+
+end #module
+
+
+
