@@ -65,10 +65,18 @@ x=ones(5)
 @test_approx_eq full(H)*x H*x
 @printf("OK!\n")
 
-@printf("BigFloat: ")
-if isdir(Pkg.dir("ApproxFun"))
-    using ApproxFun
+
+if isdir(Pkg.dir("FastTransforms"))
+    @printf("BigFloat: ")
+    using FastTransforms
     T=Toeplitz(BigFloat[1,2,3,4,5],BigFloat[1,6,7,8,0])
     @test_approx_eq T*ones(BigFloat,5) [22,24,19,16,15]
+
+    T=TriangularToeplitz(BigFloat[1,2,3,4,5],:L)
+    @test_approx_eq T*ones(BigFloat,5) full(T)*ones(BigFloat,5)
+
+    T=TriangularToeplitz(BigFloat[1,2,3,4,5],:U)
+    @test_approx_eq T*ones(BigFloat,5) full(T)*ones(BigFloat,5)
+
 end
 @printf("OK!\n")
