@@ -28,7 +28,7 @@ function full{T}(A::AbstractToeplitz{T})
     return Af
 end
 
-function A_mul_B!{T<:BlasReal}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
+function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
         y::StridedVector{T})
     n = length(y)
     n2 = length(A.vc_dft)
@@ -65,7 +65,7 @@ function A_mul_B!{T<:BlasReal}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T
     end
     return y
 end
-function A_mul_B!{T<:BlasReal}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix{T}, β::T,
+function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix{T}, β::T,
     C::StridedMatrix{T})
     n = size(B, 2)
     if size(C, 2) != n
@@ -230,7 +230,7 @@ function Ac_mul_B(A::Circulant,B::Circulant)
     return Circulant(real(A.dft \ tmp), tmp, A.tmp, A.dft)
 end
 
-function A_ldiv_B!{T<:BlasReal}(C::Circulant{T}, b::AbstractVector{T})
+function A_ldiv_B!{T}(C::Circulant{T}, b::AbstractVector{T})
     n = length(b)
     size(C, 1) == n || throw(DimensionMismatch(""))
     for i = 1:n
@@ -333,7 +333,7 @@ Ac_mul_B(A::TriangularToeplitz, b::AbstractVector) =
     TriangularToeplitz(A.ve, A.uplo == 'U' ? :L : :U) * b
 
 # NB! only valid for lower triangular
-function smallinv{T<:BlasReal}(A::TriangularToeplitz{T})
+function smallinv{T}(A::TriangularToeplitz{T})
     n = size(A, 1)
     b = zeros(T, n)
     b[1] = 1 ./ A.ve[1]
