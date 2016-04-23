@@ -72,11 +72,26 @@ if isdir(Pkg.dir("FastTransforms"))
     T=Toeplitz(BigFloat[1,2,3,4,5],BigFloat[1,6,7,8,0])
     @test_approx_eq T*ones(BigFloat,5) [22,24,19,16,15]
 
+    n=512
+    r=map(BigFloat,rand(n))
+    T=Toeplitz(r,[r[1];map(BigFloat,rand(n-1))])
+    @test_approx_eq T*ones(BigFloat,n) full(T)*ones(BigFloat,n)
+
     T=TriangularToeplitz(BigFloat[1,2,3,4,5],:L)
     @test_approx_eq T*ones(BigFloat,5) full(T)*ones(BigFloat,5)
+
+    n=512
+    r=map(BigFloat,rand(n))
+    T=TriangularToeplitz(r,:L)
+    @test_approx_eq T*ones(BigFloat,n) full(T)*ones(BigFloat,n)
 
     T=TriangularToeplitz(BigFloat[1,2,3,4,5],:U)
     @test_approx_eq T*ones(BigFloat,5) full(T)*ones(BigFloat,5)
 
+    n=512
+    r=map(BigFloat,rand(n))
+    T=TriangularToeplitz(r,:U)
+    @test_approx_eq T*ones(BigFloat,n) full(T)*ones(BigFloat,n)
 end
 @printf("OK!\n")
+

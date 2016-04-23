@@ -433,7 +433,12 @@ type Hankel{T<:Number} <: AbstractMatrix{T}
 end
 
 
-Hankel(vc,vr) = Hankel(Toeplitz(vr,reverse(vc)))
+function Hankel(vc,vr)
+    if vc[end] != vr[1]
+        error("First element of rows must equal first element of columns")
+    end    
+    Hankel(Toeplitz(vr,reverse(vc)))
+end
 
 size(H::Hankel,k...) = size(H.T,k...)
 
@@ -471,6 +476,3 @@ getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
 )[1:length(b)]
 
 end #module
-
-
-
