@@ -10,7 +10,6 @@ notifications:
 before_install:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
 script:
-  - julia --check-bounds=yes -e 'Pkg.clone("https://github.com/andreasnoack/IterativeLinearSolvers.jl")'
   - julia --check-bounds=yes -e 'Pkg.clone(pwd())'
   - julia --check-bounds=yes -e 'Pkg.test("ToeplitzMatrices"; coverage=true)'
 after_success:

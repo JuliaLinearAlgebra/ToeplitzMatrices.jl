@@ -1,7 +1,7 @@
 module ToeplitzMatrices
 
 import StatsBase
-using IterativeLinearSolvers
+include("iterativeLinearSolvers.jl")
 
 import Base: *, \, full, getindex, print_matrix, size, tril, triu, inv, A_mul_B!, Ac_mul_B,
     A_ldiv_B!, convert
@@ -166,7 +166,7 @@ function triu{T}(A::Toeplitz{T}, k::Integer)
 end
 
 A_ldiv_B!(A::Toeplitz, b::StridedVector) =
-    copy!(b, cgs(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
+    copy!(b, IterativeLinearSolvers.cgs(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
 
 # Symmetric
 type SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
@@ -192,7 +192,7 @@ end
 getindex(A::SymmetricToeplitz, i::Integer, j::Integer) = A.vc[abs(i - j) + 1]
 
 A_ldiv_B!(A::SymmetricToeplitz, b::StridedVector) =
-    copy!(b, cg(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
+    copy!(b, IterativeLinearSolvers.cg(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
 
 # Circulant
 type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
@@ -365,7 +365,7 @@ end
 
 # A_ldiv_B!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
 A_ldiv_B!(A::TriangularToeplitz, b::StridedVector) =
-    copy!(b, cgs(A, zeros(length(b)), b, chan(A), 1000, 100eps())[1])
+    copy!(b, IterativeLinearSolvers.cgs(A, zeros(length(b)), b, chan(A), 1000, 100eps())[1])
 
 # extend levinson
 StatsBase.levinson!(x::StridedVector, A::SymmetricToeplitz, b::StridedVector) =
