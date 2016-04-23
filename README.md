@@ -47,8 +47,8 @@ where uplo is either `:L` or `:U` and `ve` are the rows or columns, respectively
 
  ```julia
  [ 1.0  0.0  0.0
-  2.0  1.0  0.0
-  3.0  2.0  1.0 ]
+   2.0  1.0  0.0
+   3.0  2.0  1.0 ]
  ```
 
  # Hankel
@@ -69,6 +69,6 @@ where uplo is either `:L` or `:U` and `ve` are the rows or columns, respectively
 
  ```julia
  [  1.0  2.0  3.0
-   2.0  3.0  4.0
-   3.0  4.0  5.0 ]
+    2.0  3.0  4.0
+    3.0  4.0  5.0 ]
  ```
