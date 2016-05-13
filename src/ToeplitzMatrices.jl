@@ -30,19 +30,19 @@ end
 
 function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
         y::StridedVector{T})
-    n = length(y)
-    n2 = length(A.vc_dft)
-    if n != size(A,1)
+    m = length(y)
+    N = length(A.vcvr_dft)
+    if m != size(A,1)
         throw(DimensionMismatch(""))
     end
     if n != length(x)
         throw(DimensionMismatch(""))
     end
-    if n < 512
+    if N < 512
         y[:] *= β
         for j = 1:n
             tmp = α * x[j]
-            for i = 1:n
+            for i = 1:m
                 y[i] += tmp*A[i,j]
             end
         end
@@ -51,12 +51,12 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
     for i = 1:n
         A.tmp[i] = complex(x[i])
     end
-    for i = n+1:n2
+    for i = n+1:N
         A.tmp[i] = zero(Complex{T})
     end
     A_mul_B!(A.tmp, A.dft, A.tmp)
     for i = 1:n2
-        A.tmp[i] *= A.vc_dft[i]
+        A.tmp[i] *= A.vcvr_dft[i]
     end
     A.dft \ A.tmp
     for i = 1:n
@@ -67,11 +67,11 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
 end
 function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix{T}, β::T,
     C::StridedMatrix{T})
-    n = size(B, 2)
-    if size(C, 2) != n
+    l = size(B, 2)
+    if size(C, 2) != l
         throw(DimensionMismatch("input and output matrices must have same number of columns"))
     end
-    for j = 1:n
+    for j = 1:l
         A_mul_B!(α, A, sub(B, :, j), β, sub(C, :, j))
     end
     return C
@@ -91,20 +91,17 @@ end
 type Toeplitz{T<:Number} <: AbstractToeplitz{T}
     vc::Vector{T}
     vr::Vector{T}
-    vc_dft::Vector{Complex{T}}
+    vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan{Complex{T}}
 end
 function Toeplitz{T<:Number}(vc::Vector{T}, vr::Vector{T})
-    n = length(vc)
-    if length(vr) != n
-        throw(DimensionMismatch(""))
-    end
+    m = length(vc)
     if vc[1] != vr[1]
         error("First element of the vectors must be the same")
     end
 
-    tmp = complex([vc; zero(T); reverse(vr[2:end])])
+    tmp = complex([vc; reverse(vr[2:end])])
     dft = plan_fft!(tmp)
     return Toeplitz(vc, vr, dft*tmp, similar(tmp), dft)
 end
@@ -132,8 +129,8 @@ function size(A::Toeplitz, dim::Int)
 end
 
 function getindex(A::Toeplitz, i::Integer, j::Integer)
-    n = size(A,1)
-    if i > n || j > n
+    m = size(A,1)
+    if i > m || j > n
         error("BoundsError()")
     end
 
@@ -171,7 +168,7 @@ A_ldiv_B!(A::Toeplitz, b::StridedVector) =
 # Symmetric
 type SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
     vc::Vector{T}
-    vc_dft::Vector{Complex{T}}
+    vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
 end
@@ -197,7 +194,7 @@ A_ldiv_B!(A::SymmetricToeplitz, b::StridedVector) =
 # Circulant
 type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
     vc::Vector{T}
-    vc_dft::Vector{Complex{T}}
+    vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
 end
@@ -223,9 +220,9 @@ function getindex(C::Circulant, i::Integer, j::Integer)
 end
 
 function Ac_mul_B(A::Circulant,B::Circulant)
-    tmp = similar(A.vc_dft)
+    tmp = similar(A.vcvr_dft)
     for i = 1:length(tmp)
-        tmp[i] = conj(A.vc_dft[i]) * B.vc_dft[i]
+        tmp[i] = conj(A.vcvr_dft[i]) * B.vcvr_dft[i]
     end
     return Circulant(real(A.dft \ tmp), tmp, A.tmp, A.dft)
 end
@@ -238,7 +235,7 @@ function A_ldiv_B!{T}(C::Circulant{T}, b::AbstractVector{T})
     end
     C.dft * C.tmp
     for i = 1:n
-        C.tmp[i] /= C.vc_dft[i]
+        C.tmp[i] /= C.vcvr_dft[i]
     end
     C.dft \ C.tmp
     for i = 1:n
@@ -249,7 +246,7 @@ end
 (\)(C::Circulant, b::AbstractVector) = A_ldiv_B!(C, copy(b))
 
 function inv{T<:BlasReal}(C::Circulant{T})
-    vdft = 1 ./ C.vc_dft
+    vdft = 1 ./ C.vcvr_dft
     return Circulant(real(C.dft \ vdft), copy(vdft), similar(vdft), C.dft)
 end
 
@@ -279,7 +276,7 @@ end
 type TriangularToeplitz{T<:Number} <: AbstractToeplitz{T}
     ve::Vector{T}
     uplo::Char
-    vc_dft::Vector{Complex{T}}
+    vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
 end
@@ -436,7 +433,7 @@ end
 function Hankel(vc,vr)
     if vc[end] != vr[1]
         error("First element of rows must equal first element of columns")
-    end    
+    end
     Hankel(Toeplitz(vr,reverse(vc)))
 end
 
