@@ -17,6 +17,8 @@ abstract AbstractToeplitz{T<:Number} <: AbstractMatrix{T}
 
 size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
 getindex(A::AbstractToeplitz, i::Integer) = A[mod(i, size(A,1)), div(i, size(A,1)) + 1]
+
+# Convert a general Toeplitz matrix to a full matrix
 function full{T}(A::AbstractToeplitz{T})
     m, n = size(A)
     Af = Array(T, m, n)
@@ -28,11 +30,13 @@ function full{T}(A::AbstractToeplitz{T})
     return Af
 end
 
+# Fast application of a general Toeplitz matrix to a column vector via FFT
 function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
         y::StridedVector{T})
-    m = length(y)
+    m = size(A,1)
+    n = size(A,2)
     N = length(A.vcvr_dft)
-    if m != size(A,1)
+    if m != length(y)
         throw(DimensionMismatch(""))
     end
     if n != length(x)
@@ -55,7 +59,7 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
         A.tmp[i] = zero(Complex{T})
     end
     A_mul_B!(A.tmp, A.dft, A.tmp)
-    for i = 1:n2
+    for i = 1:N
         A.tmp[i] *= A.vcvr_dft[i]
     end
     A.dft \ A.tmp
@@ -65,6 +69,8 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
     end
     return y
 end
+
+# Application of a general Toeplitz matrix to a general matrix
 function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix{T}, β::T,
     C::StridedMatrix{T})
     l = size(B, 2)
@@ -77,9 +83,11 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix{T}, β::T,
     return C
 end
 
+# Multiplication operator
 (*){T}(A::AbstractToeplitz{T}, B::StridedVecOrMat{T}) =
     A_mul_B!(one(T), A, B, zero(T), zeros(T, size(B)))
 
+# Left division of a general matrix B by a general Toeplitz matrix A, i.e. the solution x of Ax=B.
 function A_ldiv_B!(A::AbstractToeplitz, B::StridedMatrix)
     for j = 1:size(B, 2)
         A_ldiv_B!(A, sub(B, :, j))
@@ -87,7 +95,7 @@ function A_ldiv_B!(A::AbstractToeplitz, B::StridedMatrix)
     return B
 end
 
-# General
+# General Toeplitz matrix
 type Toeplitz{T<:Number} <: AbstractToeplitz{T}
     vc::Vector{T}
     vr::Vector{T}
@@ -95,6 +103,8 @@ type Toeplitz{T<:Number} <: AbstractToeplitz{T}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan{Complex{T}}
 end
+
+# Ctor
 function Toeplitz{T<:Number}(vc::Vector{T}, vr::Vector{T})
     m = length(vc)
     if vc[1] != vr[1]
@@ -106,16 +116,19 @@ function Toeplitz{T<:Number}(vc::Vector{T}, vr::Vector{T})
     return Toeplitz(vc, vr, dft*tmp, similar(tmp), dft)
 end
 
+# Conversion to Float for integer inputs
 Toeplitz{T<:Integer}(vc::Vector{T}, vr::Vector{T}) =
             Toeplitz(Vector{Float64}(vc),Vector{Float64}(vr))
 Toeplitz{T<:Integer}(vc::Vector{Complex{T}}, vr::Vector{Complex{T}}) =
             Toeplitz(Vector{Complex128}(vc),Vector{Complex128}(vr))
 
+# Input promotion
 function Toeplitz{T1<:Number,T2<:Number}(vc::Vector{T1},vr::Vector{T2})
     T=promote_type(T1,T2)
     Toeplitz(Vector{T}(vc),Vector{T}(vr))
 end
 
+# Size of a general Toeplitz matrix
 function size(A::Toeplitz, dim::Int)
     if dim == 1
         return length(A.vc)
@@ -128,8 +141,10 @@ function size(A::Toeplitz, dim::Int)
     end
 end
 
+# Fetch an entry
 function getindex(A::Toeplitz, i::Integer, j::Integer)
     m = size(A,1)
+    n = size(A,2)
     if i > m || j > n
         error("BoundsError()")
     end
@@ -141,27 +156,35 @@ function getindex(A::Toeplitz, i::Integer, j::Integer)
     end
 end
 
-function tril{T}(A::Toeplitz{T}, k::Integer)
+# Form a lower triangular Toeplitz matrix by annihilating all entries above the k-th diaganal
+function tril{T}(A::Toeplitz{T}, k = 0)
     if k > 0
         error("Second argument cannot be positive")
     end
-    Al = TriangularToeplitz(copy(A.vc), 'L')
-    for i in -1:-1:k
-        Al.ve[-i] = zero(T)
-    end
-    return Al
-end
-function triu{T}(A::Toeplitz{T}, k::Integer)
+    Al = TriangularToeplitz(copy(A.vc), 'L', length(A.vr))
     if k < 0
-        error("Second argument cannot be negative")
-    end
-    Al = TriangularToeplitz(copy(A.vr), 'U')
-    for i in 1:k
-        Al.ve[i] = zero(T)
+      for i in -1:-1:k
+          Al.ve[-i] = zero(T)
+      end
     end
     return Al
 end
 
+# Form a lower triangular Toeplitz matrix by annihilating all entries below the k-th diaganal
+function triu{T}(A::Toeplitz{T}, k = 0)
+    if k < 0
+        error("Second argument cannot be negative")
+    end
+    Al = TriangularToeplitz(copy(A.vr), 'U', length(A.vc))
+    if k > 0
+      for i in 1:k
+          Al.ve[i] = zero(T)
+      end
+    end
+    return Al
+end
+
+# Left division of a column vector b by a general Toeplitz matrix A, i.e. the solution x of Ax=b.
 A_ldiv_B!(A::Toeplitz, b::StridedVector) =
     copy!(b, IterativeLinearSolvers.cgs(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
 
@@ -272,34 +295,40 @@ function chan{T}(A::AbstractMatrix{T})
     return Circulant(v)
 end
 
-# Triangular
+# Triangular Toeplitz matrix
 type TriangularToeplitz{T<:Number} <: AbstractToeplitz{T}
     ve::Vector{T}
     uplo::Char
+    k::Integer
     vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
 end
 
+# Recast a Triangular Toeplitz matrix as a general Toeplitz matrix
 function Toeplitz(A::TriangularToeplitz)
     if A.uplo == 'L'
-        Toeplitz(A.ve,[A.ve[1];zeros(length(A.ve)-1)])
+        Toeplitz(A.ve,[A.ve[1];zeros(A.k-1)])
     else
         @assert A.uplo == 'U'
-        Toeplitz([A.ve[1];zeros(length(A.ve)-1)],A.ve)
+        Toeplitz([A.ve[1];zeros(A.k-1)], A.ve)
     end
 end
 
-function TriangularToeplitz{T<:Number}(ve::Vector{T}, uplo::Symbol)
+# Ctor
+function TriangularToeplitz{T<:Number}(ve::Vector{T}, uplo::Symbol, k = length(ve))
     n = length(ve)
-    tmp = uplo == :L ? complex([ve; zeros(n)]) : complex([ve[1]; zeros(T, n); reverse(ve[2:end])])
+    tmp = uplo == :L ? complex([ve; zeros(k-1)]) : complex([ve[1]; zeros(T, k-1); reverse(ve[2:end])])
     dft = plan_fft!(tmp)
-    return TriangularToeplitz(ve, string(uplo)[1], dft * tmp, similar(tmp), dft)
+    return TriangularToeplitz(ve, string(uplo)[1], k, dft * tmp, similar(tmp), dft)
 end
 
+# Size
 function size(A::TriangularToeplitz, dim::Int)
-    if dim == 1 || dim == 2
+    if (A.uplo == 'L' && dim == 1) || (A.uplo == 'U' && dim == 2)
         return length(A.ve)
+    elseif (A.uplo == 'U' && dim == 1) || (A.uplo == 'L' && dim == 2)
+        return A.k
     elseif dim > 2
         return 1
     else
@@ -307,7 +336,11 @@ function size(A::TriangularToeplitz, dim::Int)
     end
 end
 
+# Fetch an entry
 function getindex{T}(A::TriangularToeplitz{T}, i::Integer, j::Integer)
+    if i > size(A, 1) || j > size(A, 2)
+      error("BoundsError()")
+    end
     if A.uplo == 'L'
         return i >= j ? A.ve[i - j + 1] : zero(T)
     else
@@ -315,19 +348,24 @@ function getindex{T}(A::TriangularToeplitz{T}, i::Integer, j::Integer)
     end
 end
 
+# Multiplication of two triangular Toeplitz matrices
 function (*)(A::TriangularToeplitz, B::TriangularToeplitz)
     n = size(A, 1)
     if n != size(B, 1)
         throw(DimensionMismatch(""))
     end
     if A.uplo == B.uplo
+        # TODO: This can be further sped up
         return TriangularToeplitz(conv(A.ve, B.ve)[1:n], A.uplo)
     end
-    return Triangular(full(A), A.uplo) * Triangular(full(B), B.uplo)
+    # return Triangular(full(A), A.uplo) * Triangular(full(B), B.uplo)
+    # TODO: This can be further sped up
+    return full(A) * full(B)
 end
 
+# Apply a triangular Toeplitz matrix to a general column vector
 Ac_mul_B(A::TriangularToeplitz, b::AbstractVector) =
-    TriangularToeplitz(A.ve, A.uplo == 'U' ? :L : :U) * b
+    TriangularToeplitz(A.ve, A.uplo == 'U' ? :L : :U, k) * b
 
 # NB! only valid for lower triangular
 function smallinv{T}(A::TriangularToeplitz{T})
