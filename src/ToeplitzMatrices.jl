@@ -188,29 +188,56 @@ end
 A_ldiv_B!(A::Toeplitz, b::StridedVector) =
     copy!(b, IterativeLinearSolvers.cgs(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
 
-# Symmetric
+# Symmetric Toeplitz matrix
 type SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
-    vc::Vector{T}
+    ve::Vector{T}
+    cr:: Char   # Is the vector ve the first column or the top row?
+    k:: Integer # The other dimension
     vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
 end
-function SymmetricToeplitz{T<:BlasReal}(vc::Vector{T})
-    tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
+
+# Ctor
+function SymmetricToeplitz{T<:BlasReal}(ve::Vector{T}, cr = 'c', k = length(ve))
+    @assert length(ve) >= k
+    if cr == 'c'
+      tmp = convert(Array{Complex{T}}, [ve; reverse(ve[2:k])])
+    elseif cr == 'r'
+      tmp = convert(Array{Complex{T}}, [ve[1:k]; reverse(ve[2:end])])
+    else
+      error("SymmetricTeoplitz: the input character cr can only be either c or r.")
+    end
     dft = plan_fft!(tmp)
-    return SymmetricToeplitz(vc, dft*tmp, similar(tmp), dft)
+    return SymmetricToeplitz(ve, cr, k, dft*tmp, similar(tmp), dft)
 end
 
+# Size
 function size(A::SymmetricToeplitz, dim::Int)
-    if 1 <= dim <= 2
-        return length(A.vc)
+    if dim == 1
+      if A.cr == 'c'
+        return length(A.ve)
+      else
+        return A.k
+      end
+    elseif dim == 2
+      if A.cr == 'c'
+          return A.k
+      else
+        return length(A.ve)
+      end
     else
         error("arraysize: dimension out of range")
     end
 end
 
-getindex(A::SymmetricToeplitz, i::Integer, j::Integer) = A.vc[abs(i - j) + 1]
+# Fetch an entry
+function getindex(A::SymmetricToeplitz, i::Integer, j::Integer)
+   @assert ( 1 <= i <= size(A,1) && 1 <= j <= size(A,2) )
+   A.ve[abs(i - j) + 1]
+end
 
+# Left division of a column vector b by a symmetric Toeplitz matrix A, i.e. the solution x of Ax=b.
 A_ldiv_B!(A::SymmetricToeplitz, b::StridedVector) =
     copy!(b, IterativeLinearSolvers.cg(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
 
@@ -404,7 +431,7 @@ A_ldiv_B!(A::TriangularToeplitz, b::StridedVector) =
 
 # extend levinson
 StatsBase.levinson!(x::StridedVector, A::SymmetricToeplitz, b::StridedVector) =
-    StatsBase.levinson!(A.vc, b, x)
+    StatsBase.levinson!(A.ve, b, x)
 function StatsBase.levinson!(C::StridedMatrix, A::SymmetricToeplitz, B::StridedMatrix)
     n = size(B, 2)
     if n != size(C, 2)
