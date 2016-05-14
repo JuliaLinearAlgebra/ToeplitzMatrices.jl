@@ -363,7 +363,7 @@ function (*)(A::TriangularToeplitz, B::TriangularToeplitz)
     return full(A) * full(B)
 end
 
-# Apply a triangular Toeplitz matrix to a general column vector
+# Apply the conjugate transpose of a triangular Toeplitz matrix to a general column vector
 Ac_mul_B(A::TriangularToeplitz, b::AbstractVector) =
     TriangularToeplitz(A.ve, A.uplo == 'U' ? :L : :U, k) * b
 
