@@ -11,7 +11,6 @@ import Base.LinAlg: BlasReal, DimensionMismatch
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
        chan, strang
 
-
 # Abstract
 abstract AbstractToeplitz{T<:Number} <: AbstractMatrix{T}
 
@@ -63,7 +62,7 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
         A.tmp[i] *= A.vcvr_dft[i]
     end
     A.dft \ A.tmp
-    for i = 1:n
+    for i = 1:m
         y[i] *= β
         y[i] += α * real(A.tmp[i])
     end
@@ -85,7 +84,7 @@ end
 
 # Multiplication operator
 (*){T}(A::AbstractToeplitz{T}, B::StridedVecOrMat{T}) =
-    A_mul_B!(one(T), A, B, zero(T), zeros(T, size(B)))
+    A_mul_B!(one(T), A, B, zero(T), size(B,2) == 1 ? zeros(T, size(A, 1)) : zeros(T, size(A, 1), size(B, 2)))
 
 # Left division of a general matrix B by a general Toeplitz matrix A, i.e. the solution x of Ax=B.
 function A_ldiv_B!(A::AbstractToeplitz, B::StridedMatrix)
@@ -326,7 +325,7 @@ end
 type TriangularToeplitz{T<:Number} <: AbstractToeplitz{T}
     ve::Vector{T}
     uplo::Char
-    k::Integer
+    k::Integer # length of the other dimension
     vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
@@ -526,7 +525,10 @@ getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
 getindex(H::Hankel, i::Integer) = H[mod(i, size(H,1)), div(i, size(H,1)) + 1]
 
 # Fast application of a general Hankel matrix to a general vector
-*(A::Hankel,b::AbstractVector) = A.T*reverse(b)
+*(A::Hankel,b::AbstractVector) = A.T * reverse(b)
+
+# Fast application of a general Hankel matrix to a general matrix
+*(A::Hankel,B::AbstractMatrix) = A.T * flipdim(B, 1)
 
 # BigFloat support
 (*){T<:BigFloat}(A::Toeplitz{T}, b::Vector) = irfft(
