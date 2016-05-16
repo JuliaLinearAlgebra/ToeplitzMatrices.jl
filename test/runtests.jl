@@ -46,12 +46,19 @@ Ar2 = SymmetricToeplitz(0.9.^(0:nl-1), 'r', ns)
 @printf("OK!\n")
 
 @printf("Circulant: ")
+# Square
 As = Circulant(0.9.^(0:ns-1))
 Al = Circulant(0.9.^(0:nl-1))
 @test_approx_eq As * xs full(As) * xs
 @test_approx_eq Al * xl full(Al) * xl
 @test_approx_eq A_ldiv_B!(As, copy(xs)) full(As) \ xs
 @test_approx_eq A_ldiv_B!(Al, copy(xl)) full(Al) \ xl
+
+# Rectangular
+Ar1 = Circulant(0.9.^(0:nl-1), 'c', ns)
+Ar2 = Circulant(0.9.^(0:nl-1), 'r', ns)
+@test_approx_eq Ar1 * xs full(Ar1) * xs
+@test_approx_eq Ar2 * xl full(Ar2) * xl
 @printf("OK!\n")
 
 @printf("Upper triangular Toeplitz: ")

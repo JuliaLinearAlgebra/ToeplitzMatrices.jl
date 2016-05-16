@@ -1,5 +1,7 @@
 module ToeplitzMatrices
 
+using Debug
+
 import StatsBase
 include("iterativeLinearSolvers.jl")
 
@@ -17,7 +19,7 @@ abstract AbstractToeplitz{T<:Number} <: AbstractMatrix{T}
 size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
 getindex(A::AbstractToeplitz, i::Integer) = A[mod(i, size(A,1)), div(i, size(A,1)) + 1]
 
-# Convert a general Toeplitz matrix to a full matrix
+# Convert an abstract Toeplitz matrix to a full matrix
 function full{T}(A::AbstractToeplitz{T})
     m, n = size(A)
     Af = Array(T, m, n)
@@ -82,7 +84,7 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix{T}, β::T,
     return C
 end
 
-# Multiplication operator
+# * operator
 (*){T}(A::AbstractToeplitz{T}, B::StridedVecOrMat{T}) =
     A_mul_B!(one(T), A, B, zero(T), size(B,2) == 1 ? zeros(T, size(A, 1)) : zeros(T, size(A, 1), size(B, 2)))
 
@@ -242,63 +244,99 @@ A_ldiv_B!(A::SymmetricToeplitz, b::StridedVector) =
 
 # Circulant
 type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
-    vc::Vector{T}
+    ve::Vector{T}
+    cr::Char
+    k::Integer
     vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
 end
-function Circulant{T<:BlasReal}(vc::Vector{T})
-    tmp = zeros(Complex{T}, length(vc))
-    return Circulant(vc, fft(vc), tmp, plan_fft!(tmp))
-end
 
-function size(C::Circulant, dim::Integer)
-    if 1 <= dim <= 2
-        return length(C.vc)
+# Ctor
+function Circulant{T<:BlasReal}(ve::Vector{T}, cr = 'c', k = length(ve))
+    tmp = zeros(Complex{T}, length(ve))
+    dft = plan_fft!(tmp)
+    if cr == 'c'
+      p = ve
+    elseif cr == 'r'
+      p = [ve[1]; ve[end:-1:2]]
     else
-        error("arraysize: dimension out of range")
+      error("Unrecognizable input for cr.")
     end
+    return Circulant(ve, cr, k, dft*p, tmp, dft)
 end
 
-function getindex(C::Circulant, i::Integer, j::Integer)
-    n = size(C, 1)
-    if i > n || j > n
-        error("BoundsError()")
+# Size
+function size(A::Circulant, dim::Integer)
+  if dim == 1
+    if A.cr == 'c'
+      return length(A.ve)
+    else
+      return A.k
     end
-    return C.vc[mod(i - j, length(C.vc)) + 1]
+  elseif dim == 2
+    if A.cr == 'c'
+        return A.k
+    else
+      return length(A.ve)
+    end
+  else
+      error("arraysize: dimension out of range")
+  end
 end
 
+# Retrieve an entry
+function getindex(A::Circulant, i::Integer, j::Integer)
+  m = size(A, 1)
+  n = size(A, 2)
+  if i > m || j > n
+      error("BoundsError()")
+  end
+  if A.cr == 'c'
+    p = A.ve
+  elseif A.cr == 'r'
+    p = [A.ve[1]; A.ve[end:-1:2]]
+  end
+  return p[mod(i - j, max(m, n)) + 1]
+end
+
+# Fast multiplication of the conjugate of a circulant matrix with another circulant matrix
 function Ac_mul_B(A::Circulant,B::Circulant)
-    tmp = similar(A.vcvr_dft)
+    tmp = similar(A.vc_dft)
     for i = 1:length(tmp)
-        tmp[i] = conj(A.vcvr_dft[i]) * B.vcvr_dft[i]
+        tmp[i] = conj(A.vc_dft[i]) * B.vc_dft[i]
     end
     return Circulant(real(A.dft \ tmp), tmp, A.tmp, A.dft)
 end
 
-function A_ldiv_B!{T}(C::Circulant{T}, b::AbstractVector{T})
+# Left division of a column vector b by a circulant matrix A, i.e. the solution x of Ax=b.
+function A_ldiv_B!{T}(A::Circulant{T}, b::AbstractVector{T})
     n = length(b)
-    size(C, 1) == n || throw(DimensionMismatch(""))
+    size(A, 1) == n || throw(DimensionMismatch(""))
     for i = 1:n
-        C.tmp[i] = b[i]
+        A.tmp[i] = b[i]
     end
-    C.dft * C.tmp
+    A.dft * A.tmp
     for i = 1:n
-        C.tmp[i] /= C.vcvr_dft[i]
+        A.tmp[i] /= A.vcvr_dft[i]
     end
-    C.dft \ C.tmp
+    A.dft \ A.tmp
     for i = 1:n
-        b[i] = real(C.tmp[i])
+        b[i] = real(A.tmp[i])
     end
     return b
 end
-(\)(C::Circulant, b::AbstractVector) = A_ldiv_B!(C, copy(b))
 
-function inv{T<:BlasReal}(C::Circulant{T})
-    vdft = 1 ./ C.vcvr_dft
-    return Circulant(real(C.dft \ vdft), copy(vdft), similar(vdft), C.dft)
+# Operator \
+(\)(A::Circulant, b::AbstractVector) = A_ldiv_B!(A, copy(b))
+
+# Inverse of a square circulant matrix
+function inv{T<:BlasReal}(A::Circulant{T})
+    vdft = 1 ./ A.vcvr_dft
+    return Circulant(real(A.dft \ vdft), copy(vdft), similar(vdft), A.dft)
 end
 
+# Strang matrix
 function strang{T}(A::AbstractMatrix{T})
     n = size(A, 1)
     v = Array(T, n)
@@ -312,6 +350,8 @@ function strang{T}(A::AbstractMatrix{T})
     end
     return Circulant(v)
 end
+
+# Chan matrix
 function chan{T}(A::AbstractMatrix{T})
     n = size(A, 1)
     v = Array(T, n)
