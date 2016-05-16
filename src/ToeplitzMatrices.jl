@@ -90,10 +90,13 @@ end
 
 # Left division of a general matrix B by a general Toeplitz matrix A, i.e. the solution x of Ax=B.
 function A_ldiv_B!(A::AbstractToeplitz, B::StridedMatrix)
-    for j = 1:size(B, 2)
-        A_ldiv_B!(A, sub(B, :, j))
-    end
-    return B
+  if size(A, 1) != size(A, 2)
+    error("Division: Rectangular case is not supported.")
+  end
+  for j = 1:size(B, 2)
+      A_ldiv_B!(A, sub(B, :, j))
+  end
+  return B
 end
 
 # General Toeplitz matrix
@@ -302,15 +305,21 @@ end
 
 # Fast multiplication of the conjugate of a circulant matrix with another circulant matrix
 function Ac_mul_B(A::Circulant,B::Circulant)
-    tmp = similar(A.vc_dft)
-    for i = 1:length(tmp)
-        tmp[i] = conj(A.vc_dft[i]) * B.vc_dft[i]
-    end
-    return Circulant(real(A.dft \ tmp), tmp, A.tmp, A.dft)
+  if size(A, 1) != size(A, 2) || size(B, 1) != size(B, 2)
+    error("Multiplication: Rectangular case is not supported.")
+  end
+  tmp = similar(A.vc_dft)
+  for i = 1:length(tmp)
+      tmp[i] = conj(A.vc_dft[i]) * B.vc_dft[i]
+  end
+  return Circulant(real(A.dft \ tmp), tmp, A.tmp, A.dft)
 end
 
 # Left division of a column vector b by a circulant matrix A, i.e. the solution x of Ax=b.
 function A_ldiv_B!{T}(A::Circulant{T}, b::AbstractVector{T})
+    if size(A, 1) != size(A, 2)
+      error("Division: Rectangular case is not supported.")
+    end
     n = length(b)
     size(A, 1) == n || throw(DimensionMismatch(""))
     for i = 1:n
@@ -332,6 +341,9 @@ end
 
 # Inverse of a square circulant matrix
 function inv{T<:BlasReal}(A::Circulant{T})
+    if size(A, 1) != size(A, 2)
+      error("Inverse: Rectangular case is not supported.")
+    end
     vdft = 1 ./ A.vcvr_dft
     return Circulant(real(A.dft \ vdft), copy(vdft), similar(vdft), A.dft)
 end
@@ -435,6 +447,9 @@ Ac_mul_B(A::TriangularToeplitz, b::AbstractVector) =
 
 # NB! only valid for lower triangular
 function smallinv{T}(A::TriangularToeplitz{T})
+    if size(A, 1) != size(A, 2)
+      error("Inverse: Rectangular case is not supported.")
+    end
     n = size(A, 1)
     b = zeros(T, n)
     b[1] = 1 ./ A.ve[1]
@@ -449,6 +464,9 @@ function smallinv{T}(A::TriangularToeplitz{T})
 end
 
 function inv{T}(A::TriangularToeplitz{T})
+    if size(A, 1) != size(A, 2)
+      error("Inverse: Rectangular case is not supported.")
+    end
     n = size(A, 1)
     if n <= 64
         return smallinv(A)
@@ -471,6 +489,7 @@ A_ldiv_B!(A::TriangularToeplitz, b::StridedVector) =
 # extend levinson
 StatsBase.levinson!(x::StridedVector, A::SymmetricToeplitz, b::StridedVector) =
     StatsBase.levinson!(A.ve, b, x)
+
 function StatsBase.levinson!(C::StridedMatrix, A::SymmetricToeplitz, B::StridedMatrix)
     n = size(B, 2)
     if n != size(C, 2)
@@ -481,6 +500,7 @@ function StatsBase.levinson!(C::StridedMatrix, A::SymmetricToeplitz, B::StridedM
     end
     C
 end
+
 StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
     StatsBase.levinson!(zeros(size(B)), A, copy(B))
 
