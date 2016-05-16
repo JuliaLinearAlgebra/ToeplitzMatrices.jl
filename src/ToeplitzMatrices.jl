@@ -1,7 +1,5 @@
 module ToeplitzMatrices
 
-using Debug
-
 import StatsBase
 include("iterativeLinearSolvers.jl")
 
