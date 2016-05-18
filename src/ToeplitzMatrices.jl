@@ -1,3 +1,4 @@
+__precompile__()
 module ToeplitzMatrices
 
 import StatsBase
@@ -436,7 +437,7 @@ end
 function Hankel(vc,vr)
     if vc[end] != vr[1]
         error("First element of rows must equal first element of columns")
-    end    
+    end
     Hankel(Toeplitz(vr,reverse(vc)))
 end
 
