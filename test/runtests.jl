@@ -67,11 +67,24 @@ Al = TriangularToeplitz(0.9.^(0:nl - 1), :L)
 
 
 @printf("Hankel: ")
-H=Hankel([1.0,2,3,4,5],[5.0,6,7,8,0])
-x=ones(5)
+# Square
+H = Hankel([1.0,2,3,4,5],[5.0,6,7,8,0])
+x = ones(5)
 @test_approx_eq full(H)*x H*x
-@printf("OK!\n")
 
+Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:ns-1))
+Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:nl-1))
+@test_approx_eq Hs * xs[:,1] full(Hs) * xs[:,1]
+@test_approx_eq Hs * xs full(Hs) * xs
+@test_approx_eq Hl * xl full(Hl) * xl
+
+# Rectangular
+Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:nl-1))
+Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:ns-1))
+@test_approx_eq Hs * xl[:,1] full(Hs) * xl[:,1]
+@test_approx_eq Hs * xl full(Hs) * xl
+@test_approx_eq Hl * xs full(Hl) * xs
+@printf("OK!\n")
 
 if isdir(Pkg.dir("FastTransforms"))
     @printf("BigFloat: ")
@@ -99,5 +112,5 @@ if isdir(Pkg.dir("FastTransforms"))
     r=map(BigFloat,rand(n))
     T=TriangularToeplitz(r,:U)
     @test_approx_eq T*ones(BigFloat,n) full(T)*ones(BigFloat,n)
+    @printf("OK!\n")
 end
-@printf("OK!\n")

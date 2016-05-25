@@ -145,7 +145,7 @@ function size(A::Toeplitz, dim::Int)
   end
 end
 
-# Fetch an entry
+# Retrieve an entry
 function getindex(A::Toeplitz, i::Integer, j::Integer)
   m = size(A,1)
   n = size(A,2)
@@ -435,38 +435,40 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
 #     return BlockTriangularToeplitz(Mc, string(uplo)[1], Mc_dft, tmp, dft, idft)
 # end
 
-## Hankel
-#  A hankel matrix has the form
-#
-#   [a_0 a_1 a_2;
-#    a_1 a_2 a_3;
-#    a_2 a_3 a_4]
-#
-#  This is precisely a Toeplitz matrix with the columns changed:
-#
-#   [a_2 a_1 a_0;
-#    a_3 a_2 a_1;
-#    a_4 a_3 a_2] * [0 0 1; 0 1 0; 1 0 0]
-#
-#  We represent the Hankel matrix by wrapping the corresponding Toeplitz matrix
-#
+#= Hankel Matrix
+ A Hankel matrix is a matrix that is constant across the anti-diagonals:
 
+  [a_0 a_1 a_2 a_3 a_4
+   a_1 a_2 a_3 a_4 a_5
+   a_2 a_3 a_4 a_5 a_6]
+
+ This is precisely a Toeplitz matrix with the columns reversed:
+                             [0 0 0 0 1
+  [a_4 a_3 a_2 a_1 a_0        0 0 0 1 0
+   a_5 a_4 a_3 a_2 a_1   *    0 0 1 0 0
+   a_6 a_5 a_4 a_3 a_2]       0 1 0 0 0
+                              1 0 0 0 0]
+ We represent the Hankel matrix by wrapping the corresponding Toeplitz matrix.=#
+
+# Hankel Matrix
 type Hankel{T<:Number} <: AbstractMatrix{T}
     T::Toeplitz{T}
 end
 
-
+# Ctor: vc is the leftmost column and vr is the bottom row.
 function Hankel(vc,vr)
     if vc[end] != vr[1]
-        error("First element of rows must equal first element of columns")
+        error("First element of rows must equal last element of columns")
     end
-    Hankel(Toeplitz(vr,reverse(vc)))
+    n = length(vr)
+    p = [vc; vr[2:end]]
+    Hankel(Toeplitz(p[n:end],p[n:-1:1]))
 end
 
+# Size
 size(H::Hankel,k...) = size(H.T,k...)
 
-getindex(H::Hankel, i::Integer) = H[mod(i, size(H,1)), div(i, size(H,1)) + 1]
-
+# Full version of a Hankel matrix
 function full{T}(A::Hankel{T})
     m, n = size(A)
     Af = Array(T, m, n)
@@ -478,13 +480,17 @@ function full{T}(A::Hankel{T})
     return Af
 end
 
+# Retrieve an entry by two indices
 getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
 
-*(A::Hankel,b::AbstractVector) = A.T*reverse(b)
+# Retrieve an entry by one index
+getindex(H::Hankel, i::Integer) = H[mod(i, size(H,1)), div(i, size(H,1)) + 1]
 
+# Fast application of a general Hankel matrix to a general vector
+*(A::Hankel,b::AbstractVector) = A.T * reverse(b)
 
-
-
+# Fast application of a general Hankel matrix to a general matrix
+*(A::Hankel,B::AbstractMatrix) = A.T * flipdim(B, 1)
 ## BigFloat support
 
 (*){T<:BigFloat}(A::Toeplitz{T}, b::Vector) = irfft(
