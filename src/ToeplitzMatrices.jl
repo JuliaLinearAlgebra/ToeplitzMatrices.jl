@@ -21,67 +21,67 @@ getindex(A::AbstractToeplitz, i::Integer) = A[mod(i, size(A,1)), div(i, size(A,1
 
 # Convert an abstract Toeplitz matrix to a full matrix
 function full{T}(A::AbstractToeplitz{T})
-  m, n = size(A)
-  Af = Array(T, m, n)
-  for j = 1:n
-      for i = 1:m
-          Af[i,j] = A[i,j]
-      end
-  end
-  return Af
+    m, n = size(A)
+    Af = Array(T, m, n)
+    for j = 1:n
+        for i = 1:m
+            Af[i,j] = A[i,j]
+        end
+    end
+    return Af
 end
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
 function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
       y::StridedVector{T})
-  m = size(A,1)
-  n = size(A,2)
-  N = length(A.vcvr_dft)
-  if m != length(y)
-      throw(DimensionMismatch(""))
-  end
-  if n != length(x)
-      throw(DimensionMismatch(""))
-  end
-  if N < 512
-      y[:] *= β
-      for j = 1:n
-          tmp = α * x[j]
-          for i = 1:m
-              y[i] += tmp*A[i,j]
-          end
-      end
-      return y
-  end
-  for i = 1:n
-      A.tmp[i] = complex(x[i])
-  end
-  for i = n+1:N
-      A.tmp[i] = zero(Complex{T})
-  end
-  A_mul_B!(A.tmp, A.dft, A.tmp)
-  for i = 1:N
-      A.tmp[i] *= A.vcvr_dft[i]
-  end
-  A.dft \ A.tmp
-  for i = 1:m
-      y[i] *= β
-      y[i] += α * real(A.tmp[i])
-  end
-  return y
+    m = size(A,1)
+    n = size(A,2)
+    N = length(A.vcvr_dft)
+    if m != length(y)
+        throw(DimensionMismatch(""))
+    end
+    if n != length(x)
+        throw(DimensionMismatch(""))
+    end
+    if N < 512
+        y[:] *= β
+        for j = 1:n
+            tmp = α * x[j]
+            for i = 1:m
+                y[i] += tmp*A[i,j]
+            end
+        end
+        return y
+    end
+    for i = 1:n
+        A.tmp[i] = complex(x[i])
+    end
+    for i = n+1:N
+        A.tmp[i] = zero(Complex{T})
+    end
+    A_mul_B!(A.tmp, A.dft, A.tmp)
+    for i = 1:N
+        A.tmp[i] *= A.vcvr_dft[i]
+    end
+    A.dft \ A.tmp
+    for i = 1:m
+        y[i] *= β
+        y[i] += α * real(A.tmp[i])
+    end
+    return y
 end
 
 # Application of a general Toeplitz matrix to a general matrix
 function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix{T}, β::T,
-  C::StridedMatrix{T})
-  l = size(B, 2)
-  if size(C, 2) != l
-      throw(DimensionMismatch("input and output matrices must have same number of columns"))
-  end
-  for j = 1:l
-      A_mul_B!(α, A, sub(B, :, j), β, sub(C, :, j))
-  end
-  return C
+    C::StridedMatrix{T})
+    l = size(B, 2)
+    if size(C, 2) != l
+        throw(DimensionMismatch("input and output matrices must have same number of columns"))
+    end
+    for j = 1:l
+        A_mul_B!(α, A, sub(B, :, j), β, sub(C, :, j))
+    end
+    return C
 end
 
 # * operator
@@ -90,34 +90,34 @@ end
 
 # Left division of a general matrix B by a general Toeplitz matrix A, i.e. the solution x of Ax=B.
 function A_ldiv_B!(A::AbstractToeplitz, B::StridedMatrix)
-if size(A, 1) != size(A, 2)
-  error("Division: Rectangular case is not supported.")
-end
-for j = 1:size(B, 2)
-    A_ldiv_B!(A, sub(B, :, j))
-end
-return B
+    if size(A, 1) != size(A, 2)
+        error("Division: Rectangular case is not supported.")
+    end
+    for j = 1:size(B, 2)
+        A_ldiv_B!(A, sub(B, :, j))
+    end
+    return B
 end
 
 # General Toeplitz matrix
 type Toeplitz{T<:Number} <: AbstractToeplitz{T}
-  vc::Vector{T}
-  vr::Vector{T}
-  vcvr_dft::Vector{Complex{T}}
-  tmp::Vector{Complex{T}}
-  dft::Base.DFT.Plan{Complex{T}}
+    vc::Vector{T}
+    vr::Vector{T}
+    vcvr_dft::Vector{Complex{T}}
+    tmp::Vector{Complex{T}}
+    dft::Base.DFT.Plan{Complex{T}}
 end
 
 # Ctor
 function Toeplitz{T<:Number}(vc::Vector{T}, vr::Vector{T})
-  m = length(vc)
-  if vc[1] != vr[1]
-      error("First element of the vectors must be the same")
-  end
+    m = length(vc)
+    if vc[1] != vr[1]
+        error("First element of the vectors must be the same")
+    end
 
-  tmp = complex([vc; reverse(vr[2:end])])
-  dft = plan_fft!(tmp)
-  return Toeplitz(vc, vr, dft*tmp, similar(tmp), dft)
+    tmp = complex([vc; reverse(vr[2:end])])
+    dft = plan_fft!(tmp)
+    return Toeplitz(vc, vr, dft*tmp, similar(tmp), dft)
 end
 
 # Conversion to Float for integer inputs
@@ -128,64 +128,64 @@ Toeplitz{T<:Integer}(vc::Vector{Complex{T}}, vr::Vector{Complex{T}}) =
 
 # Input promotion
 function Toeplitz{T1<:Number,T2<:Number}(vc::Vector{T1},vr::Vector{T2})
-  T=promote_type(T1,T2)
-  Toeplitz(Vector{T}(vc),Vector{T}(vr))
+    T=promote_type(T1,T2)
+    Toeplitz(Vector{T}(vc),Vector{T}(vr))
 end
 
 # Size of a general Toeplitz matrix
 function size(A::Toeplitz, dim::Int)
-  if dim == 1
-      return length(A.vc)
-  elseif dim == 2
-      return length(A.vr)
-  elseif dim > 2
-      return 1
-  else
-      error("arraysize: dimension out of range")
-  end
+    if dim == 1
+        return length(A.vc)
+    elseif dim == 2
+        return length(A.vr)
+    elseif dim > 2
+        return 1
+    else
+        error("arraysize: dimension out of range")
+    end
 end
 
 # Retrieve an entry
 function getindex(A::Toeplitz, i::Integer, j::Integer)
-  m = size(A,1)
-  n = size(A,2)
-  if i > m || j > n
-      error("BoundsError()")
-  end
+    m = size(A,1)
+    n = size(A,2)
+    if i > m || j > n
+        error("BoundsError()")
+    end
 
-  if i >= j
-      return A.vc[i - j + 1]
-  else
-      return A.vr[1 - i + j]
-  end
+    if i >= j
+        return A.vc[i - j + 1]
+    else
+        return A.vr[1 - i + j]
+    end
 end
 
 # Form a lower triangular Toeplitz matrix by annihilating all entries above the k-th diaganal
 function tril{T}(A::Toeplitz{T}, k = 0)
-  if k > 0
-      error("Second argument cannot be positive")
-  end
-  Al = TriangularToeplitz(copy(A.vc), 'L', length(A.vr))
-  if k < 0
-    for i in -1:-1:k
-        Al.ve[-i] = zero(T)
+    if k > 0
+        error("Second argument cannot be positive")
     end
-  end
-  return Al
+    Al = TriangularToeplitz(copy(A.vc), 'L', length(A.vr))
+    if k < 0
+      for i in -1:-1:k
+          Al.ve[-i] = zero(T)
+      end
+    end
+    return Al
 end
 
 # Form a lower triangular Toeplitz matrix by annihilating all entries below the k-th diaganal
 function triu{T}(A::Toeplitz{T}, k = 0)
-  if k < 0
-      error("Second argument cannot be negative")
-  end
-  Al = TriangularToeplitz(copy(A.vr), 'U', length(A.vc))
-  if k > 0
-    for i in 1:k
-        Al.ve[i] = zero(T)
+    if k < 0
+        error("Second argument cannot be negative")
     end
-  end
-  return Al
+    Al = TriangularToeplitz(copy(A.vr), 'U', length(A.vc))
+    if k > 0
+      for i in 1:k
+          Al.ve[i] = zero(T)
+      end
+    end
+    return Al
 end
 
 A_ldiv_B!(A::Toeplitz, b::StridedVector) =
@@ -224,6 +224,7 @@ type Circulant{T<:BlasReal} <: AbstractToeplitz{T}
     tmp::Vector{Complex{T}}
     dft::Base.DFT.Plan
 end
+
 function Circulant{T<:BlasReal}(vc::Vector{T})
     tmp = zeros(Complex{T}, length(vc))
     return Circulant(vc, fft(vc), tmp, plan_fft!(tmp))
