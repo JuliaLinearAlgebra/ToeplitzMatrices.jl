@@ -1,19 +1,26 @@
 using Base.Test
 using ToeplitzMatrices
 
-ns = 10
+ns = 101
 nl = 2000
 
 xs = randn(ns, 5)
 xl = randn(nl, 5)
 
 @printf("General Toeplitz: ")
+# Square
 As = Toeplitz(0.9.^(0:ns-1), 0.4.^(0:ns-1))
 Al = Toeplitz(0.9.^(0:nl-1), 0.4.^(0:nl-1))
 @test_approx_eq As * xs full(As) * xs
 @test_approx_eq Al * xl full(Al) * xl
 @test_approx_eq A_ldiv_B!(As, copy(xs)) full(As) \ xs
 @test_approx_eq A_ldiv_B!(Al, copy(xl)) full(Al) \ xl
+
+# Rectangular
+Ar1 = Toeplitz(0.9.^(0:nl-1), 0.4.^(0:ns-1))
+Ar2 = Toeplitz(0.9.^(0:ns-1), 0.4.^(0:nl-1))
+@test_approx_eq Ar1 * xs full(Ar1) * xs
+@test_approx_eq Ar2 * xl full(Ar2) * xl
 @printf("OK!\n")
 
 @printf("Symmetric Toeplitz: ")
@@ -94,4 +101,3 @@ if isdir(Pkg.dir("FastTransforms"))
     @test_approx_eq T*ones(BigFloat,n) full(T)*ones(BigFloat,n)
 end
 @printf("OK!\n")
-
