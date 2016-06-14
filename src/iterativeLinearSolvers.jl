@@ -92,7 +92,7 @@ function cg{T<:LinAlg.BlasReal}(A::AbstractMatrix{T},
     return x, error, iter, flag
 end
 
-function cgs{T<:LinAlg.BlasReal}(A::AbstractMatrix{T},
+function cgs{T<:Number}(A::AbstractMatrix{T},
     x::AbstractVector{T},
     b::AbstractVector{T},
     M::Preconditioner{T},
@@ -130,31 +130,37 @@ function cgs{T<:LinAlg.BlasReal}(A::AbstractMatrix{T},
 
     n = length(b)
     bnrm2 = norm(b)
-    if bnrm2 == 0.0 bnrm2 = one(T) end
+    if bnrm2 == 0
+        bnrm2 = one(bnrm2)
+    end
 
     u = zeros(T, n)
     p = zeros(T, n)
     p̂ = zeros(T, n)
     q = zeros(T, n)
-    û = zeros(T,n)
+    û = zeros(T, n)
     v̂ = zeros(T, n)
     ρ = zero(T)
     ρ₁ = ρ
     r = copy(b)
-    A_mul_B!(-one(T),A,x,one(T),r)
+    A_mul_B!(-one(T), A, x, one(T), r)
     # r = b - A*x
     error = norm(r)/bnrm2
 
-    if error < tol return x, error, iter, flag end
+    if error < tol
+        return x, error, iter, flag
+    end
 
     r_tld = copy(r)
 
-    for iter = 1:max_it                    # begin iteration
+    for iter = 1:max_it                      # begin iteration
 
-        ρ = dot(r_tld,r)
-        if ρ == 0.0 break end
+        ρ = dot(r_tld, r)
+        if ρ == 0
+            break
+        end
 
-        if iter > 1                     # direction vectors
+        if iter > 1                          # direction vectors
             β = ρ/ρ₁
             for l = 1:n
                 u[l] = r[l] + β*q[l]
@@ -168,9 +174,9 @@ function cgs{T<:LinAlg.BlasReal}(A::AbstractMatrix{T},
         p̂[:] = p
         A_ldiv_B!(M, p̂)
         # p̂[:] = M\p
-        A_mul_B!(one(T),A,p̂,zero(T),v̂)    # adjusting scalars
+        A_mul_B!(one(T), A, p̂, zero(T), v̂)  # adjusting scalars
         # v̂[:] = A*p̂
-        α = ρ/dot(r_tld,v̂)
+        α = ρ/dot(r_tld, v̂)
         for l = 1:n
             q[l] = u[l] - α*v̂[l]
             û[l] = u[l] + q[l]
@@ -179,21 +185,23 @@ function cgs{T<:LinAlg.BlasReal}(A::AbstractMatrix{T},
         # û[:] = M\û
 
         for l = 1:n
-            x[l] += α*û[l]                 # update approximation
+            x[l] += α*û[l]                  # update approximation
         end
 
-        A_mul_B!(-α,A,û,one(T),r)
+        A_mul_B!(-α, A, û, one(T), r)
         # r[:] -= α*(A*û)
-        error = norm(r)/bnrm2           # check convergence
-        if error <= tol break end
+        error = norm(r)/bnrm2               # check convergence
+        if error <= tol
+            break
+        end
 
         ρ₁ = ρ
 
     end
 
-    if error <= tol                      # converged
+    if error <= tol                         # converged
         flag = 0
-    elseif ρ == 0.0                  # breakdown
+    elseif ρ == 0                           # breakdown
         flag = -1
     else                                    # no convergence
         flag = 1
