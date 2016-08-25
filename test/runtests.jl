@@ -139,3 +139,46 @@ if isdir(Pkg.dir("FastTransforms"))
     @test_approx_eq T*ones(BigFloat,n) full(T)*ones(BigFloat,n)
     println("OK!")
 end
+
+
+println("Convert")
+
+T = Toeplitz(ones(2),ones(2))
+
+@test isa(convert(Matrix{Complex128},T),Matrix{Complex128})
+@test isa(convert(AbstractMatrix{Complex128},T),Toeplitz{Complex128})
+@test isa(convert(AbstractArray{Complex128},T),Toeplitz{Complex128})
+@test isa(convert(ToeplitzMatrices.AbstractToeplitz{Complex128},T),Toeplitz{Complex128})
+@test isa(convert(ToeplitzMatrices.Toeplitz{Complex128},T),Toeplitz{Complex128})
+
+T = SymmetricToeplitz(ones(2))
+
+@test isa(convert(Matrix{Float32},T),Matrix{Float32})
+@test isa(convert(AbstractMatrix{Float32},T),SymmetricToeplitz{Float32})
+@test isa(convert(AbstractArray{Float32},T),SymmetricToeplitz{Float32})
+@test isa(convert(ToeplitzMatrices.AbstractToeplitz{Float32},T),SymmetricToeplitz{Float32})
+@test isa(convert(ToeplitzMatrices.SymmetricToeplitz{Float32},T),SymmetricToeplitz{Float32})
+
+T = Circulant(ones(2))
+
+@test isa(convert(Matrix{Complex128},T),Matrix{Complex128})
+@test isa(convert(AbstractMatrix{Complex128},T),Circulant{Complex128})
+@test isa(convert(AbstractArray{Complex128},T),Circulant{Complex128})
+@test isa(convert(ToeplitzMatrices.AbstractToeplitz{Complex128},T),Circulant{Complex128})
+@test isa(convert(ToeplitzMatrices.Circulant{Complex128},T),Circulant{Complex128})
+
+T = TriangularToeplitz(ones(2),:U)
+
+@test isa(convert(Matrix{Complex128},T),Matrix{Complex128})
+@test isa(convert(AbstractMatrix{Complex128},T),TriangularToeplitz{Complex128})
+@test isa(convert(AbstractArray{Complex128},T),TriangularToeplitz{Complex128})
+@test isa(convert(ToeplitzMatrices.AbstractToeplitz{Complex128},T),TriangularToeplitz{Complex128})
+@test isa(convert(ToeplitzMatrices.TriangularToeplitz{Complex128},T),TriangularToeplitz{Complex128})
+
+
+T = Hankel(ones(2),ones(2))
+
+@test isa(convert(Matrix{Complex128},T),Matrix{Complex128})
+@test isa(convert(AbstractMatrix{Complex128},T),Hankel{Complex128})
+@test isa(convert(AbstractArray{Complex128},T),Hankel{Complex128})
+@test isa(convert(ToeplitzMatrices.Hankel{Complex128},T),Hankel{Complex128})
