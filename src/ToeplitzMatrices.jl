@@ -356,18 +356,14 @@ type TriangularToeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
     dft::Base.DFT.Plan
 end
 
-function TriangularToeplitz(ve::Vector, uplo::Char)
-    if uplo ≠ 'U' && uplo ≠ 'L'
-        throw(ArgumentError("Second argument must be either :L or :U"))
-    end
-
+function TriangularToeplitz(ve::Vector, uplo::Symbol)
     n = length(ve)
 
     T = promote_type(eltype(ve), Float32)
     vep = Vector{T}(ve)
 
     tmp = zeros(promote_type(T, Complex{Float32}), 2n - 1)
-    if uplo == 'L'
+    if uplo == :L
         copy!(tmp, vep)
     else
         tmp[1] = vep[1]
@@ -376,17 +372,7 @@ function TriangularToeplitz(ve::Vector, uplo::Char)
         end
     end
     dft = plan_fft!(tmp)
-    return TriangularToeplitz(vep, uplo, dft * tmp, similar(tmp), dft)
-end
-
-function TriangularToeplitz(ve::Vector, uplo::Symbol)
-    if uplo == :U
-        TriangularToeplitz(ve,'U')
-    elseif uplo == :L
-        TriangularToeplitz(ve,'L')
-    else
-        throw(ArgumentError("Second argument must be either :L or :U"))
-    end
+    return TriangularToeplitz(vep, string(uplo)[1], dft * tmp, similar(tmp), dft)
 end
 
 function convert(::Type{Toeplitz}, A::TriangularToeplitz)
@@ -400,7 +386,7 @@ end
 
 convert{T}(::Type{AbstractToeplitz{T}},A::TriangularToeplitz) = convert(TriangularToeplitz{T},A)
 convert{T}(::Type{TriangularToeplitz{T}},A::TriangularToeplitz) =
-    TriangularToeplitz(convert(Vector{T},A.ve),A.uplo)
+    TriangularToeplitz(convert(Vector{T},A.ve),A.uplo=='U'?(:U):(:L))
 
 
 function size(A::TriangularToeplitz, dim::Int)
