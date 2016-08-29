@@ -21,6 +21,12 @@ abstract AbstractToeplitz{T<:Number} <: AbstractMatrix{T}
 size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
 getindex(A::AbstractToeplitz, i::Integer) = A[mod(i, size(A,1)), div(i, size(A,1)) + 1]
 
+
+convert(::Type{Matrix}, S::AbstractToeplitz) = full(S)
+convert{T}(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) = convert(AbstractToeplitz{T}, S)
+convert{T}(::Type{AbstractArray{T}}, S::AbstractToeplitz) = convert(AbstractToeplitz{T}, S)
+
+
 # Convert an abstract Toeplitz matrix to a full matrix
 function full{T}(A::AbstractToeplitz{T})
     m, n = size(A)
@@ -145,6 +151,10 @@ function Toeplitz(vc::Vector, vr::Vector)
     return Toeplitz(vcp, vrp, dft*tmp, similar(tmp), dft)
 end
 
+convert{T}(::Type{AbstractToeplitz{T}},A::Toeplitz) = convert(Toeplitz{T},A)
+convert{T}(::Type{Toeplitz{T}},A::Toeplitz) = Toeplitz(convert(Vector{T},A.vc),
+                                                       convert(Vector{T},A.vr))
+
 # Size of a general Toeplitz matrix
 function size(A::Toeplitz, dim::Int)
     if dim == 1
@@ -217,6 +227,9 @@ function SymmetricToeplitz{T<:BlasReal}(vc::Vector{T})
     return SymmetricToeplitz(vc, dft*tmp, similar(tmp), dft)
 end
 
+convert{T}(::Type{AbstractToeplitz{T}},A::SymmetricToeplitz) = convert(SymmetricToeplitz{T},A)
+convert{T}(::Type{SymmetricToeplitz{T}},A::SymmetricToeplitz) = SymmetricToeplitz(convert(Vector{T},A.vc))
+
 function size(A::SymmetricToeplitz, dim::Int)
     if 1 <= dim <= 2
         return length(A.vc)
@@ -248,6 +261,10 @@ function Circulant(vc::Vector)
     tmp = zeros(promote_type(T, Complex{Float32}), length(vc))
     return Circulant(vc, fft(vc), tmp, plan_fft!(tmp))
 end
+
+convert{T}(::Type{AbstractToeplitz{T}},A::Circulant) = convert(Circulant{T},A)
+convert{T}(::Type{Circulant{T}},A::Circulant) = Circulant(convert(Vector{T},A.vc))
+
 
 function size(C::Circulant, dim::Integer)
     if 1 <= dim <= 2
@@ -366,6 +383,11 @@ function convert(::Type{Toeplitz}, A::TriangularToeplitz)
         Toeplitz([A.ve[1]; zeros(length(A.ve) - 1)], A.ve)
     end
 end
+
+convert{T}(::Type{AbstractToeplitz{T}},A::TriangularToeplitz) = convert(TriangularToeplitz{T},A)
+convert{T}(::Type{TriangularToeplitz{T}},A::TriangularToeplitz) =
+    TriangularToeplitz(convert(Vector{T},A.ve),A.uplo=='U'?(:U):(:L))
+
 
 function size(A::TriangularToeplitz, dim::Int)
     if dim == 1 || dim == 2
@@ -508,6 +530,14 @@ function Hankel(vc,vr)
     p = [vc; vr[2:end]]
     Hankel(Toeplitz(p[n:end],p[n:-1:1]))
 end
+
+convert(::Type{Array},A::Hankel) = convert(Matrix,A)
+convert(::Type{Matrix},A::Hankel) = full(A)
+
+convert{T}(::Type{AbstractMatrix{T}},A::Hankel) = convert(Hankel{T},A)
+convert{T}(::Type{Hankel{T}},A::Hankel) = Hankel(convert(Toeplitz{T},A.T))
+
+
 
 # Size
 size(H::Hankel,k...) = size(H.T,k...)
