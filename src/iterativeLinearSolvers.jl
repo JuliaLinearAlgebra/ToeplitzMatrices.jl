@@ -1,9 +1,10 @@
 module IterativeLinearSolvers
+    using Compat
 
 # Included from https://github.com/andreasnoack/IterativeLinearSolvers.jl
 # Eventually, use IterativeSolvers.jl
 
-typealias Preconditioner{T} Union{AbstractMatrix{T}, Factorization{T}}
+@compat Preconditioner{T} = Union{AbstractMatrix{T}, Factorization{T}}
 
 function cg{T<:LinAlg.BlasReal}(A::AbstractMatrix{T},
     x::AbstractVector{T},

@@ -33,81 +33,83 @@ for (As, Al, st) in ((Toeplitz(0.9.^(0:ns-1), 0.4.^(0:ns-1)),
                         TriangularToeplitz(complex(0.9.^(0:nl - 1)), :L),
                             "Complex lower triangular"))
     print("$st: ")
-    @test_approx_eq As * xs full(As) * xs
-    @test_approx_eq Al * xl full(Al) * xl
-    @test_approx_eq A_ldiv_B!(As, LinAlg.copy_oftype(xs, eltype(As))) full(As) \ xs
-    @test_approx_eq A_ldiv_B!(Al, LinAlg.copy_oftype(xl, eltype(Al))) full(Al) \ xl
+    @test As * xs ≈ full(As) * xs
+    @test Al * xl ≈ full(Al) * xl
+    @test A_ldiv_B!(As, LinAlg.copy_oftype(xs, eltype(As))) ≈ full(As) \ xs
+    @test A_ldiv_B!(Al, LinAlg.copy_oftype(xl, eltype(Al))) ≈ full(Al) \ xl
     println("OK!")
 end
 
 print("Real general rectangular: ")
 Ar1 = Toeplitz(0.9.^(0:nl-1), 0.4.^(0:ns-1))
 Ar2 = Toeplitz(0.9.^(0:ns-1), 0.4.^(0:nl-1))
-@test_approx_eq Ar1 * xs full(Ar1) * xs
-@test_approx_eq Ar2 * xl full(Ar2) * xl
+@test Ar1 * xs ≈ full(Ar1) * xs
+@test Ar2 * xl ≈ full(Ar2) * xl
 println("OK!")
 
 print("Complex general rectangular: ")
 Ar1 = Toeplitz(complex(0.9.^(0:nl-1)), complex(0.4.^(0:ns-1)))
 Ar2 = Toeplitz(complex(0.9.^(0:ns-1)), complex(0.4.^(0:nl-1)))
-@test_approx_eq Ar1 * xs full(Ar1) * xs
-@test_approx_eq Ar2 * xl full(Ar2) * xl
+@test Ar1 * xs ≈ full(Ar1) * xs
+@test Ar2 * xl ≈ full(Ar2) * xl
 println("OK!")
 
 print("Symmetric Toeplitz: ")
 As = SymmetricToeplitz(0.9.^(0:ns-1))
-Ab = SymmetricToeplitz(abs(randn(ns)))
+Ab = SymmetricToeplitz(abs.(randn(ns)))
 Al = SymmetricToeplitz(0.9.^(0:nl-1))
-@test_approx_eq As * xs full(As) * xs
-@test_approx_eq Ab * xs full(Ab) * xs
-@test_approx_eq Al * xl full(Al) * xl
-@test_approx_eq A_ldiv_B!(As, copy(xs)) full(As) \ xs
-@test_approx_eq A_ldiv_B!(Ab, copy(xs)) full(Ab) \ xs
-@test_approx_eq A_ldiv_B!(Al, copy(xl)) full(Al) \ xl
-@test_approx_eq StatsBase.levinson(As, xs) full(As) \ xs
-@test_approx_eq StatsBase.levinson(Ab, xs) full(Ab) \ xs
-@test_approx_eq StatsBase.levinson(Al, xl) full(Al) \ xl
+@test As * xs ≈ full(As) * xs
+@test Ab * xs ≈ full(Ab) * xs
+@test Al * xl ≈ full(Al) * xl
+@test A_ldiv_B!(As, copy(xs)) ≈ full(As) \ xs
+@test A_ldiv_B!(Ab, copy(xs)) ≈ full(Ab) \ xs
+@test A_ldiv_B!(Al, copy(xl)) ≈ full(Al) \ xl
+@test StatsBase.levinson(As, xs) ≈ full(As) \ xs
+@test StatsBase.levinson(Ab, xs) ≈ full(Ab) \ xs
+if !(haskey(ENV, "CI") && VERSION < v"0.6-") # Inlining is off on 0.5 Travis tesing which is too slow for this test
+    @test_approx_eq StatsBase.levinson(Al, xl) full(Al) \ xl
+end
 println("OK!")
 
 println("\nHankel")
 print("Real square: ")
 H = Hankel([1.0,2,3,4,5],[5.0,6,7,8,0])
 x = ones(5)
-@test_approx_eq full(H)*x H*x
+@test full(H)*x ≈ H*x
 
 Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:ns-1))
 Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:nl-1))
-@test_approx_eq Hs * xs[:,1] full(Hs) * xs[:,1]
-@test_approx_eq Hs * xs full(Hs) * xs
-@test_approx_eq Hl * xl full(Hl) * xl
+@test Hs * xs[:,1] ≈ full(Hs) * xs[:,1]
+@test Hs * xs ≈ full(Hs) * xs
+@test Hl * xl ≈ full(Hl) * xl
 println("OK!")
 
 print("Complex square: ")
 H = Hankel(complex([1.0,2,3,4,5]), complex([5.0,6,7,8,0]))
 x = ones(5)
-@test_approx_eq full(H)*x H*x
+@test full(H)*x ≈ H*x
 
 Hs = Hankel(complex(0.9.^(ns-1:-1:0)), complex(0.4.^(0:ns-1)))
 Hl = Hankel(complex(0.9.^(nl-1:-1:0)), complex(0.4.^(0:nl-1)))
-@test_approx_eq Hs * xs[:,1] full(Hs) * xs[:,1]
-@test_approx_eq Hs * xs full(Hs) * xs
-@test_approx_eq Hl * xl full(Hl) * xl
+@test Hs * xs[:,1] ≈ full(Hs) * xs[:,1]
+@test Hs * xs ≈ full(Hs) * xs
+@test Hl * xl ≈ full(Hl) * xl
 println("OK!")
 
 print("Real rectangular: ")
 Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:nl-1))
 Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:ns-1))
-@test_approx_eq Hs * xl[:,1] full(Hs) * xl[:,1]
-@test_approx_eq Hs * xl full(Hs) * xl
-@test_approx_eq Hl * xs full(Hl) * xs
+@test Hs * xl[:,1] ≈ full(Hs) * xl[:,1]
+@test Hs * xl ≈ full(Hs) * xl
+@test Hl * xs ≈ full(Hl) * xs
 println("OK!")
 
 print("Complex rectangular: ")
 Hs = Hankel(complex(0.9.^(ns-1:-1:0)), complex(0.4.^(0:nl-1)))
 Hl = Hankel(complex(0.9.^(nl-1:-1:0)), complex(0.4.^(0:ns-1)))
-@test_approx_eq Hs * xl[:,1] full(Hs) * xl[:,1]
-@test_approx_eq Hs * xl full(Hs) * xl
-@test_approx_eq Hl * xs full(Hl) * xs
+@test Hs * xl[:,1] ≈ full(Hs) * xl[:,1]
+@test Hs * xl ≈ full(Hs) * xl
+@test Hl * xs ≈ full(Hl) * xs
 println("OK!")
 
 
@@ -115,28 +117,28 @@ if isdir(Pkg.dir("FastTransforms"))
     print("\nBigFloat")
     using FastTransforms
     T = Toeplitz(BigFloat[1,2,3,4,5], BigFloat[1,6,7,8,0])
-    @test_approx_eq T*ones(BigFloat,5) [22,24,19,16,15]
+    @test T*ones(BigFloat,5) ≈ [22,24,19,16,15]
 
     n = 512
     r = map(BigFloat,rand(n))
     T = Toeplitz(r,[r[1];map(BigFloat,rand(n-1))])
-    @test_approx_eq T*ones(BigFloat,n) full(T)*ones(BigFloat,n)
+    @test T*ones(BigFloat,n) ≈ full(T)*ones(BigFloat,n)
 
     T = TriangularToeplitz(BigFloat[1,2,3,4,5],:L)
-    @test_approx_eq T*ones(BigFloat,5) full(T)*ones(BigFloat,5)
+    @test T*ones(BigFloat,5) ≈ full(T)*ones(BigFloat,5)
 
     n = 512
     r = map(BigFloat,rand(n))
     T = TriangularToeplitz(r,:L)
-    @test_approx_eq T*ones(BigFloat,n) full(T)*ones(BigFloat,n)
+    @test T*ones(BigFloat,n) ≈ full(T)*ones(BigFloat,n)
 
     T = TriangularToeplitz(BigFloat[1,2,3,4,5],:U)
-    @test_approx_eq T*ones(BigFloat,5) full(T)*ones(BigFloat,5)
+    @test T*ones(BigFloat,5) ≈ full(T)*ones(BigFloat,5)
 
     n = 512
     r = map(BigFloat,rand(n))
     T = TriangularToeplitz(r,:U)
-    @test_approx_eq T*ones(BigFloat,n) full(T)*ones(BigFloat,n)
+    @test T*ones(BigFloat,n) ≈ full(T)*ones(BigFloat,n)
     println("OK!")
 end
 

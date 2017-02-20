@@ -1,8 +1,8 @@
 __precompile__(true)
 
 module ToeplitzMatrices
+    using Compat
 
-import Compat.view
 
 import StatsBase
 include("iterativeLinearSolvers.jl")
@@ -16,7 +16,7 @@ export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
        chan, strang
 
 # Abstract
-abstract AbstractToeplitz{T<:Number} <: AbstractMatrix{T}
+@compat abstract type AbstractToeplitz{T<:Number} <: AbstractMatrix{T} end
 
 size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
 getindex(A::AbstractToeplitz, i::Integer) = A[mod(i, size(A,1)), div(i, size(A,1)) + 1]
@@ -30,7 +30,7 @@ convert{T}(::Type{AbstractArray{T}}, S::AbstractToeplitz) = convert(AbstractToep
 # Convert an abstract Toeplitz matrix to a full matrix
 function full{T}(A::AbstractToeplitz{T})
     m, n = size(A)
-    Af = Array(T, m, n)
+    Af = Matrix{T}(m, n)
     for j = 1:n
         for i = 1:m
             Af[i,j] = A[i,j]
@@ -142,7 +142,7 @@ function Toeplitz(vc::Vector, vr::Vector)
     T = promote_type(eltype(vc), eltype(vr), Float32)
     vcp, vrp = Vector{T}(vc), Vector{T}(vr)
 
-    tmp = Array(promote_type(T, Complex{Float32}), m + n - 1)
+    tmp = Vector{promote_type(T, Complex{Float32})}(m + n - 1)
     copy!(tmp, vcp)
     for i = 1:n - 1
         tmp[i + m] = vrp[n - i + 1]
@@ -327,7 +327,7 @@ end
 
 function strang{T}(A::AbstractMatrix{T})
     n = size(A, 1)
-    v = Array(T, n)
+    v = Vector{T}(n)
     n2 = div(n, 2)
     for i = 1:n
         if i <= n2 + 1
@@ -340,7 +340,7 @@ function strang{T}(A::AbstractMatrix{T})
 end
 function chan{T}(A::AbstractMatrix{T})
     n = size(A, 1)
-    v = Array(T, n)
+    v = Vector{T}(n)
     for i = 1:n
         v[i] = ((n - i + 1) * A[i, 1] + (i - 1) * A[1, min(n - i + 2, n)]) / n
     end
@@ -484,7 +484,7 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
 #     n, p, _ = size(Mc)
 #     tmp = zeros(Complex{T}, 2n)
 #     dft = plan_fft!(tmp)
-#     Mc_dft = Array(Complex{T}, 2n, p, p)
+#     Mc_dft = Array{Complex{T}}(2n, p, p)
 #     for j = 1:p
 #         for i = 1:p
 #             Mc_dft[1,i,j] = complex(Mc[1,i,j])
@@ -545,7 +545,7 @@ size(H::Hankel,k...) = size(H.T,k...)
 # Full version of a Hankel matrix
 function full{T}(A::Hankel{T})
     m, n = size(A)
-    Af = Array(T, m, n)
+    Af = Matrix{T}(m, n)
     for j = 1:n
         for i = 1:m
             Af[i,j] = A[i,j]
