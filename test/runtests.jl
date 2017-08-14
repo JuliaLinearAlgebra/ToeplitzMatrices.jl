@@ -66,8 +66,8 @@ Al = SymmetricToeplitz(0.9.^(0:nl-1))
 @test A_ldiv_B!(Al, copy(xl)) ≈ full(Al) \ xl
 @test StatsBase.levinson(As, xs) ≈ full(As) \ xs
 @test StatsBase.levinson(Ab, xs) ≈ full(Ab) \ xs
-if !(haskey(ENV, "CI") && VERSION < v"0.6-") # Inlining is off on 0.5 Travis tesing which is too slow for this test
-    @test_approx_eq StatsBase.levinson(Al, xl) full(Al) \ xl
+if !(haskey(ENV, "CI") && VERSION < v"0.6-") # Inlining is off on 0.5 Travis testing which is too slow for this test
+    @test StatsBase.levinson(Al, xl) ≈ full(Al) \ xl
 end
 println("OK!")
 
