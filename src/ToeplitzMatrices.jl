@@ -1,16 +1,13 @@
 __precompile__(true)
 
 module ToeplitzMatrices
-    using Compat
+using Compat, FFTW, StatsBase
+using Base.LinAlg: BlasReal, DimensionMismatch
 
-
-import StatsBase
 include("iterativeLinearSolvers.jl")
 
 import Base: *, \, full, getindex, print_matrix, size, tril, triu, inv, A_mul_B!, Ac_mul_B,
     A_ldiv_B!, convert
-import Base.LinAlg: BlasReal, DimensionMismatch
-
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
        chan, strang

@@ -1,3 +1,4 @@
 julia 0.5
 Compat 0.18.0
 StatsBase 0.8.0
+FFTW
