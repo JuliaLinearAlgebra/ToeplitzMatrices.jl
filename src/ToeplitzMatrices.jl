@@ -1,8 +1,9 @@
 __precompile__(true)
 
 module ToeplitzMatrices
-using Compat, FFTW, StatsBase
+using Compat, StatsBase, FFTW
 using Base.LinAlg: BlasReal, DimensionMismatch
+using AbstractFFTs: Plan
 
 include("iterativeLinearSolvers.jl")
 
@@ -22,7 +23,6 @@ getindex(A::AbstractToeplitz, i::Integer) = A[mod(i, size(A,1)), div(i, size(A,1
 convert(::Type{Matrix}, S::AbstractToeplitz) = full(S)
 convert{T}(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) = convert(AbstractToeplitz{T}, S)
 convert{T}(::Type{AbstractArray{T}}, S::AbstractToeplitz) = convert(AbstractToeplitz{T}, S)
-
 
 # Convert an abstract Toeplitz matrix to a full matrix
 function full{T}(A::AbstractToeplitz{T})
@@ -131,7 +131,7 @@ type Toeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
     vr::Vector{T}
     vcvr_dft::Vector{S}
     tmp::Vector{S}
-    dft::Base.DFT.Plan{S}
+    dft::Plan{S}
 end
 
 # Ctor
@@ -221,7 +221,7 @@ type SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
     vc::Vector{T}
     vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
-    dft::Base.DFT.Plan
+    dft::Plan
 end
 function SymmetricToeplitz{T<:BlasReal}(vc::Vector{T})
     tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
@@ -250,7 +250,7 @@ type Circulant{T<:Number,S<:Number} <: AbstractToeplitz{T}
     vc::Vector{T}
     vcvr_dft::Vector{S}
     tmp::Vector{S}
-    dft::Base.DFT.Plan
+    dft::Plan
 end
 
 function Circulant{T<:Real}(vc::Vector{T})
@@ -355,7 +355,7 @@ type TriangularToeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
     uplo::Char
     vcvr_dft::Vector{S}
     tmp::Vector{S}
-    dft::Base.DFT.Plan
+    dft::Plan
 end
 
 function TriangularToeplitz(ve::Vector, uplo::Symbol)
@@ -480,7 +480,7 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
 #     uplo::Char
 #     Mc_dft::Array{Complex{T},3}
 #     tmp::Vector{Complex{T}}
-#     dft::Base.DFT.Plan
+#     dft::Plan
 # end
 # function BlockTriangularToeplitz{T<:BlasReal}(Mc::Array{T,3}, uplo::Symbol)
 #     n, p, _ = size(Mc)
