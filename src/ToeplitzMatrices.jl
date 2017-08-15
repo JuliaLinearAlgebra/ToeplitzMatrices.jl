@@ -52,14 +52,16 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector, β::T,
         throw(DimensionMismatch(""))
     end
 
+    # In any case, scale/initialize y
+    if iszero(β)
+        fill!(y, 0)
+    else
+        scale!(y, β)
+    end
+
     @inbounds begin
         # Small case: don't use FFT
         if N < 512
-            if iszero(β)
-                fill!(y, 0)
-            else
-                scale!(y, β)
-            end
             for j in 1:n
                 tmp = α * x[j]
                 for i in 1:m
@@ -82,8 +84,7 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector, β::T,
         end
         A.dft \ A.tmp
         for i in 1:m
-            yi   = ifelse(iszero(β), zero(β), y[i]*β)
-            y[i] = yi + α * (T <: Real ? real(A.tmp[i]) : A.tmp[i])
+            y[i] += α * (T <: Real ? real(A.tmp[i]) : A.tmp[i])
         end
         return y
     end

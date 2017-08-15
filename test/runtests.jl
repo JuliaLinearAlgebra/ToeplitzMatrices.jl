@@ -114,6 +114,8 @@ end
 
 if isdir(Pkg.dir("FastTransforms"))
     using FastTransforms
+end
+if isdir(Pkg.dir("FastTransforms"))
     @testset "BigFloat" begin
         T = Toeplitz(BigFloat[1,2,3,4,5], BigFloat[1,6,7,8,0])
         @test T*ones(BigFloat,5) ≈ [22,24,19,16,15]
