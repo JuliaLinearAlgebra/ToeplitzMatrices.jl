@@ -1,16 +1,14 @@
 __precompile__(true)
 
 module ToeplitzMatrices
-    using Compat
+using Compat, StatsBase, FFTW
+using Base.LinAlg: BlasReal, DimensionMismatch
+using AbstractFFTs: Plan
 
-
-import StatsBase
 include("iterativeLinearSolvers.jl")
 
 import Base: *, \, full, getindex, print_matrix, size, tril, triu, inv, A_mul_B!, Ac_mul_B,
     A_ldiv_B!, convert
-import Base.LinAlg: BlasReal, DimensionMismatch
-
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
        chan, strang
@@ -26,7 +24,6 @@ convert(::Type{Matrix}, S::AbstractToeplitz) = full(S)
 convert{T}(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) = convert(AbstractToeplitz{T}, S)
 convert{T}(::Type{AbstractArray{T}}, S::AbstractToeplitz) = convert(AbstractToeplitz{T}, S)
 
-
 # Convert an abstract Toeplitz matrix to a full matrix
 function full{T}(A::AbstractToeplitz{T})
     m, n = size(A)
@@ -40,7 +37,7 @@ function full{T}(A::AbstractToeplitz{T})
 end
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
-function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
+function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector, β::T,
       y::StridedVector{T})
     m = size(A,1)
     n = size(A,2)
@@ -51,36 +48,47 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector{T}, β::T,
     if n != length(x)
         throw(DimensionMismatch(""))
     end
-    if N < 512
-        y[:] *= β
-        for j = 1:n
-            tmp = α * x[j]
-            for i = 1:m
-                y[i] += tmp*A[i,j]
+
+    # In any case, scale/initialize y
+    if iszero(β)
+        fill!(y, 0)
+    else
+        scale!(y, β)
+    end
+
+    @inbounds begin
+        # Small case: don't use FFT
+        if N < 512
+            for j in 1:n
+                tmp = α * x[j]
+                for i in 1:m
+                    y[i] += tmp*A[i,j]
+                end
             end
+            return y
+        end
+
+        # Large case: use FFT
+        for i in 1:n
+            A.tmp[i] = x[i]
+        end
+        for i in n+1:N
+            A.tmp[i] = 0
+        end
+        A_mul_B!(A.tmp, A.dft, A.tmp)
+        for i = 1:N
+            A.tmp[i] *= A.vcvr_dft[i]
+        end
+        A.dft \ A.tmp
+        for i in 1:m
+            y[i] += α * (T <: Real ? real(A.tmp[i]) : A.tmp[i])
         end
         return y
     end
-    for i = 1:n
-        A.tmp[i] = x[i]
-    end
-    for i = n+1:N
-        A.tmp[i] = 0
-    end
-    A_mul_B!(A.tmp, A.dft, A.tmp)
-    for i = 1:N
-        A.tmp[i] *= A.vcvr_dft[i]
-    end
-    A.dft \ A.tmp
-    for i = 1:m
-        y[i] *= β
-        y[i] += α * (T <: Real ? real(A.tmp[i]) : A.tmp[i])
-    end
-    return y
 end
 
 # Application of a general Toeplitz matrix to a general matrix
-function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix{T}, β::T,
+function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix, β::T,
     C::StridedMatrix{T})
     l = size(B, 2)
     if size(C, 2) != l
@@ -93,14 +101,8 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix{T}, β::T,
 end
 
 # Translate three to five argument A_mul_B!
-A_mul_B!(y, A::AbstractToeplitz, x) = A_mul_B!(one(eltype(A)), A, x, zero(eltype(A)), x)
-
-# * operator
-function (*)(A::AbstractToeplitz, B::StridedVecOrMat)
-    T = promote_type(eltype(A), eltype(B))
-    A_mul_B!(one(T), convert(AbstractMatrix{T}, A), convert(AbstractArray{T}, B), zero(T),
-        size(B,2) == 1 ? zeros(T, size(A, 1)) : zeros(T, size(A, 1), size(B, 2)))
-end
+A_mul_B!(y::StridedVecOrMat, A::AbstractToeplitz, x::StridedVecOrMat) =
+    A_mul_B!(one(eltype(A)), A, x, zero(eltype(A)), y)
 
 # Left division of a general matrix B by a general Toeplitz matrix A, i.e. the solution x of Ax=B.
 function A_ldiv_B!(A::AbstractToeplitz, B::StridedMatrix)
@@ -129,7 +131,7 @@ type Toeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
     vr::Vector{T}
     vcvr_dft::Vector{S}
     tmp::Vector{S}
-    dft::Base.DFT.Plan{S}
+    dft::Plan{S}
 end
 
 # Ctor
@@ -219,7 +221,7 @@ type SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
     vc::Vector{T}
     vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
-    dft::Base.DFT.Plan
+    dft::Plan
 end
 function SymmetricToeplitz{T<:BlasReal}(vc::Vector{T})
     tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
@@ -248,7 +250,7 @@ type Circulant{T<:Number,S<:Number} <: AbstractToeplitz{T}
     vc::Vector{T}
     vcvr_dft::Vector{S}
     tmp::Vector{S}
-    dft::Base.DFT.Plan
+    dft::Plan
 end
 
 function Circulant{T<:Real}(vc::Vector{T})
@@ -353,7 +355,7 @@ type TriangularToeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
     uplo::Char
     vcvr_dft::Vector{S}
     tmp::Vector{S}
-    dft::Base.DFT.Plan
+    dft::Plan
 end
 
 function TriangularToeplitz(ve::Vector, uplo::Symbol)
@@ -478,7 +480,7 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
 #     uplo::Char
 #     Mc_dft::Array{Complex{T},3}
 #     tmp::Vector{Complex{T}}
-#     dft::Base.DFT.Plan
+#     dft::Plan
 # end
 # function BlockTriangularToeplitz{T<:BlasReal}(Mc::Array{T,3}, uplo::Symbol)
 #     n, p, _ = size(Mc)
