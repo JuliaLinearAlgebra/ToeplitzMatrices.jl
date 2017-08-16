@@ -14,18 +14,18 @@ export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
        chan, strang
 
 # Abstract
-@compat abstract type AbstractToeplitz{T<:Number} <: AbstractMatrix{T} end
+abstract type AbstractToeplitz{T<:Number} <: AbstractMatrix{T} end
 
 size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
 getindex(A::AbstractToeplitz, i::Integer) = A[mod(i, size(A,1)), div(i, size(A,1)) + 1]
 
 
 convert(::Type{Matrix}, S::AbstractToeplitz) = full(S)
-convert{T}(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) = convert(AbstractToeplitz{T}, S)
-convert{T}(::Type{AbstractArray{T}}, S::AbstractToeplitz) = convert(AbstractToeplitz{T}, S)
+convert(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
+convert(::Type{AbstractArray{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
 
 # Convert an abstract Toeplitz matrix to a full matrix
-function full{T}(A::AbstractToeplitz{T})
+function full(A::AbstractToeplitz{T}) where T
     m, n = size(A)
     Af = Matrix{T}(m, n)
     for j = 1:n
@@ -37,8 +37,8 @@ function full{T}(A::AbstractToeplitz{T})
 end
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
-function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector, β::T,
-      y::StridedVector{T})
+function A_mul_B!(α::T, A::AbstractToeplitz{T}, x::StridedVector, β::T,
+      y::StridedVector{T}) where T
     m = size(A,1)
     n = size(A,2)
     N = length(A.vcvr_dft)
@@ -88,8 +88,8 @@ function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, x::StridedVector, β::T,
 end
 
 # Application of a general Toeplitz matrix to a general matrix
-function A_mul_B!{T}(α::T, A::AbstractToeplitz{T}, B::StridedMatrix, β::T,
-    C::StridedMatrix{T})
+function A_mul_B!(α::T, A::AbstractToeplitz{T}, B::StridedMatrix, β::T,
+    C::StridedMatrix{T}) where T
     l = size(B, 2)
     if size(C, 2) != l
         throw(DimensionMismatch("input and output matrices must have same number of columns"))
@@ -126,7 +126,7 @@ function (\)(A::AbstractToeplitz, b::AbstractVector)
 end
 
 # General Toeplitz matrix
-type Toeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
+mutable struct Toeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
     vc::Vector{T}
     vr::Vector{T}
     vcvr_dft::Vector{S}
@@ -153,8 +153,8 @@ function Toeplitz(vc::Vector, vr::Vector)
     return Toeplitz(vcp, vrp, dft*tmp, similar(tmp), dft)
 end
 
-convert{T}(::Type{AbstractToeplitz{T}},A::Toeplitz) = convert(Toeplitz{T},A)
-convert{T}(::Type{Toeplitz{T}},A::Toeplitz) = Toeplitz(convert(Vector{T},A.vc),
+convert(::Type{AbstractToeplitz{T}},A::Toeplitz) where {T} = convert(Toeplitz{T},A)
+convert(::Type{Toeplitz{T}},A::Toeplitz) where {T} = Toeplitz(convert(Vector{T},A.vc),
                                                        convert(Vector{T},A.vr))
 
 # Size of a general Toeplitz matrix
@@ -217,20 +217,20 @@ A_ldiv_B!(A::Toeplitz, b::StridedVector) =
     copy!(b, IterativeLinearSolvers.cgs(A, zeros(eltype(b), length(b)), b, strang(A), 1000, 100eps())[1])
 
 # Symmetric
-type SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
+mutable struct SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
     vc::Vector{T}
     vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Plan
 end
-function SymmetricToeplitz{T<:BlasReal}(vc::Vector{T})
+function SymmetricToeplitz(vc::Vector{T}) where T<:BlasReal
     tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
     dft = plan_fft!(tmp)
     return SymmetricToeplitz(vc, dft*tmp, similar(tmp), dft)
 end
 
-convert{T}(::Type{AbstractToeplitz{T}},A::SymmetricToeplitz) = convert(SymmetricToeplitz{T},A)
-convert{T}(::Type{SymmetricToeplitz{T}},A::SymmetricToeplitz) = SymmetricToeplitz(convert(Vector{T},A.vc))
+convert(::Type{AbstractToeplitz{T}},A::SymmetricToeplitz) where {T} = convert(SymmetricToeplitz{T},A)
+convert(::Type{SymmetricToeplitz{T}},A::SymmetricToeplitz) where {T} = SymmetricToeplitz(convert(Vector{T},A.vc))
 
 function size(A::SymmetricToeplitz, dim::Int)
     if 1 <= dim <= 2
@@ -246,14 +246,14 @@ A_ldiv_B!(A::SymmetricToeplitz, b::StridedVector) =
     copy!(b, IterativeLinearSolvers.cg(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
 
 # Circulant
-type Circulant{T<:Number,S<:Number} <: AbstractToeplitz{T}
+mutable struct Circulant{T<:Number,S<:Number} <: AbstractToeplitz{T}
     vc::Vector{T}
     vcvr_dft::Vector{S}
     tmp::Vector{S}
     dft::Plan
 end
 
-function Circulant{T<:Real}(vc::Vector{T})
+function Circulant(vc::Vector{T}) where T<:Real
     TT = promote_type(eltype(vc), Float32)
     tmp = zeros(promote_type(TT, Complex{Float32}), length(vc))
     return Circulant(real(vc), fft(vc), tmp, plan_fft!(tmp))
@@ -264,8 +264,8 @@ function Circulant(vc::Vector)
     return Circulant(vc, fft(vc), tmp, plan_fft!(tmp))
 end
 
-convert{T}(::Type{AbstractToeplitz{T}},A::Circulant) = convert(Circulant{T},A)
-convert{T}(::Type{Circulant{T}},A::Circulant) = Circulant(convert(Vector{T},A.vc))
+convert(::Type{AbstractToeplitz{T}},A::Circulant) where {T} = convert(Circulant{T},A)
+convert(::Type{Circulant{T}},A::Circulant) where {T} = Circulant(convert(Vector{T},A.vc))
 
 
 function size(C::Circulant, dim::Integer)
@@ -284,7 +284,7 @@ function getindex(C::Circulant, i::Integer, j::Integer)
     return C.vc[mod(i - j, length(C.vc)) + 1]
 end
 
-function Ac_mul_B{T<:Real}(A::Circulant{T}, B::Circulant{T})
+function Ac_mul_B(A::Circulant{T}, B::Circulant{T}) where T<:Real
     tmp = similar(A.vcvr_dft)
     for i = 1:length(tmp)
         tmp[i] = conj(A.vcvr_dft[i]) * B.vcvr_dft[i]
@@ -301,7 +301,7 @@ function Ac_mul_B(A::Circulant, B::Circulant)
     return Circulant(Vector{T}(tmp2), tmp, Vector{T}(A.tmp), eltype(A) == T ? A.dft : plan_fft!(tmp2))
 end
 
-function A_ldiv_B!{T}(C::Circulant{T}, b::AbstractVector{T})
+function A_ldiv_B!(C::Circulant{T}, b::AbstractVector{T}) where T
     n = length(b)
     size(C, 1) == n || throw(DimensionMismatch(""))
     for i = 1:n
@@ -318,7 +318,7 @@ function A_ldiv_B!{T}(C::Circulant{T}, b::AbstractVector{T})
     return b
 end
 
-function inv{T<:Real}(C::Circulant{T})
+function inv(C::Circulant{T}) where T<:Real
     vdft = 1 ./ C.vcvr_dft
     return Circulant(real(C.dft \ vdft), copy(vdft), similar(vdft), C.dft)
 end
@@ -327,7 +327,7 @@ function inv(C::Circulant)
     return Circulant(C.dft \ vdft, copy(vdft), similar(vdft), C.dft)
 end
 
-function strang{T}(A::AbstractMatrix{T})
+function strang(A::AbstractMatrix{T}) where T
     n = size(A, 1)
     v = Vector{T}(n)
     n2 = div(n, 2)
@@ -340,7 +340,7 @@ function strang{T}(A::AbstractMatrix{T})
     end
     return Circulant(v)
 end
-function chan{T}(A::AbstractMatrix{T})
+function chan(A::AbstractMatrix{T}) where T
     n = size(A, 1)
     v = Vector{T}(n)
     for i = 1:n
@@ -350,7 +350,7 @@ function chan{T}(A::AbstractMatrix{T})
 end
 
 # Triangular
-type TriangularToeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
+mutable struct TriangularToeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
     ve::Vector{T}
     uplo::Char
     vcvr_dft::Vector{S}
@@ -386,8 +386,8 @@ function convert(::Type{Toeplitz}, A::TriangularToeplitz)
     end
 end
 
-convert{T}(::Type{AbstractToeplitz{T}},A::TriangularToeplitz) = convert(TriangularToeplitz{T},A)
-convert{T}(::Type{TriangularToeplitz{T}},A::TriangularToeplitz) =
+convert(::Type{AbstractToeplitz{T}},A::TriangularToeplitz) where {T} = convert(TriangularToeplitz{T},A)
+convert(::Type{TriangularToeplitz{T}},A::TriangularToeplitz) where {T} =
     TriangularToeplitz(convert(Vector{T},A.ve),A.uplo=='U'?(:U):(:L))
 
 
@@ -401,7 +401,7 @@ function size(A::TriangularToeplitz, dim::Int)
     end
 end
 
-function getindex{T}(A::TriangularToeplitz{T}, i::Integer, j::Integer)
+function getindex(A::TriangularToeplitz{T}, i::Integer, j::Integer) where T
     if A.uplo == 'L'
         return i >= j ? A.ve[i - j + 1] : zero(T)
     else
@@ -424,7 +424,7 @@ Ac_mul_B(A::TriangularToeplitz, b::AbstractVector) =
     TriangularToeplitz(A.ve, A.uplo == 'U' ? :L : :U) * b
 
 # NB! only valid for lower triangular
-function smallinv{T}(A::TriangularToeplitz{T})
+function smallinv(A::TriangularToeplitz{T}) where T
     n = size(A, 1)
     b = zeros(T, n)
     b[1] = 1 ./ A.ve[1]
@@ -438,7 +438,7 @@ function smallinv{T}(A::TriangularToeplitz{T})
     return TriangularToeplitz(b, symbol(A.uplo))
 end
 
-function inv{T}(A::TriangularToeplitz{T})
+function inv(A::TriangularToeplitz{T}) where T
     n = size(A, 1)
     if n <= 64
         return smallinv(A)
@@ -519,7 +519,7 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
  We represent the Hankel matrix by wrapping the corresponding Toeplitz matrix.=#
 
 # Hankel Matrix
-type Hankel{T<:Number} <: AbstractMatrix{T}
+mutable struct Hankel{T<:Number} <: AbstractMatrix{T}
     T::Toeplitz{T}
 end
 
@@ -536,8 +536,8 @@ end
 convert(::Type{Array},A::Hankel) = convert(Matrix,A)
 convert(::Type{Matrix},A::Hankel) = full(A)
 
-convert{T}(::Type{AbstractMatrix{T}},A::Hankel) = convert(Hankel{T},A)
-convert{T}(::Type{Hankel{T}},A::Hankel) = Hankel(convert(Toeplitz{T},A.T))
+convert(::Type{AbstractMatrix{T}},A::Hankel) where {T} = convert(Hankel{T},A)
+convert(::Type{Hankel{T}},A::Hankel) where {T} = Hankel(convert(Toeplitz{T},A.T))
 
 
 
@@ -545,7 +545,7 @@ convert{T}(::Type{Hankel{T}},A::Hankel) = Hankel(convert(Toeplitz{T},A.T))
 size(H::Hankel,k...) = size(H.T,k...)
 
 # Full version of a Hankel matrix
-function full{T}(A::Hankel{T})
+function full(A::Hankel{T}) where T
     m, n = size(A)
     Af = Matrix{T}(m, n)
     for j = 1:n
@@ -569,7 +569,7 @@ getindex(H::Hankel, i::Integer) = H[mod(i, size(H,1)), div(i, size(H,1)) + 1]
 *(A::Hankel,B::AbstractMatrix) = A.T * flipdim(B, 1)
 ## BigFloat support
 
-(*){T<:BigFloat}(A::Toeplitz{T}, b::Vector) = irfft(
+(*)(A::Toeplitz{T}, b::Vector) where {T<:BigFloat} = irfft(
     rfft([
         A.vc;
         reverse(A.vr[2:end])]

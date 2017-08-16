@@ -4,14 +4,14 @@ module IterativeLinearSolvers
 # Included from https://github.com/andreasnoack/IterativeLinearSolvers.jl
 # Eventually, use IterativeSolvers.jl
 
-@compat Preconditioner{T} = Union{AbstractMatrix{T}, Factorization{T}}
+Preconditioner{T} = Union{AbstractMatrix{T}, Factorization{T}}
 
-function cg{T<:LinAlg.BlasReal}(A::AbstractMatrix{T},
+function cg(A::AbstractMatrix{T},
     x::AbstractVector{T},
     b::AbstractVector{T},
     M::Preconditioner{T},
     max_it::Integer,
-    tol::Real)
+    tol::Real) where T<:LinAlg.BlasReal
 #  -- Iterative template routine --
 #     Univ. of Tennessee and Oak Ridge National Laboratory
 #     October 1, 1993
@@ -93,12 +93,12 @@ function cg{T<:LinAlg.BlasReal}(A::AbstractMatrix{T},
     return x, error, iter, flag
 end
 
-function cgs{T<:Number}(A::AbstractMatrix{T},
+function cgs(A::AbstractMatrix{T},
     x::AbstractVector{T},
     b::AbstractVector{T},
     M::Preconditioner{T},
     max_it::Integer,
-    tol::Real)
+    tol::Real) where T<:Number
 #  -- Iterative template routine --
 #     Univ. of Tennessee and Oak Ridge National Laboratory
 #     October 1, 1993
