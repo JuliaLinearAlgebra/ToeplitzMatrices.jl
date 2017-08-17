@@ -3,7 +3,7 @@ __precompile__(true)
 module ToeplitzMatrices
 using Compat, StatsBase, FFTW
 using Base.LinAlg: BlasReal, DimensionMismatch
-using AbstractFFTs: Plan
+using FFTW: Plan
 
 include("iterativeLinearSolvers.jl")
 
