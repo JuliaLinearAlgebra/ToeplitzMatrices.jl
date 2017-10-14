@@ -388,7 +388,7 @@ end
 
 convert(::Type{AbstractToeplitz{T}},A::TriangularToeplitz) where {T} = convert(TriangularToeplitz{T},A)
 convert(::Type{TriangularToeplitz{T}},A::TriangularToeplitz) where {T} =
-    TriangularToeplitz(convert(Vector{T},A.ve),A.uplo=='U'?(:U):(:L))
+    TriangularToeplitz(convert(Vector{T},A.ve),A.uplo=='U' ? (:U) : (:L))
 
 
 function size(A::TriangularToeplitz, dim::Int)
