@@ -1,9 +1,5 @@
-if VERSION ≤ v"0.7.0-DEV.1775"
-    using Base.Test
-else
-    using Test
-end
-using ToeplitzMatrices, StatsBase
+using ToeplitzMatrices, StatsBase, Compat
+using Compat.Test
 
 ns = 101
 nl = 2000
