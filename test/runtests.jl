@@ -1,5 +1,5 @@
-using Base.Test
-using ToeplitzMatrices
+using ToeplitzMatrices, StatsBase, Compat
+using Compat.Test
 
 ns = 101
 nl = 2000

@@ -58,7 +58,8 @@ function cg(A::AbstractMatrix{T},
         return
     end
 
-    for iter = 1:max_it                       # begin iteration
+    for iter_inner = 1:max_it                       # begin iteration
+        iter = iter_inner
 
         z[:] = r
         A_ldiv_B!(M, z)
@@ -83,7 +84,9 @@ function cg(A::AbstractMatrix{T},
         end
 
         error = norm(r)/bnrm2                     # check convergence
-        if error <= tol break end
+        if error <= tol
+            break
+        end
 
         ρ₁ = ρ
 
@@ -154,7 +157,8 @@ function cgs(A::AbstractMatrix{T},
 
     r_tld = copy(r)
 
-    for iter = 1:max_it                      # begin iteration
+    for iter_inner = 1:max_it                      # begin iteration
+        iter = iter_inner
 
         ρ = dot(r_tld, r)
         if ρ == 0

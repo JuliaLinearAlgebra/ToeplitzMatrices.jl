@@ -1,9 +1,17 @@
 __precompile__(true)
 
 module ToeplitzMatrices
-using Compat, StatsBase, FFTW
+using Compat, StatsBase
+if VERSION < v"0.7-"
+    using Base.FFTW
+    using Base.FFTW: Plan
+else
+    using FFTW
+    using FFTW: Plan
+end
+
+
 using Base.LinAlg: BlasReal, DimensionMismatch
-using FFTW: Plan
 
 include("iterativeLinearSolvers.jl")
 
@@ -388,7 +396,7 @@ end
 
 convert(::Type{AbstractToeplitz{T}},A::TriangularToeplitz) where {T} = convert(TriangularToeplitz{T},A)
 convert(::Type{TriangularToeplitz{T}},A::TriangularToeplitz) where {T} =
-    TriangularToeplitz(convert(Vector{T},A.ve),A.uplo=='U'?(:U):(:L))
+    TriangularToeplitz(convert(Vector{T},A.ve),A.uplo=='U' ? (:U) : (:L))
 
 
 function size(A::TriangularToeplitz, dim::Int)
