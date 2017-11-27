@@ -143,13 +143,12 @@ mutable struct Toeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
 end
 
 # Ctor
-function Toeplitz(vc::Vector, vr::Vector)
+function Toeplitz{T}(vc::Vector, vr::Vector) where {T}
     m, n = length(vc), length(vr)
     if vc[1] != vr[1]
         error("First element of the vectors must be the same")
     end
 
-    T = promote_type(eltype(vc), eltype(vr), Float32)
     vcp, vrp = Vector{T}(vc), Vector{T}(vr)
 
     tmp = Vector{promote_type(T, Complex{Float32})}(m + n - 1)
@@ -161,9 +160,17 @@ function Toeplitz(vc::Vector, vr::Vector)
     return Toeplitz(vcp, vrp, dft*tmp, similar(tmp), dft)
 end
 
-convert(::Type{AbstractToeplitz{T}},A::Toeplitz) where {T} = convert(Toeplitz{T},A)
-convert(::Type{Toeplitz{T}},A::Toeplitz) where {T} = Toeplitz(convert(Vector{T},A.vc),
-                                                       convert(Vector{T},A.vr))
+Toeplitz(vc::Vector, vr::Vector) =
+    Toeplitz{promote_type(eltype(vc), eltype(vr), Float32)}(vc, vr)
+
+# Toeplitz(A::AbstractMatrix) projects onto Toeplitz part using the first row/col
+Toeplitz(A::AbstractMatrix) = Toeplitz(A[:,1], A[1,:])
+Toeplitz{T}(A::AbstractMatrix) where T = Toeplitz{T}(A[:,1], A[1,:])
+
+
+convert(::Type{AbstractToeplitz{T}}, A::Toeplitz) where {T} = convert(Toeplitz{T}, A)
+convert(::Type{Toeplitz{T}}, A::Toeplitz) where {T} = Toeplitz(convert(Vector{T}, A.vc),
+                                                               convert(Vector{T}, A.vr))
 
 # Size of a general Toeplitz matrix
 function size(A::Toeplitz, dim::Int)
@@ -230,15 +237,26 @@ mutable struct SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
     vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Plan
-end
-function SymmetricToeplitz(vc::Vector{T}) where T<:BlasReal
-    tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
-    dft = plan_fft!(tmp)
-    return SymmetricToeplitz(vc, dft*tmp, similar(tmp), dft)
+
+    function SymmetricToeplitz{T}(vc::Vector{T}) where T<:BlasReal
+        tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
+        dft = plan_fft!(tmp)
+        return new(vc, dft*tmp, similar(tmp), dft)
+    end
 end
 
-convert(::Type{AbstractToeplitz{T}},A::SymmetricToeplitz) where {T} = convert(SymmetricToeplitz{T},A)
-convert(::Type{SymmetricToeplitz{T}},A::SymmetricToeplitz) where {T} = SymmetricToeplitz(convert(Vector{T},A.vc))
+SymmetricToeplitz{T}(vc::AbstractVector) where T<:BlasReal = SymmetricToeplitz{T}(convert(Vector{T}, vc))
+SymmetricToeplitz{T}(vc::AbstractVector{T}) where T = SymmetricToeplitz{promote_type(Float32, T)}(vc)
+SymmetricToeplitz{T}(vc::AbstractVector) where T = SymmetricToeplitz{T}(convert(Vector{T}, vc))
+SymmetricToeplitz(vc::AbstractVector{T}) where T = SymmetricToeplitz{T}(vc)
+
+SymmetricToeplitz{T}(A::AbstractMatrix) where T = SymmetricToeplitz{T}(A[1, :])
+SymmetricToeplitz(A::AbstractMatrix) = SymmetricToeplitz{eltype(A)}(A)
+
+
+
+convert(::Type{AbstractToeplitz{T}}, A::SymmetricToeplitz) where {T} = convert(SymmetricToeplitz{T},A)
+convert(::Type{SymmetricToeplitz{T}}, A::SymmetricToeplitz) where {T} = SymmetricToeplitz(convert(Vector{T},A.vc))
 
 function size(A::SymmetricToeplitz, dim::Int)
     if 1 <= dim <= 2
@@ -261,19 +279,20 @@ mutable struct Circulant{T<:Number,S<:Number} <: AbstractToeplitz{T}
     dft::Plan
 end
 
-function Circulant(vc::Vector{T}) where T<:Real
-    TT = promote_type(eltype(vc), Float32)
-    tmp = zeros(promote_type(TT, Complex{Float32}), length(vc))
-    return Circulant(real(vc), fft(vc), tmp, plan_fft!(tmp))
-end
-function Circulant(vc::Vector)
-    T = promote_type(eltype(vc), Float32)
+function Circulant{T}(vc::Vector{T}) where T
     tmp = zeros(promote_type(T, Complex{Float32}), length(vc))
     return Circulant(vc, fft(vc), tmp, plan_fft!(tmp))
 end
 
-convert(::Type{AbstractToeplitz{T}},A::Circulant) where {T} = convert(Circulant{T},A)
-convert(::Type{Circulant{T}},A::Circulant) where {T} = Circulant(convert(Vector{T},A.vc))
+Circulant{T}(vc::AbstractVector) where T = Circulant{T}(convert(Vector{T}, vc))
+Circulant(vc::AbstractVector) = Circulant{promote_type(eltype(vc), Float32)}(vc)
+Circulant{T}(A::AbstractMatrix) where T = Circulant{T}(A[:,1])
+Circulant(A::AbstractMatrix) = Circulant(A[:,1])
+
+
+
+convert(::Type{AbstractToeplitz{T}}, A::Circulant) where {T} = convert(Circulant{T}, A)
+convert(::Type{Circulant{T}}, A::Circulant) where {T} = Circulant(convert(Vector{T}, A.vc))
 
 
 function size(C::Circulant, dim::Integer)
@@ -366,11 +385,8 @@ mutable struct TriangularToeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
     dft::Plan
 end
 
-function TriangularToeplitz(ve::Vector, uplo::Symbol)
-    n = length(ve)
-
-    T = promote_type(eltype(ve), Float32)
-    vep = Vector{T}(ve)
+function TriangularToeplitz{T}(vep::Vector{T}, uplo::Symbol) where T
+    n = length(vep)
 
     tmp = zeros(promote_type(T, Complex{Float32}), 2n - 1)
     if uplo == :L
@@ -378,12 +394,25 @@ function TriangularToeplitz(ve::Vector, uplo::Symbol)
     else
         tmp[1] = vep[1]
         for i = 1:n - 1
-            tmp[n + i] = ve[n - i + 1]
+            tmp[n + i] = vep[n - i + 1]
         end
     end
     dft = plan_fft!(tmp)
     return TriangularToeplitz(vep, string(uplo)[1], dft * tmp, similar(tmp), dft)
 end
+
+TriangularToeplitz{T}(ve::AbstractVector, uplo::Symbol) where T =
+    TriangularToeplitz(convert(Vector{T}, ve), uplo)
+
+TriangularToeplitz(ve::AbstractVector, uplo::Symbol) =
+    TriangularToeplitz{promote_type(eltype(ve), Float32)}(ve, uplo)
+
+TriangularToeplitz{T}(A::AbstractMatrix, uplo::Symbol) where T =
+    TriangularToeplitz{T}(uplo == :U ? A[1,:] : A[:,1], uplo)
+
+TriangularToeplitz(A::AbstractMatrix, uplo::Symbol) =
+    TriangularToeplitz(uplo == :U ? A[1,:] : A[:,1], uplo)
+
 
 function convert(::Type{Toeplitz}, A::TriangularToeplitz)
     if A.uplo == 'L'
@@ -394,8 +423,8 @@ function convert(::Type{Toeplitz}, A::TriangularToeplitz)
     end
 end
 
-convert(::Type{AbstractToeplitz{T}},A::TriangularToeplitz) where {T} = convert(TriangularToeplitz{T},A)
-convert(::Type{TriangularToeplitz{T}},A::TriangularToeplitz) where {T} =
+convert(::Type{AbstractToeplitz{T}}, A::TriangularToeplitz) where {T} = convert(TriangularToeplitz{T},A)
+convert(::Type{TriangularToeplitz{T}}, A::TriangularToeplitz) where {T} =
     TriangularToeplitz(convert(Vector{T},A.ve),A.uplo=='U' ? (:U) : (:L))
 
 
@@ -527,22 +556,29 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
  We represent the Hankel matrix by wrapping the corresponding Toeplitz matrix.=#
 
 # Hankel Matrix
-mutable struct Hankel{T<:Number} <: AbstractMatrix{T}
-    T::Toeplitz{T}
+mutable struct Hankel{TT<:Number} <: AbstractMatrix{TT}
+    T::Toeplitz{TT}
+    Hankel{TT}(T::Toeplitz{TT}) where TT<:Number = new{TT}(T)
 end
 
 # Ctor: vc is the leftmost column and vr is the bottom row.
-function Hankel(vc,vr)
+function Hankel{T}(vc::AbstractVector, vr::AbstractVector) where T
     if vc[end] != vr[1]
         error("First element of rows must equal last element of columns")
     end
     n = length(vr)
     p = [vc; vr[2:end]]
-    Hankel(Toeplitz(p[n:end],p[n:-1:1]))
+    Hankel{T}(Toeplitz{T}(p[n:end],p[n:-1:1]))
 end
 
-convert(::Type{Array},A::Hankel) = convert(Matrix,A)
-convert(::Type{Matrix},A::Hankel) = full(A)
+Hankel(vc::AbstractVector, vr::AbstractVector) =
+    Hankel{promote_type(eltype(vc), eltype(vr))}(vc, vr)
+
+Hankel{T}(A::AbstractMatrix) where T = Hankel{T}(A[:,1], A[end,:])
+Hankel(A::AbstractMatrix) = Hankel(A[:,1], A[end,:])
+
+convert(::Type{Array}, A::Hankel) = convert(Matrix, A)
+convert(::Type{Matrix}, A::Hankel) = full(A)
 
 convert(::Type{AbstractMatrix{T}},A::Hankel) where {T} = convert(Hankel{T},A)
 convert(::Type{Hankel{T}},A::Hankel) where {T} = Hankel(convert(Toeplitz{T},A.T))
