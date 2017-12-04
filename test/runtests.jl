@@ -8,36 +8,37 @@ xs = randn(ns, 5)
 xl = randn(nl, 5)
 
 @testset("Toeplitz: $st",
-for (As, Al, st) in ((Toeplitz(0.9.^(0:ns-1), 0.4.^(0:ns-1)),
-                        Toeplitz(0.9.^(0:nl-1), 0.4.^(0:nl-1)),
-                            "Real general square"),
-                     (Toeplitz(complex(0.9.^(0:ns-1)), complex(0.4.^(0:ns-1))),
-                        Toeplitz(complex(0.9.^(0:nl-1)), complex(0.4.^(0:nl-1))),
-                            "Complex general square"),
-                     (Circulant(0.9.^(0:ns - 1)),
-                        Circulant(0.9.^(0:nl - 1)),
-                            "Real circulant"),
-                     (Circulant(complex(0.9.^(0:ns - 1))),
-                        Circulant(complex(0.9.^(0:nl - 1))),
-                            "Complex circulant"),
-                     (TriangularToeplitz(0.9.^(0:ns - 1), :U),
-                        TriangularToeplitz(0.9.^(0:nl - 1), :U),
-                            "Real upper triangular"),
-                     (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :U),
-                        TriangularToeplitz(complex(0.9.^(0:nl - 1)), :U),
-                            "Complex upper triangular"),
-                     (TriangularToeplitz(0.9.^(0:ns - 1), :L),
-                        TriangularToeplitz(0.9.^(0:nl - 1), :L),
-                            "Real lower triangular"),
-                     (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :L),
-                        TriangularToeplitz(complex(0.9.^(0:nl - 1)), :L),
-                            "Complex lower triangular"))
+    for (As, Al, st) in ((Toeplitz(0.9.^(0:ns-1), 0.4.^(0:ns-1)),
+                            Toeplitz(0.9.^(0:nl-1), 0.4.^(0:nl-1)),
+                                "Real general square"),
+                         (Toeplitz(complex(0.9.^(0:ns-1)), complex(0.4.^(0:ns-1))),
+                            Toeplitz(complex(0.9.^(0:nl-1)), complex(0.4.^(0:nl-1))),
+                                "Complex general square"),
+                         (Circulant(0.9.^(0:ns - 1)),
+                            Circulant(0.9.^(0:nl - 1)),
+                                "Real circulant"),
+                         (Circulant(complex(0.9.^(0:ns - 1))),
+                            Circulant(complex(0.9.^(0:nl - 1))),
+                                "Complex circulant"),
+                         (TriangularToeplitz(0.9.^(0:ns - 1), :U),
+                            TriangularToeplitz(0.9.^(0:nl - 1), :U),
+                                "Real upper triangular"),
+                         (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :U),
+                            TriangularToeplitz(complex(0.9.^(0:nl - 1)), :U),
+                                "Complex upper triangular"),
+                         (TriangularToeplitz(0.9.^(0:ns - 1), :L),
+                            TriangularToeplitz(0.9.^(0:nl - 1), :L),
+                                "Real lower triangular"),
+                         (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :L),
+                            TriangularToeplitz(complex(0.9.^(0:nl - 1)), :L),
+                                "Complex lower triangular"))
 
-    @test As * xs ≈ full(As) * xs
-    @test Al * xl ≈ full(Al) * xl
-    @test A_ldiv_B!(As, LinAlg.copy_oftype(xs, eltype(As))) ≈ full(As) \ xs
-    @test A_ldiv_B!(Al, LinAlg.copy_oftype(xl, eltype(Al))) ≈ full(Al) \ xl
-end)
+        @test As * xs ≈ full(As) * xs
+        @test Al * xl ≈ full(Al) * xl
+        @test A_ldiv_B!(As, LinAlg.copy_oftype(xs, eltype(As))) ≈ full(As) \ xs
+        @test A_ldiv_B!(Al, LinAlg.copy_oftype(xl, eltype(Al))) ≈ full(Al) \ xl
+    end
+)
 
 @testset "Real general rectangular" begin
     Ar1 = Toeplitz(0.9.^(0:nl-1), 0.4.^(0:ns-1))
@@ -184,4 +185,38 @@ end
     @test isa(convert(AbstractMatrix{Complex128},T),Hankel{Complex128})
     @test isa(convert(AbstractArray{Complex128},T),Hankel{Complex128})
     @test isa(convert(ToeplitzMatrices.Hankel{Complex128},T),Hankel{Complex128})
+
+
+    @test Circulant(1:5) == Circulant(Vector(1.0:5))
+
 end
+
+
+A = ones(10, 10)
+@test full(Toeplitz(A)) == full(Toeplitz{Float64}(A)) == A
+@test full(SymmetricToeplitz(A)) == full(SymmetricToeplitz{Float64}(A)) == A
+@test full(Circulant(A)) == full(Circulant{Float64}(A)) == A
+@test full(Hankel(A)) == full(Hankel{Float64}(A)) == A
+
+
+A = [1.0 2.0;
+     3.0 4.0]
+
+@test Toeplitz(A) == Toeplitz([1.,3.], [1.,2.])
+@test Toeplitz{Float64}(A) == Toeplitz([1.,3.], [1.,2.])
+@test full(SymmetricToeplitz(A)) == full(SymmetricToeplitz{Float64}(A)) ==
+            full(Toeplitz(Symmetric(A))) == full(Symmetric(Toeplitz(A))) == [1. 2.; 2. 1.]
+@test full(Circulant(A)) == [1 3; 3 1]
+
+@test TriangularToeplitz(A, :U) == TriangularToeplitz{Float64}(A, :U) == Toeplitz(UpperTriangular(A)) == UpperTriangular(Toeplitz(A))
+@test TriangularToeplitz(A, :L) == TriangularToeplitz{Float64}(A, :L) == Toeplitz(LowerTriangular(A)) == LowerTriangular(Toeplitz(A))
+
+@test full(Hankel(A)) == full(Hankel{Float64}(A)) == [1.0 3; 3 4]
+
+# Constructors should be projections
+@test Toeplitz(Toeplitz(A)) == Toeplitz(A)
+@test SymmetricToeplitz(SymmetricToeplitz(A)) == SymmetricToeplitz(A)
+@test Circulant(Circulant(A)) == Circulant(A)
+@test TriangularToeplitz(TriangularToeplitz(A, :U), :U) == TriangularToeplitz(A, :U)
+@test TriangularToeplitz(TriangularToeplitz(A, :L), :L) == TriangularToeplitz(A, :L)
+@test Hankel(Hankel(A)) == Hankel(A)
