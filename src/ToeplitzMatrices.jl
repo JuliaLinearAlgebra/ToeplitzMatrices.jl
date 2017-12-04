@@ -237,13 +237,14 @@ mutable struct SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
     vcvr_dft::Vector{Complex{T}}
     tmp::Vector{Complex{T}}
     dft::Plan
-
-    function SymmetricToeplitz{T}(vc::Vector{T}) where T<:BlasReal
-        tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
-        dft = plan_fft!(tmp)
-        return new(vc, dft*tmp, similar(tmp), dft)
-    end
 end
+
+function SymmetricToeplitz{T}(vc::Vector{T}) where T<:BlasReal
+	tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
+	dft = plan_fft!(tmp)
+	return SymmetricToeplitz{T}(vc, dft*tmp, similar(tmp), dft)
+end
+
 
 SymmetricToeplitz{T}(vc::AbstractVector) where T<:BlasReal = SymmetricToeplitz{T}(convert(Vector{T}, vc))
 SymmetricToeplitz{T}(vc::AbstractVector{T}) where T = SymmetricToeplitz{promote_type(Float32, T)}(vc)
