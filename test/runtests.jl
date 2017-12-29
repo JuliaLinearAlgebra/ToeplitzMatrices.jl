@@ -73,7 +73,21 @@ end
 
 @testset "Hankel" begin
     @testset "Real square" begin
-        H = Hankel([1.0,2,3,4,5],[5.0,6,7,8,0])
+        H = Hankel([1.0,2,3,4,5],[5.0,6,7,8,9])
+        @test Matrix(H) == [1 2 3 4 5;
+                            2 3 4 5 6;
+                            3 4 5 6 7;
+                            4 5 6 7 8;
+                            5 6 7 8 9]
+
+        @test convert(Hankel{Float64}, H) == H
+        @test convert(AbstractMatrix{Float64}, H) == H
+        @test convert(AbstractArray{Float64}, H) == H
+
+        @test H[2,2] == 3
+        @test H[7]  == 3
+        @test diag(H) == [1,3,5,7,9]
+
         x = ones(5)
         @test full(H)*x ≈ H*x
 
