@@ -18,6 +18,7 @@ else
     using FFTW
     using FFTW: Plan
     import LinearAlgebra: mul!, ldiv!
+    flipdim(A, d) = reverse(A, dims=d)
 end
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
@@ -363,7 +364,7 @@ end
 
 function strang(A::AbstractMatrix{T}) where T
     n = size(A, 1)
-    v = Vector{T}(n)
+    v = Vector{T}(undef, n)
     n2 = div(n, 2)
     for i = 1:n
         if i <= n2 + 1
@@ -376,7 +377,7 @@ function strang(A::AbstractMatrix{T}) where T
 end
 function chan(A::AbstractMatrix{T}) where T
     n = size(A, 1)
-    v = Vector{T}(n)
+    v = Vector{T}(undef, n)
     for i = 1:n
         v[i] = ((n - i + 1) * A[i, 1] + (i - 1) * A[1, min(n - i + 2, n)]) / n
     end

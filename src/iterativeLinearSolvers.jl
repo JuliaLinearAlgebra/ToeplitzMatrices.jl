@@ -4,6 +4,11 @@ module IterativeLinearSolvers
 # Included from https://github.com/andreasnoack/IterativeLinearSolvers.jl
 # Eventually, use IterativeSolvers.jl
 
+if VERSION < v"0.7-"
+    const mul! = Base.A_mul_B!
+    const ldiv! = Base.A_ldiv_B!
+end
+
 Preconditioner{T} = Union{AbstractMatrix{T}, Factorization{T}}
 
 function cg(A::AbstractMatrix{T},

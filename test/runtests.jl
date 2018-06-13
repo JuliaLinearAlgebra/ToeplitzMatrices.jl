@@ -1,6 +1,10 @@
 using ToeplitzMatrices, StatsBase, Compat, Compat.LinearAlgebra
 using Compat.Test
 
+if VERSION < v"0.7-"
+    const ldiv! = A_ldiv_B!
+end
+
 ns = 101
 nl = 2000
 
