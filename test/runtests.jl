@@ -1,4 +1,4 @@
-using ToeplitzMatrices, StatsBase, Compat
+using ToeplitzMatrices, StatsBase, Compat, Compat.LinearAlgebra
 using Compat.Test
 
 ns = 101
@@ -33,41 +33,41 @@ xl = randn(nl, 5)
                             TriangularToeplitz(complex(0.9.^(0:nl - 1)), :L),
                                 "Complex lower triangular"))
 
-        @test As * xs ≈ full(As) * xs
-        @test Al * xl ≈ full(Al) * xl
-        @test A_ldiv_B!(As, LinAlg.copy_oftype(xs, eltype(As))) ≈ full(As) \ xs
-        @test A_ldiv_B!(Al, LinAlg.copy_oftype(xl, eltype(Al))) ≈ full(Al) \ xl
+        @test As * xs ≈ Matrix(As) * xs
+        @test Al * xl ≈ Matrix(Al) * xl
+        @test ldiv!(As, Compat.LinearAlgebra.copy_oftype(xs, eltype(As))) ≈ Matrix(As) \ xs
+        @test ldiv!(Al, Compat.LinearAlgebra.copy_oftype(xl, eltype(Al))) ≈ Matrix(Al) \ xl
     end
 )
 
 @testset "Real general rectangular" begin
     Ar1 = Toeplitz(0.9.^(0:nl-1), 0.4.^(0:ns-1))
     Ar2 = Toeplitz(0.9.^(0:ns-1), 0.4.^(0:nl-1))
-    @test Ar1 * xs ≈ full(Ar1) * xs
-    @test Ar2 * xl ≈ full(Ar2) * xl
+    @test Ar1 * xs ≈ Matrix(Ar1) * xs
+    @test Ar2 * xl ≈ Matrix(Ar2) * xl
 end
 
 @testset "Complex general rectangular" begin
     Ar1 = Toeplitz(complex(0.9.^(0:nl-1)), complex(0.4.^(0:ns-1)))
     Ar2 = Toeplitz(complex(0.9.^(0:ns-1)), complex(0.4.^(0:nl-1)))
-    @test Ar1 * xs ≈ full(Ar1) * xs
-    @test Ar2 * xl ≈ full(Ar2) * xl
+    @test Ar1 * xs ≈ Matrix(Ar1) * xs
+    @test Ar2 * xl ≈ Matrix(Ar2) * xl
 end
 
 @testset "Symmetric Toeplitz" begin
     As = SymmetricToeplitz(0.9.^(0:ns-1))
     Ab = SymmetricToeplitz(abs.(randn(ns)))
     Al = SymmetricToeplitz(0.9.^(0:nl-1))
-    @test As * xs ≈ full(As) * xs
-    @test Ab * xs ≈ full(Ab) * xs
-    @test Al * xl ≈ full(Al) * xl
-    @test A_ldiv_B!(As, copy(xs)) ≈ full(As) \ xs
-    @test A_ldiv_B!(Ab, copy(xs)) ≈ full(Ab) \ xs
-    @test A_ldiv_B!(Al, copy(xl)) ≈ full(Al) \ xl
-    @test StatsBase.levinson(As, xs) ≈ full(As) \ xs
-    @test StatsBase.levinson(Ab, xs) ≈ full(Ab) \ xs
+    @test As * xs ≈ Matrix(As) * xs
+    @test Ab * xs ≈ Matrix(Ab) * xs
+    @test Al * xl ≈ Matrix(Al) * xl
+    @test ldiv!(As, copy(xs)) ≈ Matrix(As) \ xs
+    @test ldiv!(Ab, copy(xs)) ≈ Matrix(Ab) \ xs
+    @test ldiv!(Al, copy(xl)) ≈ Matrix(Al) \ xl
+    @test StatsBase.levinson(As, xs) ≈ Matrix(As) \ xs
+    @test StatsBase.levinson(Ab, xs) ≈ Matrix(Ab) \ xs
     if !(haskey(ENV, "CI") && VERSION < v"0.6-") # Inlining is off on 0.5 Travis testing which is too slow for this test
-        @test StatsBase.levinson(Al, xl) ≈ full(Al) \ xl
+        @test StatsBase.levinson(Al, xl) ≈ Matrix(Al) \ xl
     end
 end
 
@@ -75,41 +75,41 @@ end
     @testset "Real square" begin
         H = Hankel([1.0,2,3,4,5],[5.0,6,7,8,0])
         x = ones(5)
-        @test full(H)*x ≈ H*x
+        @test Matrix(H)*x ≈ H*x
 
         Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:ns-1))
         Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:nl-1))
-        @test Hs * xs[:,1] ≈ full(Hs) * xs[:,1]
-        @test Hs * xs ≈ full(Hs) * xs
-        @test Hl * xl ≈ full(Hl) * xl
+        @test Hs * xs[:,1] ≈ Matrix(Hs) * xs[:,1]
+        @test Hs * xs ≈ Matrix(Hs) * xs
+        @test Hl * xl ≈ Matrix(Hl) * xl
     end
 
     @testset "Complex square" begin
         H = Hankel(complex([1.0,2,3,4,5]), complex([5.0,6,7,8,0]))
         x = ones(5)
-        @test full(H)*x ≈ H*x
+        @test Matrix(H)*x ≈ H*x
 
         Hs = Hankel(complex(0.9.^(ns-1:-1:0)), complex(0.4.^(0:ns-1)))
         Hl = Hankel(complex(0.9.^(nl-1:-1:0)), complex(0.4.^(0:nl-1)))
-        @test Hs * xs[:,1] ≈ full(Hs) * xs[:,1]
-        @test Hs * xs ≈ full(Hs) * xs
-        @test Hl * xl ≈ full(Hl) * xl
+        @test Hs * xs[:,1] ≈ Matrix(Hs) * xs[:,1]
+        @test Hs * xs ≈ Matrix(Hs) * xs
+        @test Hl * xl ≈ Matrix(Hl) * xl
     end
 
     @testset "Real rectangular" begin
         Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:nl-1))
         Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:ns-1))
-        @test Hs * xl[:,1] ≈ full(Hs) * xl[:,1]
-        @test Hs * xl ≈ full(Hs) * xl
-        @test Hl * xs ≈ full(Hl) * xs
+        @test Hs * xl[:,1] ≈ Matrix(Hs) * xl[:,1]
+        @test Hs * xl ≈ Matrix(Hs) * xl
+        @test Hl * xs ≈ Matrix(Hl) * xs
     end
 
     @testset "Complex rectangular" begin
         Hs = Hankel(complex(0.9.^(ns-1:-1:0)), complex(0.4.^(0:nl-1)))
         Hl = Hankel(complex(0.9.^(nl-1:-1:0)), complex(0.4.^(0:ns-1)))
-        @test Hs * xl[:,1] ≈ full(Hs) * xl[:,1]
-        @test Hs * xl ≈ full(Hs) * xl
-        @test Hl * xs ≈ full(Hl) * xs
+        @test Hs * xl[:,1] ≈ Matrix(Hs) * xl[:,1]
+        @test Hs * xl ≈ Matrix(Hs) * xl
+        @test Hl * xs ≈ Matrix(Hl) * xs
     end
 end
 
@@ -124,23 +124,23 @@ if isdir(Pkg.dir("FastTransforms"))
         n = 512
         r = map(BigFloat,rand(n))
         T = Toeplitz(r,[r[1];map(BigFloat,rand(n-1))])
-        @test T*ones(BigFloat,n) ≈ full(T)*ones(BigFloat,n)
+        @test T*ones(BigFloat,n) ≈ Matrix(T)*ones(BigFloat,n)
 
         T = TriangularToeplitz(BigFloat[1,2,3,4,5],:L)
-        @test T*ones(BigFloat,5) ≈ full(T)*ones(BigFloat,5)
+        @test T*ones(BigFloat,5) ≈ Matrix(T)*ones(BigFloat,5)
 
         n = 512
         r = map(BigFloat,rand(n))
         T = TriangularToeplitz(r,:L)
-        @test T*ones(BigFloat,n) ≈ full(T)*ones(BigFloat,n)
+        @test T*ones(BigFloat,n) ≈ Matrix(T)*ones(BigFloat,n)
 
         T = TriangularToeplitz(BigFloat[1,2,3,4,5],:U)
-        @test T*ones(BigFloat,5) ≈ full(T)*ones(BigFloat,5)
+        @test T*ones(BigFloat,5) ≈ Matrix(T)*ones(BigFloat,5)
 
         n = 512
         r = map(BigFloat,rand(n))
         T = TriangularToeplitz(r,:U)
-        @test T*ones(BigFloat,n) ≈ full(T)*ones(BigFloat,n)
+        @test T*ones(BigFloat,n) ≈ Matrix(T)*ones(BigFloat,n)
     end
 end
 
@@ -193,10 +193,10 @@ end
 
 
 A = ones(10, 10)
-@test full(Toeplitz(A)) == full(Toeplitz{Float64}(A)) == A
-@test full(SymmetricToeplitz(A)) == full(SymmetricToeplitz{Float64}(A)) == A
-@test full(Circulant(A)) == full(Circulant{Float64}(A)) == A
-@test full(Hankel(A)) == full(Hankel{Float64}(A)) == A
+@test Matrix(Toeplitz(A)) == Matrix(Toeplitz{Float64}(A)) == A
+@test Matrix(SymmetricToeplitz(A)) == Matrix(SymmetricToeplitz{Float64}(A)) == A
+@test Matrix(Circulant(A)) == Matrix(Circulant{Float64}(A)) == A
+@test Matrix(Hankel(A)) == Matrix(Hankel{Float64}(A)) == A
 
 
 A = [1.0 2.0;
@@ -204,14 +204,14 @@ A = [1.0 2.0;
 
 @test Toeplitz(A) == Toeplitz([1.,3.], [1.,2.])
 @test Toeplitz{Float64}(A) == Toeplitz([1.,3.], [1.,2.])
-@test full(SymmetricToeplitz(A)) == full(SymmetricToeplitz{Float64}(A)) ==
-            full(Toeplitz(Symmetric(A))) == full(Symmetric(Toeplitz(A))) == [1. 2.; 2. 1.]
-@test full(Circulant(A)) == [1 3; 3 1]
+@test Matrix(SymmetricToeplitz(A)) == Matrix(SymmetricToeplitz{Float64}(A)) ==
+            Matrix(Toeplitz(Symmetric(A))) == Matrix(Symmetric(Toeplitz(A))) == [1. 2.; 2. 1.]
+@test Matrix(Circulant(A)) == [1 3; 3 1]
 
 @test TriangularToeplitz(A, :U) == TriangularToeplitz{Float64}(A, :U) == Toeplitz(UpperTriangular(A)) == UpperTriangular(Toeplitz(A))
 @test TriangularToeplitz(A, :L) == TriangularToeplitz{Float64}(A, :L) == Toeplitz(LowerTriangular(A)) == LowerTriangular(Toeplitz(A))
 
-@test full(Hankel(A)) == full(Hankel{Float64}(A)) == [1.0 3; 3 4]
+@test Matrix(Hankel(A)) == Matrix(Hankel{Float64}(A)) == [1.0 3; 3 4]
 
 # Constructors should be projections
 @test Toeplitz(Toeplitz(A)) == Toeplitz(A)

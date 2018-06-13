@@ -1,6 +1,6 @@
 module IterativeLinearSolvers
-    using Compat
-
+    using Compat, Compat.LinearAlgebra
+    import Compat.LinearAlgebra: Factorization
 # Included from https://github.com/andreasnoack/IterativeLinearSolvers.jl
 # Eventually, use IterativeSolvers.jl
 
@@ -11,7 +11,7 @@ function cg(A::AbstractMatrix{T},
     b::AbstractVector{T},
     M::Preconditioner{T},
     max_it::Integer,
-    tol::Real) where T<:LinAlg.BlasReal
+    tol::Real) where T<:Compat.LinearAlgebra.BlasReal
 #  -- Iterative template routine --
 #     Univ. of Tennessee and Oak Ridge National Laboratory
 #     October 1, 1993
@@ -51,7 +51,7 @@ function cg(A::AbstractMatrix{T},
     q = zeros(T, n)
     p = zeros(T, n)
     # r = copy(b)
-    # A_mul_B!(-one(T),A,x,one(T),r)
+    # mul!(A,x,r,-one(T),one(T))
     r = b - A*x
     error = norm(r)/bnrm2
     if error < tol
@@ -62,7 +62,7 @@ function cg(A::AbstractMatrix{T},
         iter = iter_inner
 
         z[:] = r
-        A_ldiv_B!(M, z)
+        ldiv!(M, z)
         # z[:] = M\r
         ρ = dot(r,z)
 
@@ -75,7 +75,7 @@ function cg(A::AbstractMatrix{T},
             p[:] = z
         end
 
-        # A_mul_B!(one(T),A,p,zero(T),q)
+        # mul!(A,p,q,one(T),zero(T))
         q[:] = A*p
         α = ρ / dot(p,q)
         for l = 1:n
@@ -147,7 +147,7 @@ function cgs(A::AbstractMatrix{T},
     ρ = zero(T)
     ρ₁ = ρ
     r = copy(b)
-    A_mul_B!(-one(T), A, x, one(T), r)
+    mul!(A, x, r, -one(T), one(T))
     # r = b - A*x
     error = norm(r)/bnrm2
 
@@ -177,23 +177,23 @@ function cgs(A::AbstractMatrix{T},
         end
 
         p̂[:] = p
-        A_ldiv_B!(M, p̂)
+        ldiv!(M, p̂)
         # p̂[:] = M\p
-        A_mul_B!(one(T), A, p̂, zero(T), v̂)  # adjusting scalars
+        mul!(A, p̂, v̂, one(T), zero(T))  # adjusting scalars
         # v̂[:] = A*p̂
         α = ρ/dot(r_tld, v̂)
         for l = 1:n
             q[l] = u[l] - α*v̂[l]
             û[l] = u[l] + q[l]
         end
-        A_ldiv_B!(M, û)
+        ldiv!(M, û)
         # û[:] = M\û
 
         for l = 1:n
             x[l] += α*û[l]                  # update approximation
         end
 
-        A_mul_B!(-α, A, û, one(T), r)
+        mul!(A, û, r, -α, one(T))
         # r[:] -= α*(A*û)
         error = norm(r)/bnrm2               # check convergence
         if error <= tol
