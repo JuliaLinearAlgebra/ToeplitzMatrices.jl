@@ -52,8 +52,7 @@ convert(::Type{Matrix}, A::AbstractToeplitz) = Matrix(A)
 @deprecate full(A::AbstractToeplitz) Matrix(A)
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
-function mul!(A::AbstractToeplitz{T}, x::StridedVector,
-      y::StridedVector{T}, α::T, β::T) where T
+function mul!(y::StridedVector{T}, A::AbstractToeplitz{T}, x::StridedVector, α::T, β::T) where T
     m = size(A,1)
     n = size(A,2)
     N = length(A.vcvr_dft)
@@ -103,21 +102,20 @@ function mul!(A::AbstractToeplitz{T}, x::StridedVector,
 end
 
 # Application of a general Toeplitz matrix to a general matrix
-function mul!(A::AbstractToeplitz{T}, B::StridedMatrix,
-    C::StridedMatrix{T}, α::T, β::T) where T
+function mul!(C::StridedMatrix{T}, A::AbstractToeplitz{T}, B::StridedMatrix, α::T, β::T) where T
     l = size(B, 2)
     if size(C, 2) != l
         throw(DimensionMismatch("input and output matrices must have same number of columns"))
     end
     for j = 1:l
-        mul!(A, view(B, :, j), view(C, :, j), α, β)
+        mul!(view(C, :, j), A, view(B, :, j), α, β)
     end
     return C
 end
 
 # Translate three to five argument mul!
 mul!(y::StridedVecOrMat, A::AbstractToeplitz, x::StridedVecOrMat) =
-    mul!(A, x, y, one(eltype(A)), zero(eltype(A)))
+    mul!(y, A, x, one(eltype(A)), zero(eltype(A)))
 
 # Left division of a general matrix B by a general Toeplitz matrix A, i.e. the solution x of Ax=B.
 function ldiv!(A::AbstractToeplitz, B::StridedMatrix)

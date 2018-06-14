@@ -56,7 +56,7 @@ function cg(A::AbstractMatrix{T},
     q = zeros(T, n)
     p = zeros(T, n)
     # r = copy(b)
-    # mul!(A,x,r,-one(T),one(T))
+    # mul!(r,A,x,-one(T),one(T))
     r = b - A*x
     error = norm(r)/bnrm2
     if error < tol
@@ -80,7 +80,7 @@ function cg(A::AbstractMatrix{T},
             p[:] = z
         end
 
-        # mul!(A,p,q,one(T),zero(T))
+        # mul!(q,A,p,one(T),zero(T))
         q[:] = A*p
         α = ρ / dot(p,q)
         for l = 1:n
@@ -152,7 +152,7 @@ function cgs(A::AbstractMatrix{T},
     ρ = zero(T)
     ρ₁ = ρ
     r = copy(b)
-    mul!(A, x, r, -one(T), one(T))
+    mul!(r, A, x, -one(T), one(T))
     # r = b - A*x
     error = norm(r)/bnrm2
 
@@ -184,7 +184,7 @@ function cgs(A::AbstractMatrix{T},
         p̂[:] = p
         ldiv!(M, p̂)
         # p̂[:] = M\p
-        mul!(A, p̂, v̂, one(T), zero(T))  # adjusting scalars
+        mul!(v̂, A, p̂, one(T), zero(T))  # adjusting scalars
         # v̂[:] = A*p̂
         α = ρ/dot(r_tld, v̂)
         for l = 1:n
@@ -198,7 +198,7 @@ function cgs(A::AbstractMatrix{T},
             x[l] += α*û[l]                  # update approximation
         end
 
-        mul!(A, û, r, -α, one(T))
+        mul!(r, A, û, -α, one(T))
         # r[:] -= α*(A*û)
         error = norm(r)/bnrm2               # check convergence
         if error <= tol
