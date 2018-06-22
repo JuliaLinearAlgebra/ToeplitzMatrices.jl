@@ -82,6 +82,7 @@ end
         @test Hs * xs[:,1] ≈ full(Hs) * xs[:,1]
         @test Hs * xs ≈ full(Hs) * xs
         @test Hl * xl ≈ full(Hl) * xl
+        @test diag(H) == [1.0,3,5,7,0]
     end
 
     @testset "Complex square" begin
@@ -110,6 +111,19 @@ end
         @test Hs * xl[:,1] ≈ full(Hs) * xl[:,1]
         @test Hs * xl ≈ full(Hs) * xl
         @test Hl * xs ≈ full(Hl) * xs
+    end
+
+    @testset "Convert" begin
+        H = Hankel([1.0,2,3,4,5],[5.0,6,7,8,0])
+        @test Hankel(H) == Hankel{Float64}(H) == H
+        @test convert(Hankel,H) == convert(Hankel{Float64},H) ==
+                convert(AbstractArray,H) == convert(AbstractArray{Float64},H) == H
+
+        A = [1.0 2; 3 4]
+        @test Hankel(A) == [1 3; 3 4]
+        T = Toeplitz([1.0,2,3,4,5],[1.0,6,7,8,0])
+        @test Hankel(T) == Hankel([1.0,2,3,4,5],[5.0,4,3,2,1])
+        @test Hankel(T) ≠ ToeplitzMatrices._Hankel(T)
     end
 end
 

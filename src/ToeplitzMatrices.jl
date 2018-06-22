@@ -556,10 +556,11 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
                               1 0 0 0 0]
  We represent the Hankel matrix by wrapping the corresponding Toeplitz matrix.=#
 
-# Hankel Matrix
+# Hankel Matrix, use _Hankel as Hankel(::Toeplitz) should project to Hankel
+function _Hankel end
 mutable struct Hankel{TT<:Number} <: AbstractMatrix{TT}
     T::Toeplitz{TT}
-    Hankel{TT}(T::Toeplitz{TT}) where TT<:Number = new{TT}(T)
+    _Hankel(T::Toeplitz{TT}) where TT<:Number = new{TT}(T)
 end
 
 # Ctor: vc is the leftmost column and vr is the bottom row.
@@ -569,7 +570,7 @@ function Hankel{T}(vc::AbstractVector, vr::AbstractVector) where T
     end
     n = length(vr)
     p = [vc; vr[2:end]]
-    Hankel{T}(Toeplitz{T}(p[n:end],p[n:-1:1]))
+    _Hankel(Toeplitz{T}(p[n:end],p[n:-1:1]))
 end
 
 Hankel(vc::AbstractVector, vr::AbstractVector) =
@@ -581,8 +582,10 @@ Hankel(A::AbstractMatrix) = Hankel(A[:,1], A[end,:])
 convert(::Type{Array}, A::Hankel) = convert(Matrix, A)
 convert(::Type{Matrix}, A::Hankel) = full(A)
 
-convert(::Type{AbstractMatrix{T}},A::Hankel) where {T} = convert(Hankel{T},A)
-convert(::Type{Hankel{T}},A::Hankel) where {T} = Hankel(convert(Toeplitz{T},A.T))
+convert(::Type{AbstractArray{T}}, A::Hankel) where {T} = convert(Hankel{T}, A)
+convert(::Type{AbstractMatrix{T}}, A::Hankel) where {T} = convert(Hankel{T}, A)
+convert(::Type{Hankel{T}}, A::Hankel{T}) where {T} = A
+convert(::Type{Hankel{T}}, A::Hankel) where {T} = _Hankel(convert(Toeplitz{T}, A.T))
 
 
 
