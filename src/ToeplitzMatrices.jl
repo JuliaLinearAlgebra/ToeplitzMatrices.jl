@@ -588,8 +588,11 @@ Hankel(A::AbstractMatrix) = Hankel(A[:,1], A[end,:])
 convert(::Type{Array}, A::Hankel) = convert(Matrix, A)
 convert(::Type{Matrix}, A::Hankel) = full(A)
 
-convert(::Type{AbstractMatrix{T}}, A::Hankel) where {T} = convert(Hankel{T}, A)
-convert(::Type{Hankel{T}}, A::Hankel) where {T} = _Hankel(convert(Toeplitz{T}, A.T))
+convert(::Type{AbstractArray{T}}, A::Hankel{T}) where {T<:Number} = A
+convert(::Type{AbstractArray{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
+convert(::Type{AbstractMatrix{T}}, A::Hankel{T}) where {T<:Number} = A
+convert(::Type{AbstractMatrix{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
+convert(::Type{Hankel{T}}, A::Hankel) where {T<:Number} = _Hankel(convert(Toeplitz{T}, A.T))
 
 
 # Size

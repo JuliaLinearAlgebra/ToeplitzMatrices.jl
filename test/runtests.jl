@@ -131,47 +131,14 @@ end
     end
 end
 
-if isdir(Pkg.dir("FastTransforms"))
-    using FastTransforms
-end
-if isdir(Pkg.dir("FastTransforms"))
-    @testset "BigFloat" begin
-        T = Toeplitz(BigFloat[1,2,3,4,5], BigFloat[1,6,7,8,0])
-        @test T*ones(BigFloat,5) ≈ [22,24,19,16,15]
-
-        n = 512
-        r = map(BigFloat,rand(n))
-        T = Toeplitz(r,[r[1];map(BigFloat,rand(n-1))])
-        @test T*ones(BigFloat,n) ≈ Matrix(T)*ones(BigFloat,n)
-
-        T = TriangularToeplitz(BigFloat[1,2,3,4,5],:L)
-        @test T*ones(BigFloat,5) ≈ Matrix(T)*ones(BigFloat,5)
-
-        n = 512
-        r = map(BigFloat,rand(n))
-        T = TriangularToeplitz(r,:L)
-        @test T*ones(BigFloat,n) ≈ Matrix(T)*ones(BigFloat,n)
-
-        T = TriangularToeplitz(BigFloat[1,2,3,4,5],:U)
-        @test T*ones(BigFloat,5) ≈ Matrix(T)*ones(BigFloat,5)
-
-        n = 512
-        r = map(BigFloat,rand(n))
-        T = TriangularToeplitz(r,:U)
-        @test T*ones(BigFloat,n) ≈ Matrix(T)*ones(BigFloat,n)
-    end
-end
-
-
 @testset "Convert" begin
-
     T = Toeplitz(ones(2),ones(2))
 
-    @test isa(convert(Matrix{Complex128},T),Matrix{Complex128})
-    @test isa(convert(AbstractMatrix{Complex128},T),Toeplitz{Complex128})
-    @test isa(convert(AbstractArray{Complex128},T),Toeplitz{Complex128})
-    @test isa(convert(ToeplitzMatrices.AbstractToeplitz{Complex128},T),Toeplitz{Complex128})
-    @test isa(convert(ToeplitzMatrices.Toeplitz{Complex128},T),Toeplitz{Complex128})
+    @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
+    @test isa(convert(AbstractMatrix{ComplexF64},T),Toeplitz{ComplexF64})
+    @test isa(convert(AbstractArray{ComplexF64},T),Toeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),Toeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.Toeplitz{ComplexF64},T),Toeplitz{ComplexF64})
 
     T = SymmetricToeplitz(ones(2))
 
@@ -183,26 +150,26 @@ end
 
     T = Circulant(ones(2))
 
-    @test isa(convert(Matrix{Complex128},T),Matrix{Complex128})
-    @test isa(convert(AbstractMatrix{Complex128},T),Circulant{Complex128})
-    @test isa(convert(AbstractArray{Complex128},T),Circulant{Complex128})
-    @test isa(convert(ToeplitzMatrices.AbstractToeplitz{Complex128},T),Circulant{Complex128})
-    @test isa(convert(ToeplitzMatrices.Circulant{Complex128},T),Circulant{Complex128})
+    @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
+    @test isa(convert(AbstractMatrix{ComplexF64},T),Circulant{ComplexF64})
+    @test isa(convert(AbstractArray{ComplexF64},T),Circulant{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),Circulant{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.Circulant{ComplexF64},T),Circulant{ComplexF64})
 
     T = TriangularToeplitz(ones(2),:U)
 
-    @test isa(convert(Matrix{Complex128},T),Matrix{Complex128})
-    @test isa(convert(AbstractMatrix{Complex128},T),TriangularToeplitz{Complex128})
-    @test isa(convert(AbstractArray{Complex128},T),TriangularToeplitz{Complex128})
-    @test isa(convert(ToeplitzMatrices.AbstractToeplitz{Complex128},T),TriangularToeplitz{Complex128})
-    @test isa(convert(ToeplitzMatrices.TriangularToeplitz{Complex128},T),TriangularToeplitz{Complex128})
+    @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
+    @test isa(convert(AbstractMatrix{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(AbstractArray{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.TriangularToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
 
     T = Hankel(ones(2),ones(2))
 
-    @test isa(convert(Matrix{Complex128},T),Matrix{Complex128})
-    @test isa(convert(AbstractMatrix{Complex128},T),Hankel{Complex128})
-    @test isa(convert(AbstractArray{Complex128},T),Hankel{Complex128})
-    @test isa(convert(ToeplitzMatrices.Hankel{Complex128},T),Hankel{Complex128})
+    @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
+    @test isa(convert(AbstractMatrix{ComplexF64},T),Hankel{ComplexF64})
+    @test isa(convert(AbstractArray{ComplexF64},T),Hankel{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.Hankel{ComplexF64},T),Hankel{ComplexF64})
 
 
     @test Circulant(1:5) == Circulant(Vector(1.0:5))
@@ -210,31 +177,33 @@ end
 end
 
 
-A = ones(10, 10)
-@test Matrix(Toeplitz(A)) == Matrix(Toeplitz{Float64}(A)) == A
-@test Matrix(SymmetricToeplitz(A)) == Matrix(SymmetricToeplitz{Float64}(A)) == A
-@test Matrix(Circulant(A)) == Matrix(Circulant{Float64}(A)) == A
-@test Matrix(Hankel(A)) == Matrix(Hankel{Float64}(A)) == A
+@testset "Constructors" begin
+    A = ones(10, 10)
+    @test Matrix(Toeplitz(A)) == Matrix(Toeplitz{Float64}(A)) == A
+    @test Matrix(SymmetricToeplitz(A)) == Matrix(SymmetricToeplitz{Float64}(A)) == A
+    @test Matrix(Circulant(A)) == Matrix(Circulant{Float64}(A)) == A
+    @test Matrix(Hankel(A)) == Matrix(Hankel{Float64}(A)) == A
 
 
-A = [1.0 2.0;
-     3.0 4.0]
+    A = [1.0 2.0;
+         3.0 4.0]
 
-@test Toeplitz(A) == Toeplitz([1.,3.], [1.,2.])
-@test Toeplitz{Float64}(A) == Toeplitz([1.,3.], [1.,2.])
-@test Matrix(SymmetricToeplitz(A)) == Matrix(SymmetricToeplitz{Float64}(A)) ==
-            Matrix(Toeplitz(Symmetric(A))) == Matrix(Symmetric(Toeplitz(A))) == [1. 2.; 2. 1.]
-@test Matrix(Circulant(A)) == [1 3; 3 1]
+    @test Toeplitz(A) == Toeplitz([1.,3.], [1.,2.])
+    @test Toeplitz{Float64}(A) == Toeplitz([1.,3.], [1.,2.])
+    @test Matrix(SymmetricToeplitz(A)) == Matrix(SymmetricToeplitz{Float64}(A)) ==
+                Matrix(Toeplitz(Symmetric(A))) == Matrix(Symmetric(Toeplitz(A))) == [1. 2.; 2. 1.]
+    @test Matrix(Circulant(A)) == [1 3; 3 1]
 
-@test TriangularToeplitz(A, :U) == TriangularToeplitz{Float64}(A, :U) == Toeplitz(UpperTriangular(A)) == UpperTriangular(Toeplitz(A))
-@test TriangularToeplitz(A, :L) == TriangularToeplitz{Float64}(A, :L) == Toeplitz(LowerTriangular(A)) == LowerTriangular(Toeplitz(A))
+    @test TriangularToeplitz(A, :U) == TriangularToeplitz{Float64}(A, :U) == Toeplitz(UpperTriangular(A)) == UpperTriangular(Toeplitz(A))
+    @test TriangularToeplitz(A, :L) == TriangularToeplitz{Float64}(A, :L) == Toeplitz(LowerTriangular(A)) == LowerTriangular(Toeplitz(A))
 
-@test Matrix(Hankel(A)) == Matrix(Hankel{Float64}(A)) == [1.0 3; 3 4]
+    @test Matrix(Hankel(A)) == Matrix(Hankel{Float64}(A)) == [1.0 3; 3 4]
 
-# Constructors should be projections
-@test Toeplitz(Toeplitz(A)) == Toeplitz(A)
-@test SymmetricToeplitz(SymmetricToeplitz(A)) == SymmetricToeplitz(A)
-@test Circulant(Circulant(A)) == Circulant(A)
-@test TriangularToeplitz(TriangularToeplitz(A, :U), :U) == TriangularToeplitz(A, :U)
-@test TriangularToeplitz(TriangularToeplitz(A, :L), :L) == TriangularToeplitz(A, :L)
-@test Hankel(Hankel(A)) == Hankel(A)
+    # Constructors should be projections
+    @test Toeplitz(Toeplitz(A)) == Toeplitz(A)
+    @test SymmetricToeplitz(SymmetricToeplitz(A)) == SymmetricToeplitz(A)
+    @test Circulant(Circulant(A)) == Circulant(A)
+    @test TriangularToeplitz(TriangularToeplitz(A, :U), :U) == TriangularToeplitz(A, :U)
+    @test TriangularToeplitz(TriangularToeplitz(A, :L), :L) == TriangularToeplitz(A, :L)
+    @test Hankel(Hankel(A)) == Hankel(A)
+end
