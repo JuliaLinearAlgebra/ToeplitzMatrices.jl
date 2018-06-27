@@ -561,6 +561,8 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
                               1 0 0 0 0]
  We represent the Hankel matrix by wrapping the corresponding Toeplitz matrix.=#
 
+
+# Hankel Matrix, use _Hankel as Hankel(::Toeplitz) should project to Hankel
 function _Hankel end
 
 # Hankel Matrix
@@ -593,6 +595,7 @@ convert(::Type{AbstractArray{T}}, A::Hankel) where {T<:Number} = convert(Hankel{
 convert(::Type{AbstractMatrix{T}}, A::Hankel{T}) where {T<:Number} = A
 convert(::Type{AbstractMatrix{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
 convert(::Type{Hankel{T}}, A::Hankel) where {T<:Number} = _Hankel(convert(Toeplitz{T}, A.T))
+
 
 
 # Size

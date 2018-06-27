@@ -97,9 +97,9 @@ end
 
         Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:ns-1))
         Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:nl-1))
-        @test Hs * xs[:,1] ≈ Matrix(Hs) * xs[:,1]
-        @test Hs * xs ≈ Matrix(Hs) * xs
-        @test Hl * xl ≈ Matrix(Hl) * xl
+        @test Hs * xs[:,1] ≈ full(Hs) * xs[:,1]
+        @test Hs * xs ≈ full(Hs) * xs
+        @test Hl * xl ≈ full(Hl) * xl
     end
 
     @testset "Complex square" begin
@@ -125,9 +125,22 @@ end
     @testset "Complex rectangular" begin
         Hs = Hankel(complex(0.9.^(ns-1:-1:0)), complex(0.4.^(0:nl-1)))
         Hl = Hankel(complex(0.9.^(nl-1:-1:0)), complex(0.4.^(0:ns-1)))
-        @test Hs * xl[:,1] ≈ Matrix(Hs) * xl[:,1]
-        @test Hs * xl ≈ Matrix(Hs) * xl
-        @test Hl * xs ≈ Matrix(Hl) * xs
+        @test Hs * xl[:,1] ≈ full(Hs) * xl[:,1]
+        @test Hs * xl ≈ full(Hs) * xl
+        @test Hl * xs ≈ full(Hl) * xs
+    end
+
+    @testset "Convert" begin
+        H = Hankel([1.0,2,3,4,5],[5.0,6,7,8,0])
+        @test Hankel(H) == Hankel{Float64}(H) == H
+        @test convert(Hankel,H) == convert(Hankel{Float64},H) ==
+                convert(AbstractArray,H) == convert(AbstractArray{Float64},H) == H
+
+        A = [1.0 2; 3 4]
+        @test Hankel(A) == [1 3; 3 4]
+        T = Toeplitz([1.0,2,3,4,5],[1.0,6,7,8,0])
+        @test Hankel(T) == Hankel([1.0,2,3,4,5],[5.0,4,3,2,1])
+        @test Hankel(T) ≠ ToeplitzMatrices._Hankel(T)
     end
 end
 
