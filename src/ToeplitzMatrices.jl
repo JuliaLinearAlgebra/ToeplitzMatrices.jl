@@ -1,25 +1,31 @@
 __precompile__(true)
 
 module ToeplitzMatrices
-using Compat, StatsBase
+using Compat, StatsBase, Compat.LinearAlgebra
+
+
+import Base: convert, *, \, getindex, print_matrix, size, full, Matrix
+import Compat.LinearAlgebra: BlasReal, DimensionMismatch, tril, triu, inv
+import Compat: copyto!
+
 if VERSION < v"0.7-"
     using Base.FFTW
     using Base.FFTW: Plan
+    const mul! = Base.A_mul_B!
+    const ldiv! = Base.A_ldiv_B!
+    const rmul! = scale!
 else
     using FFTW
     using FFTW: Plan
+    import LinearAlgebra: mul!, ldiv!
+    flipdim(A, d) = reverse(A, dims=d)
 end
-
-
-using Base.LinAlg: BlasReal, DimensionMismatch
-
-include("iterativeLinearSolvers.jl")
-
-import Base: *, \, full, getindex, print_matrix, size, tril, triu, inv, A_mul_B!, Ac_mul_B,
-    A_ldiv_B!, convert
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
        chan, strang
+
+
+include("iterativeLinearSolvers.jl")
 
 # Abstract
 abstract type AbstractToeplitz{T<:Number} <: AbstractMatrix{T} end
@@ -27,15 +33,13 @@ abstract type AbstractToeplitz{T<:Number} <: AbstractMatrix{T} end
 size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
 getindex(A::AbstractToeplitz, i::Integer) = A[mod(i, size(A,1)), div(i, size(A,1)) + 1]
 
-
-convert(::Type{Matrix}, S::AbstractToeplitz) = full(S)
 convert(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
 convert(::Type{AbstractArray{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
 
 # Convert an abstract Toeplitz matrix to a full matrix
-function full(A::AbstractToeplitz{T}) where T
+function Matrix(A::AbstractToeplitz{T}) where T
     m, n = size(A)
-    Af = Matrix{T}(m, n)
+    Af = Matrix{T}(undef, m, n)
     for j = 1:n
         for i = 1:m
             Af[i,j] = A[i,j]
@@ -44,9 +48,11 @@ function full(A::AbstractToeplitz{T}) where T
     return Af
 end
 
+convert(::Type{Matrix}, A::AbstractToeplitz) = Matrix(A)
+@deprecate full(A::AbstractToeplitz) Matrix(A)
+
 # Fast application of a general Toeplitz matrix to a column vector via FFT
-function A_mul_B!(α::T, A::AbstractToeplitz{T}, x::StridedVector, β::T,
-      y::StridedVector{T}) where T
+function mul!(y::StridedVector{T}, A::AbstractToeplitz{T}, x::StridedVector, α::T, β::T) where T
     m = size(A,1)
     n = size(A,2)
     N = length(A.vcvr_dft)
@@ -61,7 +67,7 @@ function A_mul_B!(α::T, A::AbstractToeplitz{T}, x::StridedVector, β::T,
     if iszero(β)
         fill!(y, 0)
     else
-        scale!(y, β)
+        rmul!(y, β)
     end
 
     @inbounds begin
@@ -83,7 +89,7 @@ function A_mul_B!(α::T, A::AbstractToeplitz{T}, x::StridedVector, β::T,
         for i in n+1:N
             A.tmp[i] = 0
         end
-        A_mul_B!(A.tmp, A.dft, A.tmp)
+        mul!(A.tmp, A.dft, A.tmp)
         for i = 1:N
             A.tmp[i] *= A.vcvr_dft[i]
         end
@@ -96,29 +102,28 @@ function A_mul_B!(α::T, A::AbstractToeplitz{T}, x::StridedVector, β::T,
 end
 
 # Application of a general Toeplitz matrix to a general matrix
-function A_mul_B!(α::T, A::AbstractToeplitz{T}, B::StridedMatrix, β::T,
-    C::StridedMatrix{T}) where T
+function mul!(C::StridedMatrix{T}, A::AbstractToeplitz{T}, B::StridedMatrix, α::T, β::T) where T
     l = size(B, 2)
     if size(C, 2) != l
         throw(DimensionMismatch("input and output matrices must have same number of columns"))
     end
     for j = 1:l
-        A_mul_B!(α, A, view(B, :, j), β, view(C, :, j))
+        mul!(view(C, :, j), A, view(B, :, j), α, β)
     end
     return C
 end
 
-# Translate three to five argument A_mul_B!
-A_mul_B!(y::StridedVecOrMat, A::AbstractToeplitz, x::StridedVecOrMat) =
-    A_mul_B!(one(eltype(A)), A, x, zero(eltype(A)), y)
+# Translate three to five argument mul!
+mul!(y::StridedVecOrMat, A::AbstractToeplitz, x::StridedVecOrMat) =
+    mul!(y, A, x, one(eltype(A)), zero(eltype(A)))
 
 # Left division of a general matrix B by a general Toeplitz matrix A, i.e. the solution x of Ax=B.
-function A_ldiv_B!(A::AbstractToeplitz, B::StridedMatrix)
+function ldiv!(A::AbstractToeplitz, B::StridedMatrix)
     if size(A, 1) != size(A, 2)
         error("Division: Rectangular case is not supported.")
     end
     for j = 1:size(B, 2)
-        A_ldiv_B!(A, view(B, :, j))
+        ldiv!(A, view(B, :, j))
     end
     return B
 end
@@ -129,8 +134,8 @@ function (\)(A::AbstractToeplitz, b::AbstractVector)
         throw(ArgumentError("promotion of Toeplitz matrices not handled yet"))
     end
     bb = similar(b, T)
-    copy!(bb, b)
-    A_ldiv_B!(A, bb)
+    copyto!(bb, b)
+    ldiv!(A, bb)
 end
 
 # General Toeplitz matrix
@@ -151,8 +156,8 @@ function Toeplitz{T}(vc::Vector, vr::Vector) where {T}
 
     vcp, vrp = Vector{T}(vc), Vector{T}(vr)
 
-    tmp = Vector{promote_type(T, Complex{Float32})}(m + n - 1)
-    copy!(tmp, vcp)
+    tmp = Vector{promote_type(T, Complex{Float32})}(undef, m + n - 1)
+    copyto!(tmp, vcp)
     for i = 1:n - 1
         tmp[i + m] = vrp[n - i + 1]
     end
@@ -228,8 +233,8 @@ function triu(A::Toeplitz, k = 0)
     return Al
 end
 
-A_ldiv_B!(A::Toeplitz, b::StridedVector) =
-    copy!(b, IterativeLinearSolvers.cgs(A, zeros(eltype(b), length(b)), b, strang(A), 1000, 100eps())[1])
+ldiv!(A::Toeplitz, b::StridedVector) =
+    copyto!(b, IterativeLinearSolvers.cgs(A, zeros(eltype(b), length(b)), b, strang(A), 1000, 100eps())[1])
 
 # Symmetric
 mutable struct SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
@@ -269,8 +274,8 @@ end
 
 getindex(A::SymmetricToeplitz, i::Integer, j::Integer) = A.vc[abs(i - j) + 1]
 
-A_ldiv_B!(A::SymmetricToeplitz, b::StridedVector) =
-    copy!(b, IterativeLinearSolvers.cg(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
+ldiv!(A::SymmetricToeplitz, b::StridedVector) =
+    copyto!(b, IterativeLinearSolvers.cg(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
 
 # Circulant
 mutable struct Circulant{T<:Number,S<:Number} <: AbstractToeplitz{T}
@@ -329,7 +334,7 @@ function Ac_mul_B(A::Circulant, B::Circulant)
     return Circulant(Vector{T}(tmp2), tmp, Vector{T}(A.tmp), eltype(A) == T ? A.dft : plan_fft!(tmp2))
 end
 
-function A_ldiv_B!(C::Circulant{T}, b::AbstractVector{T}) where T
+function ldiv!(C::Circulant{T}, b::AbstractVector{T}) where T
     n = length(b)
     size(C, 1) == n || throw(DimensionMismatch(""))
     for i = 1:n
@@ -357,7 +362,7 @@ end
 
 function strang(A::AbstractMatrix{T}) where T
     n = size(A, 1)
-    v = Vector{T}(n)
+    v = Vector{T}(undef, n)
     n2 = div(n, 2)
     for i = 1:n
         if i <= n2 + 1
@@ -370,7 +375,7 @@ function strang(A::AbstractMatrix{T}) where T
 end
 function chan(A::AbstractMatrix{T}) where T
     n = size(A, 1)
-    v = Vector{T}(n)
+    v = Vector{T}(undef, n)
     for i = 1:n
         v[i] = ((n - i + 1) * A[i, 1] + (i - 1) * A[1, min(n - i + 2, n)]) / n
     end
@@ -391,7 +396,7 @@ function TriangularToeplitz{T}(vep::Vector{T}, uplo::Symbol) where T
 
     tmp = zeros(promote_type(T, Complex{Float32}), 2n - 1)
     if uplo == :L
-        copy!(tmp, vep)
+        copyto!(tmp, vep)
     else
         tmp[1] = vep[1]
         for i = 1:n - 1
@@ -492,9 +497,9 @@ function inv(A::TriangularToeplitz{T}) where T
         (Toeplitz(A.ve[nd2 + 1:end], A.ve[nd2 + 1:-1:2]) * a1))], symbol(A.uplo))
 end
 
-# A_ldiv_B!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
-A_ldiv_B!(A::TriangularToeplitz, b::StridedVector) =
-    copy!(b, IterativeLinearSolvers.cgs(A, zeros(eltype(b), length(b)), b, chan(A), 1000, 100eps())[1])
+# ldiv!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
+ldiv!(A::TriangularToeplitz, b::StridedVector) =
+    copyto!(b, IterativeLinearSolvers.cgs(A, zeros(eltype(b), length(b)), b, chan(A), 1000, 100eps())[1])
 
 # extend levinson
 StatsBase.levinson!(x::StridedVector, A::SymmetricToeplitz, b::StridedVector) =
@@ -556,11 +561,14 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
                               1 0 0 0 0]
  We represent the Hankel matrix by wrapping the corresponding Toeplitz matrix.=#
 
+
 # Hankel Matrix, use _Hankel as Hankel(::Toeplitz) should project to Hankel
 function _Hankel end
+
+# Hankel Matrix
 mutable struct Hankel{TT<:Number} <: AbstractMatrix{TT}
     T::Toeplitz{TT}
-    _Hankel(T::Toeplitz{TT}) where TT<:Number = new{TT}(T)
+    global _Hankel(T::Toeplitz{TT}) where TT<:Number = new{TT}(T)
 end
 
 # Ctor: vc is the leftmost column and vr is the bottom row.
@@ -582,10 +590,11 @@ Hankel(A::AbstractMatrix) = Hankel(A[:,1], A[end,:])
 convert(::Type{Array}, A::Hankel) = convert(Matrix, A)
 convert(::Type{Matrix}, A::Hankel) = full(A)
 
-convert(::Type{AbstractArray{T}}, A::Hankel) where {T} = convert(Hankel{T}, A)
-convert(::Type{AbstractMatrix{T}}, A::Hankel) where {T} = convert(Hankel{T}, A)
-convert(::Type{Hankel{T}}, A::Hankel{T}) where {T} = A
-convert(::Type{Hankel{T}}, A::Hankel) where {T} = _Hankel(convert(Toeplitz{T}, A.T))
+convert(::Type{AbstractArray{T}}, A::Hankel{T}) where {T<:Number} = A
+convert(::Type{AbstractArray{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
+convert(::Type{AbstractMatrix{T}}, A::Hankel{T}) where {T<:Number} = A
+convert(::Type{AbstractMatrix{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
+convert(::Type{Hankel{T}}, A::Hankel) where {T<:Number} = _Hankel(convert(Toeplitz{T}, A.T))
 
 
 
@@ -595,7 +604,7 @@ size(H::Hankel,k...) = size(H.T,k...)
 # Full version of a Hankel matrix
 function full(A::Hankel{T}) where T
     m, n = size(A)
-    Af = Matrix{T}(m, n)
+    Af = Matrix{T}(undef, m, n)
     for j = 1:n
         for i = 1:m
             Af[i,j] = A[i,j]
@@ -607,14 +616,11 @@ end
 # Retrieve an entry by two indices
 getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
 
-# Retrieve an entry by one index
-getindex(H::Hankel, i::Integer) = H[mod(i, size(H,1)), div(i, size(H,1)) + 1]
-
 # Fast application of a general Hankel matrix to a general vector
-*(A::Hankel,b::AbstractVector) = A.T * reverse(b)
+*(A::Hankel, b::AbstractVector) = A.T * reverse(b)
 
 # Fast application of a general Hankel matrix to a general matrix
-*(A::Hankel,B::AbstractMatrix) = A.T * flipdim(B, 1)
+*(A::Hankel, B::AbstractMatrix) = A.T * flipdim(B, 1)
 ## BigFloat support
 
 (*)(A::Toeplitz{T}, b::Vector) where {T<:BigFloat} = irfft(
