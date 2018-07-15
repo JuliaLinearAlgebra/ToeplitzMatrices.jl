@@ -8,9 +8,6 @@ end
 ns = 101
 nl = 2000
 
-ns = 2
-nl = 3
-
 xs = randn(ns, 5)
 xl = randn(nl, 5)
 
