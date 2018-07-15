@@ -31,7 +31,9 @@ include("iterativeLinearSolvers.jl")
 abstract type AbstractToeplitz{T<:Number} <: AbstractMatrix{T} end
 
 size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
-getindex(A::AbstractToeplitz, i::Integer) = A[mod(i, size(A,1)), div(i, size(A,1)) + 1]
+function getindex(A::AbstractToeplitz, i::Integer)
+    return A[mod(i - 1, size(A, 1)) + 1, div(i - 1, size(A, 1)) + 1]
+end
 
 convert(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
 convert(::Type{AbstractArray{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)

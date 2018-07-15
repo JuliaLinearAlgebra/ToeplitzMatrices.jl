@@ -8,6 +8,9 @@ end
 ns = 101
 nl = 2000
 
+ns = 2
+nl = 3
+
 xs = randn(ns, 5)
 xl = randn(nl, 5)
 
@@ -39,6 +42,8 @@ xl = randn(nl, 5)
 
         @test As * xs ≈ Matrix(As) * xs
         @test Al * xl ≈ Matrix(Al) * xl
+        @test [As[n] for n in 1:length(As)] == vec(As)
+        @test [Al[n] for n in 1:length(Al)] == vec(Al)
         @test ldiv!(As, Compat.LinearAlgebra.copy_oftype(xs, eltype(As))) ≈ Matrix(As) \ xs
         @test ldiv!(Al, Compat.LinearAlgebra.copy_oftype(xl, eltype(Al))) ≈ Matrix(Al) \ xl
     end
