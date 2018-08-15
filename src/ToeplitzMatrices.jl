@@ -4,7 +4,7 @@ module ToeplitzMatrices
 using Compat, StatsBase, Compat.LinearAlgebra
 
 
-import Base: convert, *, \, getindex, print_matrix, size, full, Matrix
+import Base: convert, *, \, getindex, print_matrix, size, Matrix
 import Compat.LinearAlgebra: BlasReal, DimensionMismatch, tril, triu, inv
 import Compat: copyto!
 
@@ -51,7 +51,6 @@ function Matrix(A::AbstractToeplitz{T}) where T
 end
 
 convert(::Type{Matrix}, A::AbstractToeplitz) = Matrix(A)
-@deprecate full(A::AbstractToeplitz) Matrix(A)
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
 function mul!(y::StridedVector{T}, A::AbstractToeplitz{T}, x::StridedVector, α::T, β::T) where T
@@ -462,7 +461,7 @@ function (*)(A::TriangularToeplitz, B::TriangularToeplitz)
     if A.uplo == B.uplo
         return TriangularToeplitz(conv(A.ve, B.ve)[1:n], A.uplo)
     end
-    return Triangular(full(A), A.uplo) * Triangular(full(B), B.uplo)
+    return Triangular(Matrix(A), A.uplo) * Triangular(Matrix(B), B.uplo)
 end
 
 Ac_mul_B(A::TriangularToeplitz, b::AbstractVector) =
@@ -590,7 +589,16 @@ Hankel{T}(A::AbstractMatrix) where T = Hankel{T}(A[:,1], A[end,:])
 Hankel(A::AbstractMatrix) = Hankel(A[:,1], A[end,:])
 
 convert(::Type{Array}, A::Hankel) = convert(Matrix, A)
-convert(::Type{Matrix}, A::Hankel) = full(A)
+function convert(::Type{Matrix}, A::Hankel)
+    m, n = size(A)
+    Af = Matrix{T}(undef, m, n)
+    for j = 1:n
+        for i = 1:m
+            Af[i,j] = A[i,j]
+        end
+    end
+    return Af
+end
 
 convert(::Type{AbstractArray{T}}, A::Hankel{T}) where {T<:Number} = A
 convert(::Type{AbstractArray{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
@@ -603,17 +611,6 @@ convert(::Type{Hankel{T}}, A::Hankel) where {T<:Number} = _Hankel(convert(Toepli
 # Size
 size(H::Hankel,k...) = size(H.T,k...)
 
-# Full version of a Hankel matrix
-function full(A::Hankel{T}) where T
-    m, n = size(A)
-    Af = Matrix{T}(undef, m, n)
-    for j = 1:n
-        for i = 1:m
-            Af[i,j] = A[i,j]
-        end
-    end
-    return Af
-end
 
 # Retrieve an entry by two indices
 getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
@@ -635,5 +632,11 @@ getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
     ]),
     2 * length(b) - 1
 )[1:length(b)]
+
+
+if VERSION ≤ v"0.7"
+    @deprecate Base.full(A::AbstractToeplitz) Matrix(A)
+    @deprecate Base.full(A::Hankel) Matrix(A)
+end
 
 end #module
