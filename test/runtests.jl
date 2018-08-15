@@ -99,9 +99,9 @@ end
 
         Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:ns-1))
         Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:nl-1))
-        @test Hs * xs[:,1] ≈ full(Hs) * xs[:,1]
-        @test Hs * xs ≈ full(Hs) * xs
-        @test Hl * xl ≈ full(Hl) * xl
+        @test Hs * xs[:,1] ≈ Matrix(Hs) * xs[:,1]
+        @test Hs * xs ≈ Matrix(Hs) * xs
+        @test Hl * xl ≈ Matrix(Hl) * xl
     end
 
     @testset "Complex square" begin
@@ -127,9 +127,9 @@ end
     @testset "Complex rectangular" begin
         Hs = Hankel(complex(0.9.^(ns-1:-1:0)), complex(0.4.^(0:nl-1)))
         Hl = Hankel(complex(0.9.^(nl-1:-1:0)), complex(0.4.^(0:ns-1)))
-        @test Hs * xl[:,1] ≈ full(Hs) * xl[:,1]
-        @test Hs * xl ≈ full(Hs) * xl
-        @test Hl * xs ≈ full(Hl) * xs
+        @test Hs * xl[:,1] ≈ Matrix(Hs) * xl[:,1]
+        @test Hs * xl ≈ Matrix(Hs) * xl
+        @test Hl * xs ≈ Matrix(Hl) * xs
     end
 
     @testset "Convert" begin

@@ -589,7 +589,8 @@ Hankel{T}(A::AbstractMatrix) where T = Hankel{T}(A[:,1], A[end,:])
 Hankel(A::AbstractMatrix) = Hankel(A[:,1], A[end,:])
 
 convert(::Type{Array}, A::Hankel) = convert(Matrix, A)
-function convert(::Type{Matrix}, A::Hankel)
+convert(::Type{Matrix}, A::Hankel{T}) where T = convert(Matrix{T}, A)
+function convert(::Type{Matrix{T}}, A::Hankel) where T
     m, n = size(A)
     Af = Matrix{T}(undef, m, n)
     for j = 1:n
@@ -635,8 +636,9 @@ getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
 
 
 if VERSION ≤ v"0.7"
-    @deprecate Base.full(A::AbstractToeplitz) Matrix(A)
-    @deprecate Base.full(A::Hankel) Matrix(A)
+    import Base: full
+    @deprecate full(A::AbstractToeplitz) Matrix(A)
+    @deprecate full(A::Hankel) Matrix(A)
 end
 
 end #module
