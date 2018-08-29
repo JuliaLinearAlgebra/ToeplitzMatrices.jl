@@ -222,9 +222,10 @@ end
     @test Hankel(Hankel(A)) == Hankel(A)
 end
 
+if VERSION ≥ v"0.7"
 @testset "Cholesky" begin
     T = SymmetricToeplitz(exp.(-0.5 .* range(0, stop=5, length=100)))
     @test cholesky(T).U ≈ cholesky(Matrix(T)).U
     @test cholesky(T).L ≈ cholesky(Matrix(T)).L
 end
-
+end
