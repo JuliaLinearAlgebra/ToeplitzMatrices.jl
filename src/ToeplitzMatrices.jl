@@ -5,7 +5,8 @@ using Compat, StatsBase, Compat.LinearAlgebra
 
 
 import Base: convert, *, \, getindex, print_matrix, size, Matrix
-import Compat.LinearAlgebra: BlasReal, DimensionMismatch, tril, triu, inv
+import Compat.LinearAlgebra: BlasReal, DimensionMismatch, tril, triu, inv,
+    cholesky, cholesky!
 import Compat: copyto!
 
 if VERSION < v"0.7-"
@@ -639,6 +640,38 @@ if VERSION ≤ v"0.7"
     import Base: full
     @deprecate full(A::AbstractToeplitz) Matrix(A)
     @deprecate full(A::Hankel) Matrix(A)
+end
+
+if VERSION ≥ v"0.7"
+
+function cholesky!(L::AbstractMatrix, T::SymmetricToeplitz)
+
+    L[:, 1] .= T.vc ./ sqrt(T.vc[1])
+    v = copy(L[:, 1])
+    N = size(T, 1)
+
+    @inbounds for n in 1:N-1
+        sinθn = v[n + 1] / L[n, n]
+        cosθn = sqrt(1 - sinθn^2)
+
+        for n′ in n+1:N
+            v[n′] = (v[n′] - sinθn * L[n′ - 1, n]) / cosθn
+            L[n′, n + 1] = -sinθn * v[n′] + cosθn * L[n′ - 1, n]
+        end
+    end
+    return Cholesky(L, 'L', 0)
+end
+
+"""
+    cholesky(T::SymmetricToeplitz)
+
+Implementation of the Bareiss Algorhithm, adapted from "On the stability of the Bareiss and
+related Toeplitz factorization algorithms", Bojanczyk et al, 1993.
+"""
+function cholesky(T::SymmetricToeplitz)
+    return cholesky!(Matrix{eltype(T)}(undef, size(T, 1), size(T, 1)), T)
+end
+
 end
 
 end #module
