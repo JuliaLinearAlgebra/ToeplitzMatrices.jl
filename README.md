@@ -72,3 +72,25 @@ where uplo is either `:L` or `:U` and `ve` are the rows or columns, respectively
     2.0  3.0  4.0
     3.0  4.0  5.0 ]
  ```
+
+
+ # Circulant
+ 
+ A circulant matrix is a special case of a Toeplitz matrix with periodic end conditions.
+ It can be constructed using
+ 
+ ```julia
+ Circulant(vc)
+ ```
+where `vc` is a vector with the entries for the first column.
+For example:
+```julia
+ Circulant(1:3)
+ ```
+ is a sparse representation of the matrix
+
+ ```julia
+ [  1.0  3.0  2.0
+    2.0  1.0  3.0
+    3.0  2.0  1.0 ]
+ ```
