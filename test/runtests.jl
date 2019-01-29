@@ -228,4 +228,27 @@ if VERSION ≥ v"0.7"
     @test cholesky(T).U ≈ cholesky(Matrix(T)).U
     @test cholesky(T).L ≈ cholesky(Matrix(T)).L
 end
+@testset "Circulant" begin
+    C1 = Circulant(rand(5))
+    C2 = Circulant(rand(5))
+    M1 = Matrix(C1)
+    M2 = Matrix(C2)
+
+    C = C1*C2
+    @test C isa Circulant
+    @test C ≈ M1*M2
+    C = C1-C2
+    @test C isa Circulant
+    @test C ≈ M1-M2
+    C = C1+C2
+    @test C isa Circulant
+    @test C ≈ M1+M2
+    C = 2C1
+    @test C isa Circulant
+    @test C ≈ 2M1
+    C = C1*2
+    @test C isa Circulant
+    @test C ≈ M1*2
+end
+
 end
