@@ -5,7 +5,7 @@ using Compat, StatsBase, Compat.LinearAlgebra
 
 
 import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, similar, sqrt
-import Compat.LinearAlgebra: BlasReal, DimensionMismatch, tril, triu, inv,
+import Compat.LinearAlgebra: BlasReal, DimensionMismatch, tril, triu, inv, pinv, eigvals,
     cholesky, cholesky!
 import Compat: copyto!
 
@@ -391,7 +391,7 @@ function pinv(C::Circulant{T}, tolerance::T = eps(T)) where T<:Real
     return Circulant(real(C.dft \ vdft), copy(vdft), similar(vdft), C.dft)
 end
 
-function pinv(C::Circulant, tolerance::Real = eps(real(T)))
+function pinv(C::Circulant{T}, tolerance::Real = eps(real(T))) where T<:Number
     vdft = copy(C.vcvr_dft)
     vdft[abs.(vdft).<tolerance] .= Inf
     vdft .= 1 ./ vdft
@@ -403,6 +403,10 @@ sqrt(C::Circulant{T}) where T<:Real = Circulant(real(ifft(sqrt.(C.vcvr_dft))))
 sqrt(C::Circulant) = Circulant(ifft(sqrt.(C.vcvr_dft)))
 copy(C::Circulant) = Circulant(copy(C.vc))
 similar(C::Circulant) = Circulant(similar(C.vc))
+function copyto!(dest::Circulant{U,S}, src::Circulant{V,S}) where {U,V,S}
+    copyto!(dest.vc, src.vc)
+    copyto!(dest.vcvr_dft, src.vcvr_dft)
+end
 
 function (+)(C1::Circulant, C2::Circulant)
     @boundscheck (size(C1)==size(C2)) || throw(BoundsError())

@@ -5,6 +5,8 @@ if VERSION < v"0.7-"
     const ldiv! = A_ldiv_B!
 end
 
+using Compat: copyto!
+
 ns = 101
 nl = 2000
 
@@ -222,33 +224,88 @@ end
     @test Hankel(Hankel(A)) == Hankel(A)
 end
 
+@testset "Circulant mathematics" begin
+    C1 = Circulant(rand(5))
+    C2 = Circulant(rand(5))
+    C3 = Circulant{ComplexF64}(rand(5))
+    C4 = Circulant(ones(5))
+    C5 = Circulant{ComplexF64}(ones(5))
+    M1 = Matrix(C1)
+    M2 = Matrix(C2)
+    M3 = Matrix(C3)
+    M4 = Matrix(C4)
+    M5 = Matrix(C5)
+
+    C = C1*C2
+    @test C isa Circulant
+    @test C ≈ M1*M2
+
+    C = C1-C2
+    @test C isa Circulant
+    @test C ≈ M1-M2
+
+    C = C1+C2
+    @test C isa Circulant
+    @test C ≈ M1+M2
+
+    C = 2C1
+    @test C isa Circulant
+    @test C ≈ 2M1
+
+    C = C1*2
+    @test C isa Circulant
+    @test C ≈ M1*2
+
+    C = -C1
+    @test C isa Circulant
+    @test C ≈ -M1
+
+    C = inv(C1)
+    @test C isa Circulant
+    @test C ≈ inv(M1)
+    C = inv(C3)
+    @test C isa Circulant
+    @test C ≈ inv(M3)
+
+    C = pinv(C1)
+    @test C isa Circulant
+    @test C ≈ pinv(M1)
+    C = pinv(C3)
+    @test C isa Circulant
+    @test C ≈ pinv(M3)
+    C = pinv(C4)
+    @test C isa Circulant
+    @test C ≈ pinv(M4)
+    C = pinv(C5)
+    @test C isa Circulant
+    @test C ≈ pinv(M5)
+
+    C = sqrt(C1)
+    @test C isa Circulant
+    @test C*C ≈ C1
+    C = sqrt(C3)
+    @test C isa Circulant
+    @test C*C ≈ C3
+
+    C = copy(C1)
+    @test C isa Circulant
+    C2 = similar(C1)
+    copyto!(C2, C1)
+    @test C1 ≈ C2
+
+    v1 = eigvals(C1)
+    v2 = eigvals(M1)
+    for v1i in v1
+        @test minimum(abs.(v1i .- v2)) < sqrt(eps(Float64))
+    end
+end
+
 if VERSION ≥ v"0.7"
 @testset "Cholesky" begin
     T = SymmetricToeplitz(exp.(-0.5 .* range(0, stop=5, length=100)))
     @test cholesky(T).U ≈ cholesky(Matrix(T)).U
     @test cholesky(T).L ≈ cholesky(Matrix(T)).L
 end
-@testset "Circulant" begin
-    C1 = Circulant(rand(5))
-    C2 = Circulant(rand(5))
-    M1 = Matrix(C1)
-    M2 = Matrix(C2)
 
-    C = C1*C2
-    @test C isa Circulant
-    @test C ≈ M1*M2
-    C = C1-C2
-    @test C isa Circulant
-    @test C ≈ M1-M2
-    C = C1+C2
-    @test C isa Circulant
-    @test C ≈ M1+M2
-    C = 2C1
-    @test C isa Circulant
-    @test C ≈ 2M1
-    C = C1*2
-    @test C isa Circulant
-    @test C ≈ M1*2
-end
 
 end
