@@ -102,6 +102,10 @@ function mul!(y::StridedVector{T}, A::AbstractToeplitz{T}, x::StridedVector, α:
         return y
     end
 end
+# Avoid ambiguity error
+mul!(y::StridedVector{T}, A::AbstractToeplitz{T}, x::StridedVector, α::T, β::T) where {T<:Number} =
+    invoke(mul!, Tuple{StridedVector{T},ToeplitzMatrices.AbstractToeplitz{T},StridedVector,T,T} where T,
+        y, A, x, α, β)
 
 # Application of a general Toeplitz matrix to a general matrix
 function mul!(C::StridedMatrix{T}, A::AbstractToeplitz{T}, B::StridedMatrix, α::T, β::T) where T
@@ -114,6 +118,10 @@ function mul!(C::StridedMatrix{T}, A::AbstractToeplitz{T}, B::StridedMatrix, α:
     end
     return C
 end
+# Avoid ambiguity error
+mul!(C::StridedMatrix{T}, A::AbstractToeplitz{T}, B::StridedMatrix, α::T, β::T) where {T<:Number} =
+    invoke(mul!, Tuple{StridedMatrix{T},ToeplitzMatrices.AbstractToeplitz{T},StridedMatrix,T,T} where T,
+        C, A, B, α, β)
 
 # Translate three to five argument mul!
 mul!(y::StridedVecOrMat, A::AbstractToeplitz, x::StridedVecOrMat) =
