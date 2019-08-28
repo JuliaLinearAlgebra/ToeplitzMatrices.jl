@@ -1,26 +1,14 @@
-__precompile__(true)
-
 module ToeplitzMatrices
-using Compat, StatsBase, Compat.LinearAlgebra
+using StatsBase
 
 
-import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, similar, sqrt
-import Compat.LinearAlgebra: BlasReal, DimensionMismatch, tril, triu, inv, pinv, eigvals,
-    cholesky, cholesky!
-import Compat: copyto!
+import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, similar, sqrt, copyto!
+import LinearAlgebra: BlasReal, Cholesky, DimensionMismatch, cholesky, cholesky!, eigvals, inv, ldiv!,
+    mul!, pinv, rmul!, tril, triu
 
-if VERSION < v"0.7-"
-    using Base.FFTW
-    using Base.FFTW: Plan
-    const mul! = Base.A_mul_B!
-    const ldiv! = Base.A_ldiv_B!
-    const rmul! = scale!
-else
-    using FFTW
-    using FFTW: Plan
-    import LinearAlgebra: mul!, ldiv!, eigvals, pinv
-    flipdim(A, d) = reverse(A, dims=d)
-end
+using FFTW
+using FFTW: Plan
+flipdim(A, d) = reverse(A, dims=d)
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
        chan, strang
@@ -688,15 +676,6 @@ getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
     2 * length(b) - 1
 )[1:length(b)]
 
-
-if VERSION ≤ v"0.7"
-    import Base: full
-    @deprecate full(A::AbstractToeplitz) Matrix(A)
-    @deprecate full(A::Hankel) Matrix(A)
-end
-
-if VERSION ≥ v"0.7"
-
 function cholesky!(L::AbstractMatrix, T::SymmetricToeplitz)
 
     L[:, 1] .= T.vc ./ sqrt(T.vc[1])
@@ -723,8 +702,6 @@ related Toeplitz factorization algorithms", Bojanczyk et al, 1993.
 """
 function cholesky(T::SymmetricToeplitz)
     return cholesky!(Matrix{eltype(T)}(undef, size(T, 1), size(T, 1)), T)
-end
-
 end
 
 end #module

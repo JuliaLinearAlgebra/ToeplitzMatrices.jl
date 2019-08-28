@@ -1,11 +1,6 @@
-using ToeplitzMatrices, StatsBase, Compat, Compat.LinearAlgebra
-using Compat.Test
+using ToeplitzMatrices, StatsBase, Test, LinearAlgebra
 
-if VERSION < v"0.7-"
-    const ldiv! = A_ldiv_B!
-end
-
-using Compat: copyto!
+using Base: copyto!
 
 ns = 101
 nl = 2000
@@ -43,8 +38,8 @@ xl = randn(nl, 5)
         @test Al * xl ≈ Matrix(Al) * xl
         @test [As[n] for n in 1:length(As)] == vec(As)
         @test [Al[n] for n in 1:length(Al)] == vec(Al)
-        @test ldiv!(As, Compat.LinearAlgebra.copy_oftype(xs, eltype(As))) ≈ Matrix(As) \ xs
-        @test ldiv!(Al, Compat.LinearAlgebra.copy_oftype(xl, eltype(Al))) ≈ Matrix(Al) \ xl
+        @test ldiv!(As, LinearAlgebra.copy_oftype(xs, eltype(As))) ≈ Matrix(As) \ xs
+        @test ldiv!(Al, LinearAlgebra.copy_oftype(xl, eltype(Al))) ≈ Matrix(Al) \ xl
     end
 )
 
@@ -74,9 +69,6 @@ end
     @test ldiv!(Al, copy(xl)) ≈ Matrix(Al) \ xl
     @test StatsBase.levinson(As, xs) ≈ Matrix(As) \ xs
     @test StatsBase.levinson(Ab, xs) ≈ Matrix(Ab) \ xs
-    if !(haskey(ENV, "CI") && VERSION < v"0.6-") # Inlining is off on 0.5 Travis testing which is too slow for this test
-        @test StatsBase.levinson(Al, xl) ≈ Matrix(Al) \ xl
-    end
 end
 
 @testset "Hankel" begin
@@ -300,12 +292,8 @@ end
     end
 end
 
-if VERSION ≥ v"0.7"
 @testset "Cholesky" begin
     T = SymmetricToeplitz(exp.(-0.5 .* range(0, stop=5, length=100)))
     @test cholesky(T).U ≈ cholesky(Matrix(T)).U
     @test cholesky(T).L ≈ cholesky(Matrix(T)).L
-end
-
-
 end
