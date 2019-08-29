@@ -1,13 +1,8 @@
 module IterativeLinearSolvers
-    using Compat, Compat.LinearAlgebra
-    import Compat.LinearAlgebra: Factorization
+    using LinearAlgebra
+    import LinearAlgebra: Factorization
 # Included from https://github.com/andreasnoack/IterativeLinearSolvers.jl
 # Eventually, use IterativeSolvers.jl
-
-if VERSION < v"0.7-"
-    const mul! = Base.A_mul_B!
-    const ldiv! = Base.A_ldiv_B!
-end
 
 Preconditioner{T} = Union{AbstractMatrix{T}, Factorization{T}}
 
@@ -16,7 +11,7 @@ function cg(A::AbstractMatrix{T},
     b::AbstractVector{T},
     M::Preconditioner{T},
     max_it::Integer,
-    tol::Real) where T<:Compat.LinearAlgebra.BlasReal
+    tol::Real) where T<:LinearAlgebra.BlasReal
 #  -- Iterative template routine --
 #     Univ. of Tennessee and Oak Ridge National Laboratory
 #     October 1, 1993
