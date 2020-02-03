@@ -1,6 +1,7 @@
 using ToeplitzMatrices, StatsBase, Test, LinearAlgebra
 
 using Base: copyto!
+using FFTW: fft
 
 ns = 101
 nl = 2000
@@ -255,22 +256,28 @@ end
     C = inv(C1)
     @test C isa Circulant
     @test C ≈ inv(M1)
+    @test fft(C.vc) ≈ C.vcvr_dft
     C = inv(C3)
     @test C isa Circulant
     @test C ≈ inv(M3)
+    @test fft(C.vc) ≈ C.vcvr_dft
 
     C = pinv(C1)
     @test C isa Circulant
     @test C ≈ pinv(M1)
+    @test fft(C.vc) ≈ C.vcvr_dft
     C = pinv(C3)
     @test C isa Circulant
     @test C ≈ pinv(M3)
+    @test fft(C.vc) ≈ C.vcvr_dft
     C = pinv(C4)
     @test C isa Circulant
     @test C ≈ pinv(M4)
+    @test fft(C.vc) ≈ C.vcvr_dft
     C = pinv(C5)
     @test C isa Circulant
     @test C ≈ pinv(M5)
+    @test fft(C.vc) ≈ C.vcvr_dft
 
     C = sqrt(C1)
     @test C isa Circulant

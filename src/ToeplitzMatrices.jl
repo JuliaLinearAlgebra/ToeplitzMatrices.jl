@@ -320,7 +320,8 @@ function Ac_mul_B(A::Circulant{T}, B::Circulant{T}) where T<:Real
     for i = 1:length(tmp)
         tmp[i] = conj(A.vcvr_dft[i]) * B.vcvr_dft[i]
     end
-    return Circulant(real(A.vc)(A.dft \ tmp), tmp, A.tmp, A.dft)
+    c_tmp = copy(tmp)
+    return Circulant(real(A.dft \ tmp), c_tmp, A.tmp, A.dft)
 end
 function Ac_mul_B(A::Circulant, B::Circulant)
     T = promote_type(eltype(A), eltype(B))
@@ -328,8 +329,9 @@ function Ac_mul_B(A::Circulant, B::Circulant)
     for i = 1:length(tmp)
         tmp[i] = conj(A.vcvr_dft[i]) * B.vcvr_dft[i]
     end
+    c_tmp = copy(tmp)
     tmp2 = A.dft \ tmp
-    return Circulant(Vector{T}(tmp2), tmp, Vector{T}(A.tmp), eltype(A) == T ? A.dft : plan_fft!(tmp2))
+    return Circulant(Vector{T}(tmp2), c_tmp, Vector{T}(A.tmp), eltype(A) == T ? A.dft : plan_fft!(tmp2))
 end
 
 function ldiv!(C::Circulant{T}, b::AbstractVector{T}) where T
@@ -351,11 +353,14 @@ end
 
 function inv(C::Circulant{T}) where T<:Real
     vdft = 1 ./ C.vcvr_dft
-    return Circulant(real(C.dft \ vdft), copy(vdft), similar(vdft), C.dft)
+    # Copy the vector because the dft below will overwrite it
+    c_vdft = copy(vdft)
+    return Circulant(real(C.dft \ vdft), c_vdft, similar(vdft), C.dft)
 end
 function inv(C::Circulant)
     vdft = 1 ./ C.vcvr_dft
-    return Circulant(C.dft \ vdft, copy(vdft), similar(vdft), C.dft)
+    c_vdft = copy(vdft)
+    return Circulant(C.dft \ vdft, c_vdft, similar(vdft), C.dft)
 end
 
 function strang(A::AbstractMatrix{T}) where T
@@ -384,14 +389,16 @@ function pinv(C::Circulant{T}, tolerance::T = eps(T)) where T<:Real
     vdft = copy(C.vcvr_dft)
     vdft[abs.(vdft).<tolerance] .= Inf
     vdft .= 1 ./ vdft
-    return Circulant(real(C.dft \ vdft), copy(vdft), similar(vdft), C.dft)
+    c_vdft = copy(vdft)
+    return Circulant(real(C.dft \ vdft), c_vdft, similar(vdft), C.dft)
 end
 
 function pinv(C::Circulant{T}, tolerance::Real = eps(real(T))) where T<:Number
     vdft = copy(C.vcvr_dft)
     vdft[abs.(vdft).<tolerance] .= Inf
     vdft .= 1 ./ vdft
-    return Circulant(C.dft \ vdft, copy(vdft), similar(vdft), C.dft)
+    c_vdft = copy(vdft)
+    return Circulant(C.dft \ vdft, c_vdft, similar(vdft), C.dft)
 end
 
 eigvals(C::Circulant) = copy(C.vcvr_dft)
@@ -415,6 +422,11 @@ function (-)(C1::Circulant, C2::Circulant)
 end
 
 (-)(C::Circulant) = Circulant(-C.vc)
+
+function (*)(C1::Circulant{<:Real}, C2::Circulant{<:Real})
+    @boundscheck (size(C1)==size(C2)) || throw(BoundsError())
+    Circulant(real(ifft(C1.vcvr_dft.*C2.vcvr_dft)))
+end
 
 function (*)(C1::Circulant, C2::Circulant)
     @boundscheck (size(C1)==size(C2)) || throw(BoundsError())
