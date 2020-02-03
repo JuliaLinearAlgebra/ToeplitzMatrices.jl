@@ -297,6 +297,12 @@ end
     for v1i in v1
         @test minimum(abs.(v1i .- v2)) < sqrt(eps(Float64))
     end
+
+    # Test for issue #47
+    I = inv(C1)*C1
+    e = rand(5)
+    # I should be close to identity
+    @test I*e ≈ e
 end
 
 @testset "Cholesky" begin
