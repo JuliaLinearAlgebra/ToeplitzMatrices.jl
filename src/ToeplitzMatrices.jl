@@ -42,7 +42,7 @@ end
 convert(::Type{Matrix}, A::AbstractToeplitz) = Matrix(A)
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
-function mul!(y::StridedVector{T}, A::AbstractToeplitz{T}, x::StridedVector, α::T, β::T) where T
+function mul!(y::StridedVector, A::AbstractToeplitz, x::StridedVector, α::Number, β::Number)
     m = size(A,1)
     n = size(A,2)
     N = length(A.vcvr_dft)
@@ -96,7 +96,7 @@ mul!(y::StridedVector{T}, A::AbstractToeplitz{T}, x::StridedVector, α::T, β::T
         y, A, x, α, β)
 
 # Application of a general Toeplitz matrix to a general matrix
-function mul!(C::StridedMatrix{T}, A::AbstractToeplitz{T}, B::StridedMatrix, α::T, β::T) where T
+function mul!(C::StridedMatrix, A::AbstractToeplitz, B::StridedMatrix, α::Number, β::Number)
     l = size(B, 2)
     if size(C, 2) != l
         throw(DimensionMismatch("input and output matrices must have same number of columns"))
