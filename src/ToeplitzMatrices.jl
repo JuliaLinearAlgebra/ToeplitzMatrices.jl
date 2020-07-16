@@ -176,8 +176,8 @@ convert(::Type{AbstractToeplitz{T}}, A::Toeplitz) where {T} = convert(Toeplitz{T
 convert(::Type{Toeplitz{T}}, A::Toeplitz) where {T} = Toeplitz(convert(Vector{T}, A.vc),
                                                                convert(Vector{T}, A.vr))
 
-adjoint(A::Toeplitz{T}) where T = Toeplitz(conj(A.vr), conj(A.vc))
-adjoint(A::Toeplitz{<:Real}) where T = transpose(A)
+adjoint(A::Toeplitz) = Toeplitz(conj(A.vr), conj(A.vc))
+adjoint(A::Toeplitz{<:Real}) = transpose(A)
 transpose(A::Toeplitz) = Toeplitz(A.vr, A.vc)
 
 # Size of a general Toeplitz matrix
@@ -267,7 +267,7 @@ SymmetricToeplitz(A::AbstractMatrix) = SymmetricToeplitz{eltype(A)}(A)
 convert(::Type{AbstractToeplitz{T}}, A::SymmetricToeplitz) where {T} = convert(SymmetricToeplitz{T},A)
 convert(::Type{SymmetricToeplitz{T}}, A::SymmetricToeplitz) where {T} = SymmetricToeplitz(convert(Vector{T},A.vc))
 
-adjoint(A::SymmetricToeplitz{T}) where T = SymmetricToeplitz(conj(A.vr), conj(A.vc))
+adjoint(A::SymmetricToeplitz) = SymmetricToeplitz(conj(A.vr), conj(A.vc))
 adjoint(A::SymmetricToeplitz{<:Real}) = A
 transpose(A::SymmetricToeplitz) = A
 
