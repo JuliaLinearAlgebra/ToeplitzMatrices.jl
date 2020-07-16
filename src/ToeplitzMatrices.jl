@@ -2,7 +2,7 @@ module ToeplitzMatrices
 using StatsBase
 
 
-import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, similar, sqrt, copyto!
+import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, similar, sqrt, copyto!, adjoint
 import LinearAlgebra: BlasReal, Cholesky, DimensionMismatch, cholesky, cholesky!, eigvals, inv, ldiv!,
     mul!, pinv, rmul!, tril, triu
 
@@ -174,6 +174,8 @@ Toeplitz{T}(A::AbstractMatrix) where T = Toeplitz{T}(A[:,1], A[1,:])
 convert(::Type{AbstractToeplitz{T}}, A::Toeplitz) where {T} = convert(Toeplitz{T}, A)
 convert(::Type{Toeplitz{T}}, A::Toeplitz) where {T} = Toeplitz(convert(Vector{T}, A.vc),
                                                                convert(Vector{T}, A.vr))
+
+adjoint(A::Toeplitz) = Toeplitz(A.vr, A.vc)
 
 # Size of a general Toeplitz matrix
 function size(A::Toeplitz, dim::Int)
