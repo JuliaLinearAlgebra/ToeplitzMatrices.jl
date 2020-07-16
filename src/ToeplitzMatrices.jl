@@ -2,7 +2,8 @@ module ToeplitzMatrices
 using StatsBase
 
 
-import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, similar, sqrt, copyto!, adjoint
+import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, similar, sqrt, copyto!,
+    adjoint, transpose
 import LinearAlgebra: BlasReal, Cholesky, DimensionMismatch, cholesky, cholesky!, eigvals, inv, ldiv!,
     mul!, pinv, rmul!, tril, triu
 
@@ -175,7 +176,9 @@ convert(::Type{AbstractToeplitz{T}}, A::Toeplitz) where {T} = convert(Toeplitz{T
 convert(::Type{Toeplitz{T}}, A::Toeplitz) where {T} = Toeplitz(convert(Vector{T}, A.vc),
                                                                convert(Vector{T}, A.vr))
 
-adjoint(A::Toeplitz) = Toeplitz(A.vr, A.vc)
+adjoint(A::Toeplitz{T}) where T = Toeplitz(conj(A.vr), conj(A.vc))
+adjoint(A::Toeplitz{<:Real}) where T = transpose(A)
+transpose(A::Toeplitz) = Toeplitz(A.vr, A.vc)
 
 # Size of a general Toeplitz matrix
 function size(A::Toeplitz, dim::Int)
@@ -263,6 +266,10 @@ SymmetricToeplitz(A::AbstractMatrix) = SymmetricToeplitz{eltype(A)}(A)
 
 convert(::Type{AbstractToeplitz{T}}, A::SymmetricToeplitz) where {T} = convert(SymmetricToeplitz{T},A)
 convert(::Type{SymmetricToeplitz{T}}, A::SymmetricToeplitz) where {T} = SymmetricToeplitz(convert(Vector{T},A.vc))
+
+adjoint(A::SymmetricToeplitz{T}) where T = SymmetricToeplitz(conj(A.vr), conj(A.vc))
+adjoint(A::SymmetricToeplitz{<:Real}) = A
+transpose(A::SymmetricToeplitz) = A
 
 function size(A::SymmetricToeplitz, dim::Int)
     if 1 <= dim <= 2

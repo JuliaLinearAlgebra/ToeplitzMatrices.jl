@@ -44,6 +44,7 @@ xl = randn(nl, 5)
         @test ldiv!(As, LinearAlgebra.copy_oftype(xs, eltype(As))) ≈ Matrix(As) \ xs
         @test ldiv!(Al, LinearAlgebra.copy_oftype(xl, eltype(Al))) ≈ Matrix(Al) \ xl
         @test Matrix(As') == Matrix(As)'
+        @test Matrix(transpose(As)) == transpose(Matrix(As))
     end
 )
 
