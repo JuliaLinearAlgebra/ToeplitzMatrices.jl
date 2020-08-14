@@ -44,9 +44,7 @@ convert(::Type{Matrix}, A::AbstractToeplitz) = Matrix(A)
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
 function mul!(y::StridedVector, A::AbstractToeplitz, x::StridedVector, α::Number, β::Number)
-#   T = promote_type(eltype.([y, A, x, α, β])...)
-#   toreal = x -> (T <: Real) ? convert(T, x) : x # causes InexactError
-#   toreal = x -> (T <: Real) ? real(x) : x
+    T = promote_type(eltype.([y, A, x, α, β])...)
     m = size(A,1)
     n = size(A,2)
     N = length(A.vcvr_dft)
@@ -89,18 +87,11 @@ function mul!(y::StridedVector, A::AbstractToeplitz, x::StridedVector, α::Numbe
         end
         A.dft \ A.tmp
         for i in 1:m
-#           y[i] += α * toreal(A.tmp[i])
-            y[i] += α * A.tmp[i]
+            y[i] += α * ((T <: Real) ? real(A.tmp[i]) : A.tmp[i])
         end
         return y
     end
 end
-# Avoid ambiguity error
-#=
-mul!(y::StridedVector{T}, A::AbstractToeplitz{T}, x::StridedVector, α::T, β::T) where {T<:Number} =
-    invoke(mul!, Tuple{StridedVector{T},ToeplitzMatrices.AbstractToeplitz{T},StridedVector,T,T} where T,
-        y, A, x, α, β)
-=#
 
 # Application of a general Toeplitz matrix to a general matrix
 function mul!(C::StridedMatrix, A::AbstractToeplitz, B::StridedMatrix, α::Number, β::Number)
@@ -113,12 +104,6 @@ function mul!(C::StridedMatrix, A::AbstractToeplitz, B::StridedMatrix, α::Numbe
     end
     return C
 end
-# Avoid ambiguity error
-#=
-mul!(C::StridedMatrix{T}, A::AbstractToeplitz{T}, B::StridedMatrix, α::T, β::T) where {T<:Number} =
-    invoke(mul!, Tuple{StridedMatrix{T},ToeplitzMatrices.AbstractToeplitz{T},StridedMatrix,T,T} where T,
-        C, A, B, α, β)
-=#
 
 # Translate three to five argument mul!
 mul!(y::StridedVecOrMat, A::AbstractToeplitz, x::StridedVecOrMat) =
@@ -146,6 +131,13 @@ function (\)(A::AbstractToeplitz, b::AbstractVector)
 end
 
 # General Toeplitz matrix
+"""
+    Toeplitz{T<:Number, S<:Number}
+
+Subtype of `AbstractToeplitz{T}` for representing a Toeplitz matrix
+where the matrix elements have `eltype T`
+and the underlying DFT has `eltype S`.
+"""
 mutable struct Toeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
     vc::Vector{T}
     vr::Vector{T}
@@ -155,7 +147,13 @@ mutable struct Toeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
 end
 
 # Ctor
-function Toeplitz{T}(vc::Vector, vr::Vector) where {T}
+"""
+    T = Toeplitz(vc::AbstractVector, vr::AbstractVector)
+
+Create a `Toeplitz` matrix `T` from its first column `vc` and first row `vr`
+where `vc[1] == vr[1]`.
+"""
+function Toeplitz{T}(vc::AbstractVector, vr::AbstractVector) where {T}
     m, n = length(vc), length(vr)
     if vc[1] != vr[1]
         error("First element of the vectors must be the same")
@@ -172,10 +170,14 @@ function Toeplitz{T}(vc::Vector, vr::Vector) where {T}
     return Toeplitz(vcp, vrp, dft*tmp, similar(tmp), dft)
 end
 
-Toeplitz(vc::Vector, vr::Vector) =
+Toeplitz(vc::AbstractVector, vr::AbstractVector) =
     Toeplitz{promote_type(eltype(vc), eltype(vr), Float32)}(vc, vr)
 
-# Toeplitz(A::AbstractMatrix) projects onto Toeplitz part using the first row/col
+"""
+    Toeplitz(A::AbstractMatrix)
+
+"Project" matrix `A` onto its Toeplitz part using the first row/col of `A`.
+"""
 Toeplitz(A::AbstractMatrix) = Toeplitz(A[:,1], A[1,:])
 Toeplitz{T}(A::AbstractMatrix) where T = Toeplitz{T}(A[:,1], A[1,:])
 
@@ -230,7 +232,7 @@ function tril(A::Toeplitz, k = 0)
     return Al
 end
 
-# Form a lower triangular Toeplitz matrix by annihilating all entries below the k-th diaganal
+# Form a lower triangular Toeplitz matrix by annihilating all entries below the k-th diagonal
 function triu(A::Toeplitz, k = 0)
     if k < 0
         error("Second argument cannot be negative")
@@ -255,7 +257,7 @@ mutable struct SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
     dft::Plan
 end
 
-function SymmetricToeplitz{T}(vc::Vector{T}) where T<:BlasReal
+function SymmetricToeplitz{T}(vc::AbstractVector{T}) where T<:BlasReal
     tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
     dft = plan_fft!(tmp)
     return SymmetricToeplitz{T}(vc, dft*tmp, similar(tmp), dft)
@@ -293,6 +295,13 @@ ldiv!(A::SymmetricToeplitz, b::StridedVector) =
     copyto!(b, IterativeLinearSolvers.cg(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
 
 # Circulant
+"""
+    Circulant{T<:Number, S<:Number}
+
+Subtype of `AbstractToeplitz{T}` for representing a circulant matrix
+where the matrix elements have `eltype T`
+and the underlying DFT has `eltype S`.
+"""
 mutable struct Circulant{T<:Number,S<:Number} <: AbstractToeplitz{T}
     vc::Vector{T}
     vcvr_dft::Vector{S}
@@ -306,7 +315,22 @@ function Circulant{T}(vc::Vector{T}) where T
 end
 
 Circulant{T}(vc::AbstractVector) where T = Circulant{T}(convert(Vector{T}, vc))
-Circulant(vc::AbstractVector) = Circulant{promote_type(eltype(vc), Float32)}(vc)
+
+"""
+    C = Circulant(vc::AbstractVector)
+
+Create a circulant matrix `C` from its first column `vc`.
+"""
+function Circulant(vc::AbstractVector{T}) where T
+    V = promote_type(eltype(vc), Float32)
+    return Circulant{V}(convert(Vector{V}, vc))
+end
+
+"""
+    C = Circulant(A::AbstractMatrix)
+
+Create a circulant matrix `C` from the first column of matrix `A`.
+"""
 Circulant{T}(A::AbstractMatrix) where T = Circulant{T}(A[:,1])
 Circulant(A::AbstractMatrix) = Circulant(A[:,1])
 
@@ -694,7 +718,7 @@ getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
 *(A::Hankel, B::AbstractMatrix) = A.T * flipdim(B, 1)
 ## BigFloat support
 
-(*)(A::Toeplitz{T}, b::Vector) where {T<:BigFloat} = irfft(
+(*)(A::Toeplitz{T}, b::AbstractVector) where {T<:BigFloat} = irfft(
     rfft([
         A.vc;
         reverse(A.vr[2:end])]

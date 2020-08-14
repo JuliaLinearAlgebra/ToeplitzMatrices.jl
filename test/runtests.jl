@@ -8,6 +8,9 @@ nl = 2000
 
 xs = randn(ns, 5)
 xl = randn(nl, 5)
+vc = LinRange(1,3,3) # for testing with AbstractVector
+vv = Vector(vc)
+vr = [1, 5.]
 
 cases = [
     (Toeplitz(0.9.^(0:ns-1), 0.4.^(0:ns-1)),
@@ -55,6 +58,9 @@ end
     @test eltype(Toeplitz([1, 2], [1, 2])) == Float32 # !!
     @test Toeplitz([1, 2], [1, 2]) * ones(2) == fill(3, 2)
     @test Circulant(Float32.(1:3)) * ones(Float64, 3) == fill(6, 3)
+    @test Matrix(Toeplitz(vc, vr)) == Matrix(Toeplitz(vv, vr))
+    @test Matrix(Circulant(vc)) == Matrix(Circulant(vv))
+    @test Matrix(TriangularToeplitz(vc,:U)) == Matrix(TriangularToeplitz(vv,:U))
 end
 
 @testset "Real general rectangular" begin
@@ -83,6 +89,7 @@ end
     @test ldiv!(Al, copy(xl)) ≈ Matrix(Al) \ xl
     @test StatsBase.levinson(As, xs) ≈ Matrix(As) \ xs
     @test StatsBase.levinson(Ab, xs) ≈ Matrix(Ab) \ xs
+    @test Matrix(SymmetricToeplitz(vc)) == Matrix(SymmetricToeplitz(vv))
 end
 
 @testset "Hankel" begin
@@ -110,6 +117,7 @@ end
         @test Hs * xs[:,1] ≈ Matrix(Hs) * xs[:,1]
         @test Hs * xs ≈ Matrix(Hs) * xs
         @test Hl * xl ≈ Matrix(Hl) * xl
+        @test Matrix(Hankel(reverse(vc),vr)) == Matrix(Hankel(reverse(vv),vr))
     end
 
     @testset "Complex square" begin
