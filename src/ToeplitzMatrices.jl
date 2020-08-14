@@ -109,9 +109,11 @@ function mul!(C::StridedMatrix, A::AbstractToeplitz, B::StridedMatrix, α::Numbe
     return C
 end
 # Avoid ambiguity error
+#=
 mul!(C::StridedMatrix{T}, A::AbstractToeplitz{T}, B::StridedMatrix, α::T, β::T) where {T<:Number} =
     invoke(mul!, Tuple{StridedMatrix{T},ToeplitzMatrices.AbstractToeplitz{T},StridedMatrix,T,T} where T,
         C, A, B, α, β)
+=#
 
 # Translate three to five argument mul!
 mul!(y::StridedVecOrMat, A::AbstractToeplitz, x::StridedVecOrMat) =
