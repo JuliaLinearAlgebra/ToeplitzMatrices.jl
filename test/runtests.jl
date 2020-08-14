@@ -9,32 +9,35 @@ nl = 2000
 xs = randn(ns, 5)
 xl = randn(nl, 5)
 
-@testset("Toeplitz: $st",
-    for (As, Al, st) in ((Toeplitz(0.9.^(0:ns-1), 0.4.^(0:ns-1)),
-                            Toeplitz(0.9.^(0:nl-1), 0.4.^(0:nl-1)),
-                                "Real general square"),
-                         (Toeplitz(complex(0.9.^(0:ns-1)), complex(0.4.^(0:ns-1))),
-                            Toeplitz(complex(0.9.^(0:nl-1)), complex(0.4.^(0:nl-1))),
-                                "Complex general square"),
-                         (Circulant(0.9.^(0:ns - 1)),
-                            Circulant(0.9.^(0:nl - 1)),
-                                "Real circulant"),
-                         (Circulant(complex(0.9.^(0:ns - 1))),
-                            Circulant(complex(0.9.^(0:nl - 1))),
-                                "Complex circulant"),
-                         (TriangularToeplitz(0.9.^(0:ns - 1), :U),
-                            TriangularToeplitz(0.9.^(0:nl - 1), :U),
-                                "Real upper triangular"),
-                         (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :U),
-                            TriangularToeplitz(complex(0.9.^(0:nl - 1)), :U),
-                                "Complex upper triangular"),
-                         (TriangularToeplitz(0.9.^(0:ns - 1), :L),
-                            TriangularToeplitz(0.9.^(0:nl - 1), :L),
-                                "Real lower triangular"),
-                         (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :L),
-                            TriangularToeplitz(complex(0.9.^(0:nl - 1)), :L),
-                                "Complex lower triangular"))
+cases = [
+    (Toeplitz(0.9.^(0:ns-1), 0.4.^(0:ns-1)),
+        Toeplitz(0.9.^(0:nl-1), 0.4.^(0:nl-1)),
+        "Real general square"),
+    (Toeplitz(complex(0.9.^(0:ns-1)), complex(0.4.^(0:ns-1))),
+        Toeplitz(complex(0.9.^(0:nl-1)), complex(0.4.^(0:nl-1))),
+        "Complex general square"),
+    (Circulant(0.9.^(0:ns - 1)),
+        Circulant(0.9.^(0:nl - 1)),
+        "Real circulant"),
+    (Circulant(complex(0.9.^(0:ns - 1))),
+        Circulant(complex(0.9.^(0:nl - 1))),
+        "Complex circulant"),
+    (TriangularToeplitz(0.9.^(0:ns - 1), :U),
+        TriangularToeplitz(0.9.^(0:nl - 1), :U),
+        "Real upper triangular"),
+    (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :U),
+        TriangularToeplitz(complex(0.9.^(0:nl - 1)), :U),
+        "Complex upper triangular"),
+    (TriangularToeplitz(0.9.^(0:ns - 1), :L),
+        TriangularToeplitz(0.9.^(0:nl - 1), :L),
+        "Real lower triangular"),
+    (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :L),
+         TriangularToeplitz(complex(0.9.^(0:nl - 1)), :L),
+         "Complex lower triangular"),
+]
 
+for (As, Al, st) in cases
+    @testset "Toeplitz: $st" begin
         @test As * xs ≈ Matrix(As)  * xs
         @test As'* xs ≈ Matrix(As)' * xs
         @test Al * xl ≈ Matrix(Al)  * xl
@@ -46,7 +49,13 @@ xl = randn(nl, 5)
         @test Matrix(As') == Matrix(As)'
         @test Matrix(transpose(As)) == transpose(Matrix(As))
     end
-)
+end
+
+@testset "Mixed types" begin
+    @test eltype(Toeplitz([1, 2], [1, 2])) == Float32 # !!
+    @test Toeplitz([1, 2], [1, 2]) * ones(2) == fill(3, 2)
+    @test Circulant(Float32.(1:3)) * ones(Float64, 3) == fill(6, 3)
+end
 
 @testset "Real general rectangular" begin
     Ar1 = Toeplitz(0.9.^(0:nl-1), 0.4.^(0:ns-1))
