@@ -43,8 +43,10 @@ end
 convert(::Type{Matrix}, A::AbstractToeplitz) = Matrix(A)
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
-function mul!(y::StridedVector, A::AbstractToeplitz{T}, x::StridedVector, α::Number, β::Number) where T
-    allreal = (T isa Real) && all(isreal.([y, x, α, β]))
+function mul!(y::StridedVector, A::AbstractToeplitz, x::StridedVector, α::Number, β::Number)
+    T = promote_type(eltype.([y, A, x, α, β])...)
+#   toreal = x -> (T <: Real) ? convert(T, x) : x # causes InexactError
+    toreal = x -> (T <: Real) ? real(x) : x
     m = size(A,1)
     n = size(A,2)
     N = length(A.vcvr_dft)
@@ -87,7 +89,7 @@ function mul!(y::StridedVector, A::AbstractToeplitz{T}, x::StridedVector, α::Nu
         end
         A.dft \ A.tmp
         for i in 1:m
-            y[i] += α * (allreal ? real(A.tmp[i]) : A.tmp[i])
+            y[i] += α * toreal(A.tmp[i])
         end
         return y
     end
