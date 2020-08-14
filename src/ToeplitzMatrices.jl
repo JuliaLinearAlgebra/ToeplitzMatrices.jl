@@ -93,9 +93,11 @@ function mul!(y::StridedVector, A::AbstractToeplitz, x::StridedVector, α::Numbe
     end
 end
 # Avoid ambiguity error
+#=
 mul!(y::StridedVector{T}, A::AbstractToeplitz{T}, x::StridedVector, α::T, β::T) where {T<:Number} =
     invoke(mul!, Tuple{StridedVector{T},ToeplitzMatrices.AbstractToeplitz{T},StridedVector,T,T} where T,
         y, A, x, α, β)
+=#
 
 # Application of a general Toeplitz matrix to a general matrix
 function mul!(C::StridedMatrix, A::AbstractToeplitz, B::StridedMatrix, α::Number, β::Number)
@@ -251,9 +253,9 @@ mutable struct SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
 end
 
 function SymmetricToeplitz{T}(vc::Vector{T}) where T<:BlasReal
-	tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
-	dft = plan_fft!(tmp)
-	return SymmetricToeplitz{T}(vc, dft*tmp, similar(tmp), dft)
+    tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
+    dft = plan_fft!(tmp)
+    return SymmetricToeplitz{T}(vc, dft*tmp, similar(tmp), dft)
 end
 
 
