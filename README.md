@@ -8,6 +8,16 @@ ToeplitzMatrices.jl
 Fast matrix multiplication and division
 for Toeplitz, Hankel and circulant matrices in Julia
 
+# Note
+
+Some computations such as multiplication of large matrices are performed with FFTs.
+To be able to use these methods, you have to install and load a package that implements
+the [AbstractFFTs.jl](https://github.com/JuliaMath/AbstractFFTs.jl) interface such
+as [FFTW.jl](https://github.com/JuliaMath/FFTW.jl):
+
+```julia
+using FFTW
+```
 
 ## ToeplitzMatrix
 
