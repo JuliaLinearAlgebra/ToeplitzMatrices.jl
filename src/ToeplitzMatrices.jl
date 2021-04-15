@@ -7,8 +7,9 @@ import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, si
 import LinearAlgebra: BlasReal, Cholesky, DimensionMismatch, cholesky, cholesky!, eigvals, inv, ldiv!,
     mul!, pinv, rmul!, tril, triu
 
-using FFTW
-using FFTW: Plan
+using AbstractFFTs
+using AbstractFFTs: Plan
+
 flipdim(A, d) = reverse(A, dims=d)
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
