@@ -5,7 +5,6 @@ ToeplitzMatrices.jl
 [![Coverage](https://codecov.io/gh/JuliaMatrices/ToeplitzMatrices.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaMatrices/ToeplitzMatrices.jl)
 [![Coverage](https://coveralls.io/repos/github/JuliaMatrices/ToeplitzMatrices.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaMatrices/ToeplitzMatrices.jl?branch=master)
 
-
 Fast matrix multiplication and division
 for Toeplitz, Hankel and circulant matrices in Julia
 
