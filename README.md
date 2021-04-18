@@ -1,13 +1,23 @@
 ToeplitzMatrices.jl
 ===========
 
-[![Build Status](https://travis-ci.com/JuliaMatrices/ToeplitzMatrices.jl.svg?branch=master)](https://travis-ci.com/JuliaMatrices/ToeplitzMatrices.jl)
-[![codecov](https://codecov.io/gh/JuliaMatrices/ToeplitzMatrices.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaMatrices/ToeplitzMatrices.jl)
-[![Coverage Status](https://coveralls.io/repos/github/JuliaMatrices/ToeplitzMatrices.jl/badge.svg?branch=master&bust=1)](https://coveralls.io/github/JuliaMatrices/ToeplitzMatrices.jl?branch=master)
+[![Build Status](https://github.com/JuliaMatrices/ToeplitzMatrices.jl/workflows/CI/badge.svg?branch=master)](https://github.com/JuliaMatrices/ToeplitzMatrices.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+[![Coverage](https://codecov.io/gh/JuliaMatrices/ToeplitzMatrices.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaMatrices/ToeplitzMatrices.jl)
+[![Coverage](https://coveralls.io/repos/github/JuliaMatrices/ToeplitzMatrices.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaMatrices/ToeplitzMatrices.jl?branch=master)
 
 Fast matrix multiplication and division
 for Toeplitz, Hankel and circulant matrices in Julia
 
+# Note
+
+Some computations such as multiplication of large matrices are performed with FFTs.
+To be able to use these methods, you have to install and load a package that implements
+the [AbstractFFTs.jl](https://github.com/JuliaMath/AbstractFFTs.jl) interface such
+as [FFTW.jl](https://github.com/JuliaMath/FFTW.jl):
+
+```julia
+using FFTW
+```
 
 ## ToeplitzMatrix
 

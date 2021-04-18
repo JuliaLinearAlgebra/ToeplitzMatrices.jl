@@ -9,8 +9,9 @@ import LinearAlgebra: Cholesky, DimensionMismatch, cholesky, cholesky!, eigvals,
 
 using LinearAlgebra: LinearAlgebra, Adjoint, Factorization, factorize
 
-using FFTW
-using FFTW: Plan
+using AbstractFFTs
+using AbstractFFTs: Plan
+
 flipdim(A, d) = reverse(A, dims=d)
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
