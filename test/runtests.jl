@@ -64,7 +64,7 @@ for (As, Al, st) in cases
 end
 
 @testset "Mixed types" begin
-    @test eltype(Toeplitz([1, 2], [1, 2])) == Float32 # !!
+    @test eltype(Toeplitz([1, 2], [1, 2])) === Int
     @test Toeplitz([1, 2], [1, 2]) * ones(2) == fill(3, 2)
     @test Circulant(Float32.(1:3)) * ones(Float64, 3) == fill(6, 3)
     @test Matrix(Toeplitz(vc, vr)) == Matrix(Toeplitz(vv, vr))
@@ -286,28 +286,28 @@ end
     C = inv(C1)
     @test C isa Circulant
     @test C ≈ inv(M1)
-    @test fft(C.vc) ≈ C.vcvr_dft
+    @test fft(C.vc) ≈ (factorize(C)).vcvr_dft
     C = inv(C3)
     @test C isa Circulant
     @test C ≈ inv(M3)
-    @test fft(C.vc) ≈ C.vcvr_dft
+    @test fft(C.vc) ≈ (factorize(C)).vcvr_dft
 
     C = pinv(C1)
     @test C isa Circulant
     @test C ≈ pinv(M1)
-    @test fft(C.vc) ≈ C.vcvr_dft
+    @test fft(C.vc) ≈ (factorize(C)).vcvr_dft
     C = pinv(C3)
     @test C isa Circulant
     @test C ≈ pinv(M3)
-    @test fft(C.vc) ≈ C.vcvr_dft
+    @test fft(C.vc) ≈ (factorize(C)).vcvr_dft
     C = pinv(C4)
     @test C isa Circulant
     @test C ≈ pinv(M4)
-    @test fft(C.vc) ≈ C.vcvr_dft
+    @test fft(C.vc) ≈ (factorize(C)).vcvr_dft
     C = pinv(C5)
     @test C isa Circulant
     @test C ≈ pinv(M5)
-    @test fft(C.vc) ≈ C.vcvr_dft
+    @test fft(C.vc) ≈ (factorize(C)).vcvr_dft
 
     C = sqrt(C1)
     @test C isa Circulant

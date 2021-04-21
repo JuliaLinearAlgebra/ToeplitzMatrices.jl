@@ -4,8 +4,10 @@ using StatsBase
 
 import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, similar, sqrt, copyto!,
     adjoint, transpose
-import LinearAlgebra: BlasReal, Cholesky, DimensionMismatch, cholesky, cholesky!, eigvals, inv, ldiv!,
+import LinearAlgebra: Cholesky, DimensionMismatch, cholesky, cholesky!, eigvals, inv, ldiv!,
     mul!, pinv, rmul!, tril, triu
+
+using LinearAlgebra: LinearAlgebra, Adjoint, Factorization, factorize
 
 using AbstractFFTs
 using AbstractFFTs: Plan
@@ -20,6 +22,17 @@ include("iterativeLinearSolvers.jl")
 
 # Abstract
 abstract type AbstractToeplitz{T<:Number} <: AbstractMatrix{T} end
+
+"""
+    ToeplitzFactorization
+
+Factorization of a Toeplitz matrix using FFT.
+"""
+struct ToeplitzFactorization{T<:Number,A<:AbstractToeplitz{T},S<:Number,P<:Plan{S}} <: Factorization{T}
+    vcvr_dft::Vector{S}
+    tmp::Vector{S}
+    dft::P
+end
 
 size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
 function getindex(A::AbstractToeplitz, i::Integer)
@@ -44,58 +57,95 @@ end
 convert(::Type{Matrix}, A::AbstractToeplitz) = Matrix(A)
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
-function mul!(y::StridedVector, A::AbstractToeplitz, x::StridedVector, α::Number, β::Number)
-    T = promote_type(eltype.([y, A, x, α, β])...)
-    m = size(A,1)
-    n = size(A,2)
-    N = length(A.vcvr_dft)
-    if m != length(y)
-        throw(DimensionMismatch(""))
+function mul!(
+    y::StridedVector, A::AbstractToeplitz, x::StridedVector, α::Number, β::Number
+)
+    m, n = size(A)
+    if length(y) != m
+        throw(DimensionMismatch(
+            "first dimension of A, $(m), does not match length of y, $(length(y))"
+        ))
     end
-    if n != length(x)
-        throw(DimensionMismatch(""))
-    end
-
-    # In any case, scale/initialize y
-    if iszero(β)
-        fill!(y, 0)
-    else
-        rmul!(y, β)
+    if length(x) != n
+        throw(DimensionMismatch(
+            "second dimension of A, $(n), does not match length of x, $(length(x))"
+        ))
     end
 
-    @inbounds begin
-        # Small case: don't use FFT
-        if N < 512
-            for j in 1:n
-                tmp = α * x[j]
-                for i in 1:m
-                    y[i] += tmp*A[i,j]
-                end
+    # Small case: don't use FFT
+    N = m + n - 1
+    if N < 512
+        # Scale/initialize y
+        if iszero(β)
+            fill!(y, 0)
+        else
+            rmul!(y, β)
+        end
+
+        @inbounds for j in 1:n
+            tmp = α * x[j]
+            for i in 1:m
+                y[i] = muladd(tmp, A[i,j], y[i])
             end
-            return y
         end
-
+    else
         # Large case: use FFT
-        for i in 1:n
-            A.tmp[i] = x[i]
-        end
-        for i in n+1:N
-            A.tmp[i] = 0
-        end
-        mul!(A.tmp, A.dft, A.tmp)
-        for i = 1:N
-            A.tmp[i] *= A.vcvr_dft[i]
-        end
-        A.dft \ A.tmp
-        for i in 1:m
-            y[i] += α * ((T <: Real) ? real(A.tmp[i]) : A.tmp[i])
-        end
-        return y
+        mul!(y, factorize(A), x, α, β)
     end
+
+    return y
+end
+function mul!(
+    y::StridedVector, A::ToeplitzFactorization, x::StridedVector, α::Number, β::Number
+)
+    n = length(x)
+    m = length(y)
+    vcvr_dft = A.vcvr_dft
+    N = length(vcvr_dft)
+    if m > N || n > N
+        throw(DimensionMismatch(
+            "Toeplitz factorization does not match size of input and output vector"
+        ))
+    end
+
+    T = Base.promote_eltype(y, A, x, α, β)
+    tmp = A.tmp
+    dft = A.dft
+    @inbounds begin
+        for i in 1:n
+            tmp[i] = x[i]
+        end
+        for i in (n+1):N
+            tmp[i] = 0
+        end
+        mul!(tmp, dft, tmp)
+        for i in 1:N
+            tmp[i] *= vcvr_dft[i]
+        end
+        dft \ tmp
+        if iszero(β)
+            for i in 1:m
+                y[i] = α * maybereal(T, tmp[i])
+            end
+        else
+            for i in 1:m
+                y[i] = muladd(α, maybereal(T, tmp[i]), β * y[i])
+            end
+        end
+    end
+
+    return y
 end
 
 # Application of a general Toeplitz matrix to a general matrix
-function mul!(C::StridedMatrix, A::AbstractToeplitz, B::StridedMatrix, α::Number, β::Number)
+function mul!(
+    C::StridedMatrix, A::AbstractToeplitz, B::StridedMatrix, α::Number, β::Number
+)
+    return mul!(C, factorize(A), B, α, β)
+end
+function mul!(
+    C::StridedMatrix, A::ToeplitzFactorization, B::StridedMatrix, α::Number, β::Number
+)
     l = size(B, 2)
     if size(C, 2) != l
         throw(DimensionMismatch("input and output matrices must have same number of columns"))
@@ -105,10 +155,6 @@ function mul!(C::StridedMatrix, A::AbstractToeplitz, B::StridedMatrix, α::Numbe
     end
     return C
 end
-
-# Translate three to five argument mul!
-mul!(y::StridedVecOrMat, A::AbstractToeplitz, x::StridedVecOrMat) =
-    mul!(y, A, x, one(eltype(A)), zero(eltype(A)))
 
 # Left division of a general matrix B by a general Toeplitz matrix A, i.e. the solution x of Ax=B.
 function ldiv!(A::AbstractToeplitz, B::StridedMatrix)
@@ -133,55 +179,55 @@ end
 
 # General Toeplitz matrix
 """
-    Toeplitz{T<:Number, S<:Number}
+    Toeplitz
 
-Subtype of `AbstractToeplitz{T}` for representing a Toeplitz matrix
-where the matrix elements have `eltype T`
-and the underlying DFT has `eltype S`.
+A Toeplitz matrix.
 """
-mutable struct Toeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
+struct Toeplitz{T<:Number} <: AbstractToeplitz{T}
     vc::Vector{T}
     vr::Vector{T}
-    vcvr_dft::Vector{S}
-    tmp::Vector{S}
-    dft::Plan{S}
+
+    function Toeplitz{T}(vc::Vector{T}, vr::Vector{T}) where {T<:Number}
+        if first(vc) != first(vr)
+            error("First element of the vectors must be the same")
+        end
+        return new{T}(vc, vr)
+    end
 end
 
-# Ctor
 """
-    T = Toeplitz(vc::AbstractVector, vr::AbstractVector)
+    Toeplitz(vc::AbstractVector, vr::AbstractVector)
 
-Create a `Toeplitz` matrix `T` from its first column `vc` and first row `vr`
-where `vc[1] == vr[1]`.
+Create a `Toeplitz` matrix from its first column `vc` and first row `vr` where
+`vc[1] == vr[1]`.
 """
-function Toeplitz{T}(vc::AbstractVector, vr::AbstractVector) where {T}
-    m, n = length(vc), length(vr)
-    if vc[1] != vr[1]
-        error("First element of the vectors must be the same")
-    end
-
-    vcp, vrp = Vector{T}(vc), Vector{T}(vr)
-
-    tmp = Vector{promote_type(T, Complex{Float32})}(undef, m + n - 1)
-    copyto!(tmp, vcp)
-    for i = 1:n - 1
-        tmp[i + m] = vrp[n - i + 1]
-    end
-    dft = plan_fft!(tmp)
-    return Toeplitz(vcp, vrp, dft*tmp, similar(tmp), dft)
+function Toeplitz(vc::AbstractVector, vr::AbstractVector)
+    return Toeplitz{Base.promote_eltype(vc, vr)}(vc, vr)
 end
-
-Toeplitz(vc::AbstractVector, vr::AbstractVector) =
-    Toeplitz{promote_type(eltype(vc), eltype(vr), Float32)}(vc, vr)
+function Toeplitz{T}(vc::AbstractVector, vr::AbstractVector) where {T<:Number}
+    return Toeplitz{T}(convert(Vector{T}, vc), convert(Vector{T}, vr))
+end
 
 """
     Toeplitz(A::AbstractMatrix)
 
 "Project" matrix `A` onto its Toeplitz part using the first row/col of `A`.
 """
-Toeplitz(A::AbstractMatrix) = Toeplitz(A[:,1], A[1,:])
-Toeplitz{T}(A::AbstractMatrix) where T = Toeplitz{T}(A[:,1], A[1,:])
+Toeplitz(A::AbstractMatrix) = Toeplitz{eltype(A)}(A)
+function Toeplitz{T}(A::AbstractMatrix) where {T<:Number}
+    return Toeplitz{T}(A[:,1], A[1,:])
+end
 
+function LinearAlgebra.factorize(A::Toeplitz)
+    T = eltype(A)
+    m, n = size(A)
+    S = promote_type(T, Complex{Float32})
+    tmp = Vector{S}(undef, m + n - 1)
+    copyto!(tmp, A.vc)
+    copyto!(tmp, m + 1, Iterators.reverse(A.vr), 1, n - 1)
+    dft = plan_fft!(tmp)
+    return ToeplitzFactorization{T,typeof(A),S,typeof(dft)}(dft * tmp, similar(tmp), dft)
+end
 
 convert(::Type{AbstractToeplitz{T}}, A::Toeplitz) where {T} = convert(Toeplitz{T}, A)
 convert(::Type{Toeplitz{T}}, A::Toeplitz) where {T} = Toeplitz(convert(Vector{T}, A.vc),
@@ -247,33 +293,38 @@ function triu(A::Toeplitz, k = 0)
     return Al
 end
 
-ldiv!(A::Toeplitz, b::StridedVector) =
-    copyto!(b, IterativeLinearSolvers.cgs(A, zeros(eltype(b), length(b)), b, strang(A), 1000, 100eps())[1])
+function ldiv!(A::Toeplitz, b::StridedVector)
+    preconditioner = factorize(strang(A))
+    copyto!(b, IterativeLinearSolvers.cgs(A, zeros(eltype(b), length(b)), b, preconditioner, 1000, 100eps())[1])
+end
 
 # Symmetric
-mutable struct SymmetricToeplitz{T<:BlasReal} <: AbstractToeplitz{T}
+"""
+    SymmetricToeplitz
+
+A symmetric Toeplitz matrix.
+"""
+struct SymmetricToeplitz{T<:Number} <: AbstractToeplitz{T}
     vc::Vector{T}
-    vcvr_dft::Vector{Complex{T}}
-    tmp::Vector{Complex{T}}
-    dft::Plan
 end
 
-function SymmetricToeplitz{T}(vc::AbstractVector{T}) where T<:BlasReal
-    tmp = convert(Array{Complex{T}}, [vc; zero(T); reverse(vc[2:end])])
-    dft = plan_fft!(tmp)
-    return SymmetricToeplitz{T}(vc, dft*tmp, similar(tmp), dft)
-end
+SymmetricToeplitz(vc::AbstractVector) = SymmetricToeplitz{eltype(vc)}(vc)
 
-
-SymmetricToeplitz{T}(vc::AbstractVector) where T<:BlasReal = SymmetricToeplitz{T}(convert(Vector{T}, vc))
-SymmetricToeplitz{T}(vc::AbstractVector{T}) where T = SymmetricToeplitz{promote_type(Float32, T)}(vc)
-SymmetricToeplitz{T}(vc::AbstractVector) where T = SymmetricToeplitz{T}(convert(Vector{T}, vc))
-SymmetricToeplitz(vc::AbstractVector{T}) where T = SymmetricToeplitz{T}(vc)
-
-SymmetricToeplitz{T}(A::AbstractMatrix) where T = SymmetricToeplitz{T}(A[1, :])
 SymmetricToeplitz(A::AbstractMatrix) = SymmetricToeplitz{eltype(A)}(A)
+SymmetricToeplitz{T}(A::AbstractMatrix) where {T<:Number} = SymmetricToeplitz{T}(A[1, :])
 
-
+function LinearAlgebra.factorize(A::SymmetricToeplitz)
+    T = eltype(A)
+    vc = A.vc
+    m = length(vc)
+    S = promote_type(T, Complex{Float32})
+    tmp = Vector{S}(undef, 2 * m)
+    copyto!(tmp, vc)
+    @inbounds tmp[m + 1] = zero(T)
+    copyto!(tmp, m + 2, Iterators.reverse(vc), 1, m - 1)
+    dft = plan_fft!(tmp)
+    return ToeplitzFactorization{T,typeof(A),S,typeof(dft)}(dft * tmp, similar(tmp), dft)
+end
 
 convert(::Type{AbstractToeplitz{T}}, A::SymmetricToeplitz) where {T} = convert(SymmetricToeplitz{T},A)
 convert(::Type{SymmetricToeplitz{T}}, A::SymmetricToeplitz) where {T} = SymmetricToeplitz(convert(Vector{T},A.vc))
@@ -297,45 +348,39 @@ ldiv!(A::SymmetricToeplitz, b::StridedVector) =
 
 # Circulant
 """
-    Circulant{T<:Number, S<:Number}
+    Circulant
 
-Subtype of `AbstractToeplitz{T}` for representing a circulant matrix
-where the matrix elements have `eltype T`
-and the underlying DFT has `eltype S`.
+A circulant matrix.
 """
-mutable struct Circulant{T<:Number,S<:Number} <: AbstractToeplitz{T}
+struct Circulant{T<:Number} <: AbstractToeplitz{T}
     vc::Vector{T}
-    vcvr_dft::Vector{S}
-    tmp::Vector{S}
-    dft::Plan
-end
-
-function Circulant{T}(vc::Vector{T}) where T
-    tmp = zeros(promote_type(T, Complex{Float32}), length(vc))
-    return Circulant(vc, fft(vc), tmp, plan_fft!(tmp))
-end
-
-Circulant{T}(vc::AbstractVector) where T = Circulant{T}(convert(Vector{T}, vc))
-
-"""
-    C = Circulant(vc::AbstractVector)
-
-Create a circulant matrix `C` from its first column `vc`.
-"""
-function Circulant(vc::AbstractVector{T}) where T
-    V = promote_type(eltype(vc), Float32)
-    return Circulant{V}(convert(Vector{V}, vc))
 end
 
 """
-    C = Circulant(A::AbstractMatrix)
+    Circulant(vc::AbstractVector{<:Number})
 
-Create a circulant matrix `C` from the first column of matrix `A`.
+Create a circulant matrix from its first column `vc`.
 """
-Circulant{T}(A::AbstractMatrix) where T = Circulant{T}(A[:,1])
-Circulant(A::AbstractMatrix) = Circulant(A[:,1])
+Circulant(vc::AbstractVector) = Circulant{eltype(vc)}(vc)
 
+"""
+    Circulant(A::AbstractMatrix)
 
+Create a circulant matrix from the first column of matrix `A`.
+"""
+Circulant(A::AbstractMatrix) = Circulant{eltype(A)}(A)
+Circulant{T}(A::AbstractMatrix) where {T<:Number} = Circulant{T}(A[:,1])
+
+const CirculantFactorization{T<:Number} = ToeplitzFactorization{T,Circulant{T}}
+function LinearAlgebra.factorize(C::Circulant)
+    T = eltype(C)
+    vc = C.vc
+    S = promote_type(T, Complex{Float32})
+    tmp = Vector{S}(undef, length(vc))
+    copyto!(tmp, vc)
+    dft = plan_fft!(tmp)
+    return ToeplitzFactorization{T,typeof(C),S,typeof(dft)}(dft * tmp, similar(tmp), dft)
+end
 
 convert(::Type{AbstractToeplitz{T}}, A::Circulant) where {T} = convert(Circulant{T}, A)
 convert(::Type{Circulant{T}}, A::Circulant) where {T} = Circulant(convert(Vector{T}, A.vc))
@@ -357,52 +402,43 @@ function getindex(C::Circulant, i::Integer, j::Integer)
     return C.vc[mod(i - j, length(C.vc)) + 1]
 end
 
-function Ac_mul_B(A::Circulant{T}, B::Circulant{T}) where T<:Real
-    tmp = similar(A.vcvr_dft)
-    for i = 1:length(tmp)
-        tmp[i] = conj(A.vcvr_dft[i]) * B.vcvr_dft[i]
-    end
-    c_tmp = copy(tmp)
-    return Circulant(real(A.dft \ tmp), c_tmp, A.tmp, A.dft)
-end
-function Ac_mul_B(A::Circulant, B::Circulant)
-    T = promote_type(eltype(A), eltype(B))
-    tmp = similar(A.vcvr_dft, T)
-    for i = 1:length(tmp)
-        tmp[i] = conj(A.vcvr_dft[i]) * B.vcvr_dft[i]
-    end
-    c_tmp = copy(tmp)
-    tmp2 = A.dft \ tmp
-    return Circulant(Vector{T}(tmp2), c_tmp, Vector{T}(A.tmp), eltype(A) == T ? A.dft : plan_fft!(tmp2))
-end
-
-function ldiv!(C::Circulant{T}, b::AbstractVector{T}) where T
+LinearAlgebra.ldiv!(C::Circulant, b::AbstractVector) = ldiv!(factorize(C), b)
+function LinearAlgebra.ldiv!(C::CirculantFactorization, b::AbstractVector)
     n = length(b)
-    size(C, 1) == n || throw(DimensionMismatch(""))
-    for i = 1:n
-        C.tmp[i] = b[i]
+    tmp = C.tmp
+    vcvr_dft = C.vcvr_dft
+    if !(length(tmp) == length(vcvr_dft) == n)
+        throw(DimensionMismatch(
+            "size of Toeplitz factorization does not match the length of the output vector"
+        ))
     end
-    C.dft * C.tmp
-    for i = 1:n
-        C.tmp[i] /= C.vcvr_dft[i]
-    end
-    C.dft \ C.tmp
-    for i = 1:n
-        b[i] = (T <: Real ? real(C.tmp[i]) : C.tmp[i])
+    dft = C.dft
+    @inbounds begin
+        for i in 1:n
+            tmp[i] = b[i]
+        end
+        dft * tmp
+        for i in 1:n
+            tmp[i] /= vcvr_dft[i]
+        end
+        dft \ tmp
+        T = eltype(C)
+        for i in 1:n
+            b[i] = maybereal(T, tmp[i])
+        end
     end
     return b
 end
 
-function inv(C::Circulant{T}) where T<:Real
-    vdft = 1 ./ C.vcvr_dft
-    # Copy the vector because the dft below will overwrite it
-    c_vdft = copy(vdft)
-    return Circulant(real(C.dft \ vdft), c_vdft, similar(vdft), C.dft)
+function Base.inv(C::Circulant)
+    F = factorize(C)
+    vdft = map(inv, F.vcvr_dft)
+    vc = F.dft \ vdft
+    return Circulant(maybereal(eltype(C), vc))
 end
-function inv(C::Circulant)
-    vdft = 1 ./ C.vcvr_dft
-    c_vdft = copy(vdft)
-    return Circulant(C.dft \ vdft, c_vdft, similar(vdft), C.dft)
+function Base.inv(C::CirculantFactorization)
+    vdft = map(inv, C.vcvr_dft)
+    return CirculantFactorization(vdft, similar(vdft), C.dft)
 end
 
 function strang(A::AbstractMatrix{T}) where T
@@ -427,30 +463,30 @@ function chan(A::AbstractMatrix{T}) where T
     return Circulant(v)
 end
 
-function pinv(C::Circulant{T}, tolerance::T = eps(T)) where T<:Real
-    vdft = copy(C.vcvr_dft)
-    vdft[abs.(vdft).<tolerance] .= Inf
-    vdft .= 1 ./ vdft
-    c_vdft = copy(vdft)
-    return Circulant(real(C.dft \ vdft), c_vdft, similar(vdft), C.dft)
+function LinearAlgebra.pinv(C::Circulant, tol::Real=eps(real(float(one(eltype(C))))))
+    F = factorize(C)
+    vdft = map(F.vcvr_dft) do x
+        z = inv(x)
+        return abs(x) < tol ? zero(z) : z
+    end
+    vc = F.dft \ vdft
+    return Circulant(maybereal(eltype(C), vc))
 end
 
-function pinv(C::Circulant{T}, tolerance::Real = eps(real(T))) where T<:Number
-    vdft = copy(C.vcvr_dft)
-    vdft[abs.(vdft).<tolerance] .= Inf
-    vdft .= 1 ./ vdft
-    c_vdft = copy(vdft)
-    return Circulant(C.dft \ vdft, c_vdft, similar(vdft), C.dft)
+LinearAlgebra.eigvals(C::Circulant) = eigvals(factorize(C))
+LinearAlgebra.eigvals(C::CirculantFactorization) = copy(C.vcvr_dft)
+
+sqrt(C::Circulant) = sqrt(factorize(C))
+function Base.sqrt(C::CirculantFactorization)
+    vc = C.dft \ sqrt.(C.vcvr_dft)
+    return Circulant(maybereal(eltype(C), vc))
 end
 
-eigvals(C::Circulant) = copy(C.vcvr_dft)
-sqrt(C::Circulant{T}) where T<:Real = Circulant(real(ifft(sqrt.(C.vcvr_dft))))
-sqrt(C::Circulant) = Circulant(ifft(sqrt.(C.vcvr_dft)))
 copy(C::Circulant) = Circulant(copy(C.vc))
 similar(C::Circulant) = Circulant(similar(C.vc))
-function copyto!(dest::Circulant{U,S}, src::Circulant{V,S}) where {U,V,S}
+function copyto!(dest::Circulant, src::Circulant)
     copyto!(dest.vc, src.vc)
-    copyto!(dest.vcvr_dft, src.vcvr_dft)
+    return dest
 end
 
 function (+)(C1::Circulant, C2::Circulant)
@@ -465,14 +501,46 @@ end
 
 (-)(C::Circulant) = Circulant(-C.vc)
 
-function (*)(C1::Circulant{<:Real}, C2::Circulant{<:Real})
-    @boundscheck (size(C1)==size(C2)) || throw(BoundsError())
-    Circulant(real(ifft(C1.vcvr_dft.*C2.vcvr_dft)))
+Base.:*(A::Circulant, B::Circulant) = factorize(A) * factorize(B)
+Base.:*(A::CirculantFactorization, B::Circulant) = A * factorize(B)
+Base.:*(A::Circulant, B::CirculantFactorization) = factorize(A) * B
+function Base.:*(A::CirculantFactorization, B::CirculantFactorization)
+    A_vcvr_dft = A.vcvr_dft
+    B_vcvr_dft = B.vcvr_dft
+    m = length(A_vcvr_dft)
+    n = length(B_vcvr_dft)
+    if m != n
+        throw(DimensionMismatch(
+            "size of matrix A, $(m)x$(m), does not match size of matrix B, $(n)x$(n)"
+        ))
+    end
+
+    vc = A.dft \ (A_vcvr_dft .* B_vcvr_dft)
+
+    return Circulant(maybereal(Base.promote_eltype(A, B), vc))
 end
 
-function (*)(C1::Circulant, C2::Circulant)
-    @boundscheck (size(C1)==size(C2)) || throw(BoundsError())
-    Circulant(ifft(C1.vcvr_dft.*C2.vcvr_dft))
+Base.:*(A::Adjoint{<:Circulant}, B::Circulant) = factorize(parent(A))' * factorize(B)
+Base.:*(A::Adjoint{<:Circulant}, B::CirculantFactorization) = factorize(parent(A))' * B
+Base.:*(A::Adjoint{<:CirculantFactorization}, B::Circulant) = A * factorize(B)
+function Base.:*(A::Adjoint{<:CirculantFactorization}, B::CirculantFactorization)
+    C = parent(A)
+    C_vcvr_dft = C.vcvr_dft
+    B_vcvr_dft = B.vcvr_dft
+    m = length(C_vcvr_dft)
+    n = length(B_vcvr_dft)
+    if m != n
+        throw(DimensionMismatch(
+            "size of matrix A, $(m)x$(m), does not match size of matrix B, $(n)x$(n)"
+        ))
+    end
+
+    tmp = map(C_vcvr_dft, B_vcvr_dft) do c, b
+        conj(c) * b
+    end
+    vc = C.dft \ tmp
+
+    return Circulant(maybereal(Base.promote_eltype(C, B), vc))
 end
 
 (*)(scalar::Number, C::Circulant) = Circulant(scalar*C.vc)
@@ -480,42 +548,42 @@ end
 
 
 # Triangular
-mutable struct TriangularToeplitz{T<:Number,S<:Number} <: AbstractToeplitz{T}
+struct TriangularToeplitz{T<:Number} <: AbstractToeplitz{T}
     ve::Vector{T}
     uplo::Char
-    vcvr_dft::Vector{S}
-    tmp::Vector{S}
-    dft::Plan
 end
 
-function TriangularToeplitz{T}(vep::Vector{T}, uplo::Symbol) where T
-    n = length(vep)
+function TriangularToeplitz(ve::AbstractVector, uplo::Symbol)
+    return TriangularToeplitz{eltype(ve)}(ve, uplo)
+end
+function TriangularToeplitz{T}(ve::AbstractVector, uplo::Symbol) where {T<:Number}
+    UL = LinearAlgebra.char_uplo(uplo)
+    return TriangularToeplitz{T}(convert(Vector{T}, ve), UL)
+end
 
-    tmp = zeros(promote_type(T, Complex{Float32}), 2n - 1)
-    if uplo == :L
-        copyto!(tmp, vep)
+function TriangularToeplitz(A::AbstractMatrix, uplo::Symbol)
+    return TriangularToeplitz{eltype(A)}(A, uplo)
+end
+function TriangularToeplitz{T}(A::AbstractMatrix, uplo::Symbol) where {T<:Number}
+    ve = uplo === :U ? A[1, :] : A[:, 1]
+    return TriangularToeplitz{T}(ve, uplo)
+end
+
+function LinearAlgebra.factorize(A::TriangularToeplitz)
+    T = eltype(A)
+    ve = A.ve
+    n = length(ve)
+    S = promote_type(T, Complex{Float32})
+    tmp = zeros(S, 2 * n - 1)
+    if A.uplo === 'L'
+        copyto!(tmp, ve)
     else
-        tmp[1] = vep[1]
-        for i = 1:n - 1
-            tmp[n + i] = vep[n - i + 1]
-        end
+        tmp[1] = ve[1]
+        copyto!(tmp, n + 1, Iterators.reverse(ve), 1, n - 1)
     end
     dft = plan_fft!(tmp)
-    return TriangularToeplitz(vep, string(uplo)[1], dft * tmp, similar(tmp), dft)
+    return ToeplitzFactorization{T,typeof(A),S,typeof(dft)}(dft * tmp, similar(tmp), dft)
 end
-
-TriangularToeplitz{T}(ve::AbstractVector, uplo::Symbol) where T =
-    TriangularToeplitz(convert(Vector{T}, ve), uplo)
-
-TriangularToeplitz(ve::AbstractVector, uplo::Symbol) =
-    TriangularToeplitz{promote_type(eltype(ve), Float32)}(ve, uplo)
-
-TriangularToeplitz{T}(A::AbstractMatrix, uplo::Symbol) where T =
-    TriangularToeplitz{T}(uplo == :U ? A[1,:] : A[:,1], uplo)
-
-TriangularToeplitz(A::AbstractMatrix, uplo::Symbol) =
-    TriangularToeplitz(uplo == :U ? A[1,:] : A[:,1], uplo)
-
 
 function convert(::Type{Toeplitz}, A::TriangularToeplitz)
     if A.uplo == 'L'
@@ -560,8 +628,10 @@ function (*)(A::TriangularToeplitz, B::TriangularToeplitz)
     return Triangular(Matrix(A), A.uplo) * Triangular(Matrix(B), B.uplo)
 end
 
-Ac_mul_B(A::TriangularToeplitz, b::AbstractVector) =
-    TriangularToeplitz(A.ve, A.uplo == 'U' ? :L : :U) * b
+function Base.:*(A::Adjoint{<:TriangularToeplitz}, b::AbstractVector)
+    M = parent(A)
+    return TriangularToeplitz{eltype(M)}(M.ve, M.uplo) * b
+end
 
 # NB! only valid for lower triangular
 function smallinv(A::TriangularToeplitz{T}) where T
@@ -595,8 +665,10 @@ function inv(A::TriangularToeplitz{T}) where T
 end
 
 # ldiv!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
-ldiv!(A::TriangularToeplitz, b::StridedVector) =
-    copyto!(b, IterativeLinearSolvers.cgs(A, zeros(eltype(b), length(b)), b, chan(A), 1000, 100eps())[1])
+function ldiv!(A::TriangularToeplitz, b::StridedVector)
+    preconditioner = factorize(chan(A))
+    copyto!(b, IterativeLinearSolvers.cgs(A, zeros(eltype(b), length(b)), b, preconditioner, 1000, 100eps())[1])
+end
 
 # extend levinson
 StatsBase.levinson!(x::StridedVector, A::SymmetricToeplitz, b::StridedVector) =
@@ -757,5 +829,13 @@ related Toeplitz factorization algorithms", Bojanczyk et al, 1993.
 function cholesky(T::SymmetricToeplitz)
     return cholesky!(Matrix{eltype(T)}(undef, size(T, 1), size(T, 1)), T)
 end
+
+"""
+    maybereal(::Type{T}, x)
+
+Return real-valued part of `x` if `T` is a type of a real number, and `x` otherwise.
+"""
+maybereal(::Type, x) = x
+maybereal(::Type{<:Real}, x) = real(x)
 
 end #module
