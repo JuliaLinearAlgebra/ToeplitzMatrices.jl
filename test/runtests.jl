@@ -99,6 +99,44 @@ end
     @test StatsBase.levinson(As, xs) ≈ Matrix(As) \ xs
     @test StatsBase.levinson(Ab, xs) ≈ Matrix(Ab) \ xs
     @test Matrix(SymmetricToeplitz(vc)) == Matrix(SymmetricToeplitz(vv))
+
+    # testing durbin, levinson, and trench algorithms
+    n = 8
+    x = range(-1, 1, length = n+1)
+    a_exp = @. exp(-abs(x[1]-x))
+    a_rbf = @. exp(-abs(x[1]-x)^2) / 2 # this one can be ill-conditioned unless we add a diagonal, i.e. scale kernel down while keeping diagonal at 1
+    a_rand = rand(n+1) / n # ensures diagonal dominance
+    a_tuple = (a_rand, a_exp, a_rbf)
+    for a in a_tuple
+        a[1] = 1
+        r = a[2:end]
+        T = SymmetricToeplitz(vcat(1, r[1:end-1]))
+        TM = Matrix(T)
+
+        TS = (2 + randn() / 10) * T # scaled Toeplitz matrix, tests whether non-unit diagonal works
+        TSM = Matrix(TS)
+
+        # 1. test durbin algorithm for solves
+        y = durbin(r)
+        b = - (TM \ r)
+        @test b ≈ y
+
+        # 2. test trench algorithm for inversion
+        B = trench(r[1:end-1])
+        invTM = inv(TM)
+        @test B ≈ invTM
+        @test trench(T) ≈ invTM
+        @test trench(TS) ≈ inv(TSM)
+
+        # 3. test levinson algorithm for solves
+        b = randn(n)
+        y = levinson(r[1:end-1], b)
+
+        Tb = TM \ b
+        @test Tb ≈ y
+        @test Tb ≈ levinson(T, b)
+        @test TSM \ b ≈ levinson(TS, b)
+    end
 end
 
 @testset "Hankel" begin
