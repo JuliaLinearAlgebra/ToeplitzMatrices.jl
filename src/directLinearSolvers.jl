@@ -16,7 +16,7 @@ function durbin!(y::AbstractVector, r::AbstractVector)
     n = length(r)
     length(y) == n || throw(DimensionMismatch("length(y) = $(length(y)) ≠ $n = length(r)"))
     y[1] = -r[1]
-    α, β = -r[1], 1
+    α, β = -r[1], one(eltype(r))
     for k in 1:n-1
         β *= (1-α^2)
         r_k, y_k = @views r[1:k], y[1:k]
@@ -50,11 +50,11 @@ of T and returns a `Symmetric` wrapper of `B`.
 function trench!(B::AbstractMatrix, T::SymmetricToeplitz)
     r_0 = T.vc[1]
     r = @view T.vc[2:end]
-    if r_0 != 1 # levinson implementation assumes normalization of diagonal
+    if !isone(r_0) # levinson implementation assumes normalization of diagonal
         r /= r_0 # not in place so that we don't mutate T
     end
     S = trench!(B, r)
-    if r_0 != 1
+    if !isone(r_0)
         @. B /= r_0
     end
     return S
@@ -107,7 +107,7 @@ function levinson!(x::AbstractVector, r::AbstractVector, b::AbstractVector,
     length(b) == n || throw(DimensionMismatch("length(b) = $(length(b)) ≠ $n = length(r) + 1"))
     y[1] = -r[1]
     x[1] = b[1]
-    α, β = -r[1], 1
+    α, β = -r[1], one(eltype(r))
     @inbounds for k in 1:n-1
         β *= (1-α^2)
         r_k, x_k, y_k  = @views r[1:k], x[1:k], y[1:k]
@@ -126,11 +126,11 @@ end
 function levinson(T::SymmetricToeplitz, b::AbstractVector)
     r_0 = T.vc[1]
     r = @view T.vc[2:end]
-    if r_0 != 1 # levinson implementation assumes normalization of diagonal
+    if !isone(r_0) # levinson implementation assumes normalization of diagonal
         r /= r_0
     end
     x = levinson(r, b)
-    if r_0 != 1
+    if !isone(r_0)
         @. x /= r_0
     end
     return x

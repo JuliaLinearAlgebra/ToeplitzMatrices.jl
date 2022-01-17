@@ -8,7 +8,7 @@ using Pkg
 end
 
 using ToeplitzMatrices, StatsBase, Test, LinearAlgebra
-
+using Test: @inferred
 using Base: copyto!
 using FFTW: fft
 
@@ -120,6 +120,7 @@ end
         y = durbin(r)
         b = - (TM \ r)
         @test b ≈ y
+        @inferred durbin(r)
 
         # 2. test trench algorithm for inversion
         B = trench(r[1:end-1])
@@ -127,6 +128,7 @@ end
         @test B ≈ invTM
         @test trench(T) ≈ invTM
         @test trench(TS) ≈ inv(TSM)
+        @inferred trench(TS)
 
         # 3. test levinson algorithm for solves
         b = randn(n)
@@ -136,6 +138,7 @@ end
         @test Tb ≈ y
         @test Tb ≈ levinson(T, b)
         @test TSM \ b ≈ levinson(TS, b)
+        @inferred levinson(TS, b)
     end
 end
 
