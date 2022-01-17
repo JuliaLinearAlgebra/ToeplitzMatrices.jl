@@ -139,7 +139,8 @@ for n in sizes
             @test StatsBase.levinson(As, xs) ≈ Ms \ xs # this should be exact to numerical precision given good conditioning
             @test Matrix(As') ≈ Ms'
             @test Matrix(transpose(As)) ≈ transpose(Ms)
-            @test ldiv!(zero(xs), As, xs, isposdef = true) ≈ As \ xs # test cg-based solve
+            y_cg = ldiv!(zero(xs), As, xs, isposdef = true)
+            @test isapprox_helper(y_cg, As \ xs) # testing cg-based solve
 
             Ab = SymmetricToeplitz(rs1) # this is still positive definite
             Mb = Matrix(Ab)
