@@ -12,56 +12,224 @@ using ToeplitzMatrices, StatsBase, Test, LinearAlgebra
 using Base: copyto!
 using FFTW: fft
 
-ns = 101
-nl = 2000
+const atol = 1e-6
+const rtol = 1e-6
+function isapprox_helper(x, y, verbose::Bool = true)
+    b = isapprox(x, y, atol = atol, rtol = rtol)
+    if ~b && verbose
+        println("x !≈ y")
+        println("norm(x-y): ", norm(x-y))
+        println("norm(x-y)/norm(y): ", norm(x-y)/norm(y))
+    end
+    return b
+end
 
-xs = randn(ns, 5)
-xl = randn(nl, 5)
-vc = LinRange(1,3,3) # for testing with AbstractVector
+ns = 17
+nl = 33
+k = 1
+
+xs = randn(ns, k)
+vc = LinRange(1, 3, 3) # for testing with AbstractVector
 vv = Vector(vc)
 vr = [1, 5.]
 
-cases = [
-    (Toeplitz(0.9.^(0:ns-1), 0.4.^(0:ns-1)),
-        Toeplitz(0.9.^(0:nl-1), 0.4.^(0:nl-1)),
-        "Real general square"),
-    (Toeplitz(complex(0.9.^(0:ns-1)), complex(0.4.^(0:ns-1))),
-        Toeplitz(complex(0.9.^(0:nl-1)), complex(0.4.^(0:nl-1))),
-        "Complex general square"),
-    (Circulant(0.9.^(0:ns - 1)),
-        Circulant(0.9.^(0:nl - 1)),
-        "Real circulant"),
-    (Circulant(complex(0.9.^(0:ns - 1))),
-        Circulant(complex(0.9.^(0:nl - 1))),
-        "Complex circulant"),
-    (TriangularToeplitz(0.9.^(0:ns - 1), :U),
-        TriangularToeplitz(0.9.^(0:nl - 1), :U),
-        "Real upper triangular"),
-    (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :U),
-        TriangularToeplitz(complex(0.9.^(0:nl - 1)), :U),
-        "Complex upper triangular"),
-    (TriangularToeplitz(0.9.^(0:ns - 1), :L),
-        TriangularToeplitz(0.9.^(0:nl - 1), :L),
-        "Real lower triangular"),
-    (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :L),
-         TriangularToeplitz(complex(0.9.^(0:nl - 1)), :L),
-         "Complex lower triangular"),
-]
+diag_val = 2 # elevating diagonal encourages well-conditioned spectrum
+sizes = (17, 33, 513, 1024)
+for n in sizes
+    @testset "n = $n" begin
+        exp_95 = 0.9.^(0:n-1)
+        exp_40 = 0.4.^(0:n-1)
+        exp_40[1] = exp_95[1] = diag_val
 
-for (As, Al, st) in cases
-    @testset "Toeplitz: $st" begin
-        @test As * xs ≈ Matrix(As)  * xs
-        @test As'* xs ≈ Matrix(As)' * xs
-        @test Al * xl ≈ Matrix(Al)  * xl
-        @test Al'* xl ≈ Matrix(Al)' * xl
-        @test [As[n] for n in 1:length(As)] == vec(As)
-        @test [Al[n] for n in 1:length(Al)] == vec(Al)
-        @test ldiv!(As, LinearAlgebra.copy_oftype(xs, eltype(As))) ≈ Matrix(As) \ xs
-        @test ldiv!(Al, LinearAlgebra.copy_oftype(xl, eltype(Al))) ≈ Matrix(Al) \ xl
-        @test Matrix(As') == Matrix(As)'
-        @test Matrix(transpose(As)) == transpose(Matrix(As))
-    end
-end
+        rs1 = randn(n) / n # this scaling encourages good conditioning and diagonal dominance
+        rs2 = randn(n) / n
+        rs1[1] = rs2[1] = diag_val #  making sure the first elements have the same value
+
+        cases = [
+            (Toeplitz(exp_95, exp_40),
+                "Real square"),
+            (Toeplitz(complex.(exp_95), complex.(exp_40)),
+                "Complex square"),
+            (Toeplitz(rs1, rs2),
+                "Real random square"),
+            (Toeplitz(complex(rs1), complex(rs2)),
+                "Complex random square"),
+            (Circulant(exp_95),
+                "Real circulant"),
+            (Circulant(complex.(exp_95)),
+                "Complex circulant"),
+            (Circulant(rs1),
+                "Real random circulant"),
+            (Circulant(complex.(rs1)),
+                "Complex random circulant"),
+            (TriangularToeplitz(exp_95, :U),
+                "Real upper triangular"),
+            (TriangularToeplitz(complex.(exp_95), :U),
+                "Complex upper triangular"),
+            (TriangularToeplitz(exp_95, :L),
+                "Real lower triangular"),
+            (TriangularToeplitz(complex.(exp_95), :L),
+                 "Complex lower triangular"),
+        ]
+
+        for (A, st) in cases
+            x = randn(eltype(A), n)
+            X = randn(eltype(A), n, k) # for multiplication and solver tests
+            @testset "Toeplitz: $st" begin
+                M = Matrix(A)
+                @test A * x ≈ M  * x
+                @test A'* x ≈ M' * x
+                @test A * X ≈ M  * X
+                @test A'* X ≈ M' * X
+                @test [A[n] for n in 1:length(A)] == vec(A)
+                @test isapprox_helper(A \ x, M \ x)
+                @test isapprox_helper(A \ X, M \ X)
+                @test isapprox_helper(ldiv!(A, LinearAlgebra.copy_oftype(X, eltype(A))), M \ X)
+                @test Matrix(A') == M'
+                @test adjoint(factorize(A)) * X ≈ M' * X
+                @test Matrix(transpose(A)) == transpose(M)
+                @test size(A) == size(M)
+                @test size(A, 3) == size(M, 3)
+                F = factorize(A)
+                @test size(F) == size(M)
+                @test size(F, 3) == size(M, 3)
+                @test A * A ≈ M * M
+                @test isapprox_helper(inv(A), inv(M))
+            end # testset matrices
+        end # loop over matrices
+
+        @testset "Rectangular" begin
+            for m in sizes
+                @testset "m = $m" begin
+                    exp_40_m = 0.4.^(0:m-1)
+                    exp_40_m[1] = diag_val
+                    rectangular_cases = [
+                        (Toeplitz(exp_95, exp_40_m),
+                            "Real general rectangular"),
+                        (Toeplitz(complex.(exp_95), complex.(exp_40_m)),
+                            "Complex general rectangular"),
+                    ]
+
+                    for (A, st) in rectangular_cases
+                        xn, xm = randn(eltype(A), n, k), randn(eltype(A), m, k)
+                        @testset "Toeplitz: $st" begin
+                            M = Matrix(A)
+                            @test A * xm ≈ M  * xm
+                            @test A'* xn ≈ M' * xn
+                            @test [A[n] for n in 1:length(A)] == vec(A)
+                            @test isapprox(A \ xn, M \ xn, atol = 1e-4, rtol = 1e-4)
+                            @test Matrix(A') == M'
+                            @test Matrix(transpose(A)) == transpose(M)
+                        end
+                    end
+                end # testset m
+            end # loop m
+        end
+
+        @testset "Symmetric Toeplitz" begin
+            Xs = randn(n, k)
+            xs = randn(n)
+
+            As = SymmetricToeplitz(exp_95)
+            Ms = Matrix(As)
+            @test isapprox_helper(As * xs, Ms * xs)
+            @test isapprox_helper(As * Xs, Ms * Xs)
+            @test isapprox_helper(ldiv!(As, copy(xs)), Ms \ xs)
+            @test isapprox_helper(ldiv!(As, copy(Xs)), Ms \ Xs)
+            @test StatsBase.levinson(As, xs) ≈ Ms \ xs # this should be exact to numerical precision given good conditioning
+            @test Matrix(As') ≈ Ms'
+            @test Matrix(transpose(As)) ≈ transpose(Ms)
+            y_cg = ldiv!(zero(xs), As, xs, isposdef = true)
+            @test isapprox_helper(y_cg, As \ xs) # testing cg-based solve
+
+            Ab = SymmetricToeplitz(rs1) # this is still positive definite
+            Mb = Matrix(Ab)
+            @test isapprox_helper(Ab * xs, Mb * xs)
+            @test isapprox_helper(Ab * Xs, Mb * Xs)
+            @test isapprox_helper(ldiv!(Ab, copy(xs)), Mb \ xs)
+            @test isapprox_helper(ldiv!(Ab, copy(Xs)), Mb \ Xs)
+            @test StatsBase.levinson(Ab, xs) ≈ Mb \ xs
+            @test Matrix(Ab') ≈ Mb'
+            @test Matrix(transpose(Ab)) ≈ transpose(Mb)
+
+            @test Matrix(SymmetricToeplitz(vc)) == Matrix(SymmetricToeplitz(vv))
+        end
+
+        @testset "Hankel" begin
+            @testset "Real square" begin
+                H = Hankel([1.0,2,3,4,5],[5.0,6,7,8,9])
+                @test Matrix(H) == [1 2 3 4 5;
+                                    2 3 4 5 6;
+                                    3 4 5 6 7;
+                                    4 5 6 7 8;
+                                    5 6 7 8 9]
+
+                @test convert(Hankel{Float64}, H) == H
+                @test convert(AbstractMatrix{Float64}, H) == H
+                @test convert(AbstractArray{Float64}, H) == H
+
+                @test H[2,2] == 3
+                @test H[7]  == 3
+                @test diag(H) == [1,3,5,7,9]
+
+                x = ones(5)
+                @test Matrix(H)*x ≈ H*x
+
+                Hs = Hankel(0.9.^(n-1:-1:0), 0.4.^(0:n-1))
+                xs = randn(n)
+                @test Hs * xs[:,1] ≈ Matrix(Hs) * xs[:,1]
+                @test Hs * xs ≈ Matrix(Hs) * xs
+                @test Matrix(Hankel(reverse(vc),vr)) == Matrix(Hankel(reverse(vv),vr))
+            end
+
+            @testset "Complex square" begin
+                H = Hankel(complex([1.0,2,3,4,5]), complex([5.0,6,7,8,0]))
+                x = ones(5)
+                @test Matrix(H)*x ≈ H*x
+
+                Hs = Hankel(complex(0.9.^(n-1:-1:0)), complex(0.4.^(0:n-1)))
+                xs = randn(n)
+                @test Hs * xs[:,1] ≈ Matrix(Hs) * xs[:,1]
+                @test Hs * xs ≈ Matrix(Hs) * xs
+            end
+
+            for m in sizes
+                xm = randn(m)
+                exp_95_n = reverse(exp_95)
+                exp_40_m = 0.4.^(0:m-1)
+                exp_40_m[1] = diag_val
+                @testset "m = $m" begin
+                    @testset "Real rectangular" begin
+                        Hs = Hankel(exp_95_n, exp_40_m)
+                        @test Hs * xm[:,1] ≈ Matrix(Hs) * xm[:,1]
+                        @test Hs * xm ≈ Matrix(Hs) * xm
+                    end
+
+                    @testset "Complex rectangular" begin
+                        Hs = Hankel(complex.(exp_95_n), complex.(exp_40_m))
+                        @test Hs * xm[:,1] ≈ Matrix(Hs) * xm[:,1]
+                        @test Hs * xm ≈ Matrix(Hs) * xm
+                    end
+                end # testset m
+            end # loop m
+
+            @testset "Convert" begin
+                H = Hankel([1.0,2,3,4,5],[5.0,6,7,8,0])
+                @test Hankel(H) == Hankel{Float64}(H) == H
+                @test convert(Hankel,H) == convert(Hankel{Float64},H) ==
+                        convert(AbstractArray,H) == convert(AbstractArray{Float64},H) == H
+                @test convert(Array, H) ≈ Matrix(H)
+
+                A = [1.0 2; 3 4]
+                @test Hankel(A) == [1 3; 3 4]
+                T = Toeplitz([1.0,2,3,4,5],[1.0,6,7,8,0])
+                @test Hankel(T) == Hankel([1.0,2,3,4,5],[5.0,4,3,2,1])
+                @test Hankel(T) ≠ ToeplitzMatrices._Hankel(T)
+            end
+        end
+
+    end # testset n
+end # loop over n
 
 @testset "Mixed types" begin
     @test eltype(Toeplitz([1, 2], [1, 2])) === Int
@@ -70,105 +238,6 @@ end
     @test Matrix(Toeplitz(vc, vr)) == Matrix(Toeplitz(vv, vr))
     @test Matrix(Circulant(vc)) == Matrix(Circulant(vv))
     @test Matrix(TriangularToeplitz(vc,:U)) == Matrix(TriangularToeplitz(vv,:U))
-end
-
-@testset "Real general rectangular" begin
-    Ar1 = Toeplitz(0.9.^(0:nl-1), 0.4.^(0:ns-1))
-    Ar2 = Toeplitz(0.9.^(0:ns-1), 0.4.^(0:nl-1))
-    @test Ar1 * xs ≈ Matrix(Ar1) * xs
-    @test Ar2 * xl ≈ Matrix(Ar2) * xl
-end
-
-@testset "Complex general rectangular" begin
-    Ar1 = Toeplitz(complex(0.9.^(0:nl-1)), complex(0.4.^(0:ns-1)))
-    Ar2 = Toeplitz(complex(0.9.^(0:ns-1)), complex(0.4.^(0:nl-1)))
-    @test Ar1 * xs ≈ Matrix(Ar1) * xs
-    @test Ar2 * xl ≈ Matrix(Ar2) * xl
-end
-
-@testset "Symmetric Toeplitz" begin
-    As = SymmetricToeplitz(0.9.^(0:ns-1))
-    Ab = SymmetricToeplitz(abs.(randn(ns)))
-    Al = SymmetricToeplitz(0.9.^(0:nl-1))
-    @test As * xs ≈ Matrix(As) * xs
-    @test Ab * xs ≈ Matrix(Ab) * xs
-    @test Al * xl ≈ Matrix(Al) * xl
-    @test ldiv!(As, copy(xs)) ≈ Matrix(As) \ xs
-    @test ldiv!(Ab, copy(xs)) ≈ Matrix(Ab) \ xs
-    @test ldiv!(Al, copy(xl)) ≈ Matrix(Al) \ xl
-    @test StatsBase.levinson(As, xs) ≈ Matrix(As) \ xs
-    @test StatsBase.levinson(Ab, xs) ≈ Matrix(Ab) \ xs
-    @test Matrix(SymmetricToeplitz(vc)) == Matrix(SymmetricToeplitz(vv))
-end
-
-@testset "Hankel" begin
-    @testset "Real square" begin
-        H = Hankel([1.0,2,3,4,5],[5.0,6,7,8,9])
-        @test Matrix(H) == [1 2 3 4 5;
-                            2 3 4 5 6;
-                            3 4 5 6 7;
-                            4 5 6 7 8;
-                            5 6 7 8 9]
-
-        @test convert(Hankel{Float64}, H) == H
-        @test convert(AbstractMatrix{Float64}, H) == H
-        @test convert(AbstractArray{Float64}, H) == H
-
-        @test H[2,2] == 3
-        @test H[7]  == 3
-        @test diag(H) == [1,3,5,7,9]
-
-        x = ones(5)
-        @test Matrix(H)*x ≈ H*x
-
-        Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:ns-1))
-        Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:nl-1))
-        @test Hs * xs[:,1] ≈ Matrix(Hs) * xs[:,1]
-        @test Hs * xs ≈ Matrix(Hs) * xs
-        @test Hl * xl ≈ Matrix(Hl) * xl
-        @test Matrix(Hankel(reverse(vc),vr)) == Matrix(Hankel(reverse(vv),vr))
-    end
-
-    @testset "Complex square" begin
-        H = Hankel(complex([1.0,2,3,4,5]), complex([5.0,6,7,8,0]))
-        x = ones(5)
-        @test Matrix(H)*x ≈ H*x
-
-        Hs = Hankel(complex(0.9.^(ns-1:-1:0)), complex(0.4.^(0:ns-1)))
-        Hl = Hankel(complex(0.9.^(nl-1:-1:0)), complex(0.4.^(0:nl-1)))
-        @test Hs * xs[:,1] ≈ Matrix(Hs) * xs[:,1]
-        @test Hs * xs ≈ Matrix(Hs) * xs
-        @test Hl * xl ≈ Matrix(Hl) * xl
-    end
-
-    @testset "Real rectangular" begin
-        Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:nl-1))
-        Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:ns-1))
-        @test Hs * xl[:,1] ≈ Matrix(Hs) * xl[:,1]
-        @test Hs * xl ≈ Matrix(Hs) * xl
-        @test Hl * xs ≈ Matrix(Hl) * xs
-    end
-
-    @testset "Complex rectangular" begin
-        Hs = Hankel(complex(0.9.^(ns-1:-1:0)), complex(0.4.^(0:nl-1)))
-        Hl = Hankel(complex(0.9.^(nl-1:-1:0)), complex(0.4.^(0:ns-1)))
-        @test Hs * xl[:,1] ≈ Matrix(Hs) * xl[:,1]
-        @test Hs * xl ≈ Matrix(Hs) * xl
-        @test Hl * xs ≈ Matrix(Hl) * xs
-    end
-
-    @testset "Convert" begin
-        H = Hankel([1.0,2,3,4,5],[5.0,6,7,8,0])
-        @test Hankel(H) == Hankel{Float64}(H) == H
-        @test convert(Hankel,H) == convert(Hankel{Float64},H) ==
-                convert(AbstractArray,H) == convert(AbstractArray{Float64},H) == H
-
-        A = [1.0 2; 3 4]
-        @test Hankel(A) == [1 3; 3 4]
-        T = Toeplitz([1.0,2,3,4,5],[1.0,6,7,8,0])
-        @test Hankel(T) == Hankel([1.0,2,3,4,5],[5.0,4,3,2,1])
-        @test Hankel(T) ≠ ToeplitzMatrices._Hankel(T)
-    end
 end
 
 @testset "Convert" begin
@@ -196,13 +265,14 @@ end
     @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),Circulant{ComplexF64})
     @test isa(convert(ToeplitzMatrices.Circulant{ComplexF64},T),Circulant{ComplexF64})
 
-    T = TriangularToeplitz(ones(2),:U)
+    T = TriangularToeplitz(ones(2), :U)
 
     @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
     @test isa(convert(AbstractMatrix{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(AbstractArray{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(ToeplitzMatrices.TriangularToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(Toeplitz, T), Toeplitz)
 
     T = Hankel(ones(2),ones(2))
 
@@ -315,6 +385,13 @@ end
     C = sqrt(C3)
     @test C isa Circulant
     @test C*C ≈ C3
+
+    lambda_abs = eigvals(abs(C1))
+    abs_lambda = abs.(eigvals(C1))
+    @test all(<(1e-12), imag(lambda_abs))
+    lambda_abs = real.(lambda_abs)
+    @test all(>(0), lambda_abs)
+    @test sort!(lambda_abs) ≈ sort!(abs_lambda)
 
     C = copy(C1)
     @test C isa Circulant
