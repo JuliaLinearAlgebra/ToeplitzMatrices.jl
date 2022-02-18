@@ -34,9 +34,6 @@ struct ToeplitzFactorization{T<:Number,A<:AbstractToeplitz{T},S<:Number,P<:Plan{
 end
 
 size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
-function getindex(A::AbstractToeplitz, i::Integer)
-    return A[mod(i - 1, size(A, 1)) + 1, div(i - 1, size(A, 1)) + 1]
-end
 
 convert(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
 convert(::Type{AbstractArray{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
@@ -384,7 +381,8 @@ function getindex(C::Circulant, i::Integer, j::Integer)
     @boundscheck if i < 1 || i > n || j < 1 || j > n
         throw(BoundsError(C, (i,j)))
     end
-    return C.vc[mod(i - j, length(C.vc)) + 1]
+    d = i - j
+    return C.vc[d < 0 ? n+d+1 : d+1]
 end
 
 LinearAlgebra.ldiv!(C::Circulant, b::AbstractVector) = ldiv!(factorize(C), b)
