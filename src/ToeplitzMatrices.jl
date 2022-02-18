@@ -2,20 +2,19 @@ module ToeplitzMatrices
 using StatsBase
 
 
-import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, similar, sqrt, copyto!,
-    adjoint, transpose
-import LinearAlgebra: Cholesky, DimensionMismatch, cholesky, cholesky!, eigvals, inv, ldiv!,
-    mul!, pinv, rmul!, tril, triu
+import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, similar,
+    sqrt, copyto!, adjoint, transpose
+import LinearAlgebra: cholesky, cholesky!, eigvals, inv, ldiv!, mul!, pinv, tril, triu
 
-using LinearAlgebra: LinearAlgebra, Adjoint, Factorization, factorize
+using LinearAlgebra: LinearAlgebra, Adjoint, Factorization, factorize, Cholesky,
+    DimensionMismatch, rmul!
 
 using AbstractFFTs
 using AbstractFFTs: Plan
 
 flipdim(A, d) = reverse(A, dims=d)
 
-export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel,
-       chan, strang
+export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel, chan, strang
 
 
 include("iterativeLinearSolvers.jl")
@@ -41,20 +40,6 @@ end
 
 convert(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
 convert(::Type{AbstractArray{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
-
-# Convert an abstract Toeplitz matrix to a full matrix
-function Matrix(A::AbstractToeplitz{T}) where T
-    m, n = size(A)
-    Af = Matrix{T}(undef, m, n)
-    for j = 1:n
-        for i = 1:m
-            Af[i,j] = A[i,j]
-        end
-    end
-    return Af
-end
-
-convert(::Type{Matrix}, A::AbstractToeplitz) = Matrix(A)
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
 function mul!(
@@ -112,11 +97,9 @@ function mul!(
     tmp = A.tmp
     dft = A.dft
     @inbounds begin
-        for i in 1:n
-            tmp[i] = x[i]
-        end
+        copyto!(tmp, 1, x, 1, n)
         for i in (n+1):N
-            tmp[i] = 0
+            tmp[i] = zero(eltype(tmp))
         end
         mul!(tmp, dft, tmp)
         for i in 1:N
@@ -252,16 +235,15 @@ end
 
 # Retrieve an entry
 function getindex(A::Toeplitz, i::Integer, j::Integer)
-    m = size(A,1)
-    n = size(A,2)
-    if i > m || j > n
-        error("BoundsError()")
+    m, n  = size(A)
+    @boundscheck if i < 1 || i > m || j < 1 || j > n
+        throw(BoundsError(A, (i,j)))
     end
-
-    if i >= j
-        return A.vc[i - j + 1]
+    d = i - j
+    if d >= 0
+        return A.vc[d + 1]
     else
-        return A.vr[1 - i + j]
+        return A.vr[1 - d]
     end
 end
 
@@ -272,9 +254,9 @@ function tril(A::Toeplitz, k = 0)
     end
     Al = TriangularToeplitz(copy(A.vc), 'L', length(A.vr))
     if k < 0
-      for i in -1:-1:k
-          Al.ve[-i] = zero(eltype(A))
-      end
+        for i in -1:-1:k
+            Al.ve[-i] = zero(eltype(A))
+        end
     end
     return Al
 end
@@ -286,9 +268,9 @@ function triu(A::Toeplitz, k = 0)
     end
     Al = TriangularToeplitz(copy(A.vr), 'U', length(A.vc))
     if k > 0
-      for i in 1:k
-          Al.ve[i] = zero(eltype(A))
-      end
+        for i in 1:k
+            Al.ve[i] = zero(eltype(A))
+        end
     end
     return Al
 end
@@ -313,8 +295,7 @@ SymmetricToeplitz(vc::AbstractVector) = SymmetricToeplitz{eltype(vc)}(vc)
 SymmetricToeplitz(A::AbstractMatrix) = SymmetricToeplitz{eltype(A)}(A)
 SymmetricToeplitz{T}(A::AbstractMatrix) where {T<:Number} = SymmetricToeplitz{T}(A[1, :])
 
-function LinearAlgebra.factorize(A::SymmetricToeplitz)
-    T = eltype(A)
+function LinearAlgebra.factorize(A::SymmetricToeplitz{T}) where {T<:Number}
     vc = A.vc
     m = length(vc)
     S = promote_type(T, Complex{Float32})
@@ -334,14 +315,19 @@ adjoint(A::SymmetricToeplitz{<:Real}) = A
 transpose(A::SymmetricToeplitz) = A
 
 function size(A::SymmetricToeplitz, dim::Int)
-    if 1 <= dim <= 2
-        return length(A.vc)
-    else
+    if dim < 1
         error("arraysize: dimension out of range")
     end
+    return dim < 3 ? length(A.vc) : 1
 end
 
-getindex(A::SymmetricToeplitz, i::Integer, j::Integer) = A.vc[abs(i - j) + 1]
+function getindex(A::SymmetricToeplitz, i::Integer, j::Integer)
+    m  = size(A, 1)
+    @boundscheck if i < 1 || i > m || j < 1 || j > m
+        throw(BoundsError(A, (i,j)))
+    end
+    return A.vc[abs(i - j) + 1]
+end
 
 ldiv!(A::SymmetricToeplitz, b::StridedVector) =
     copyto!(b, IterativeLinearSolvers.cg(A, zeros(length(b)), b, strang(A), 1000, 100eps())[1])
@@ -387,17 +373,16 @@ convert(::Type{Circulant{T}}, A::Circulant) where {T} = Circulant(convert(Vector
 
 
 function size(C::Circulant, dim::Integer)
-    if 1 <= dim <= 2
-        return length(C.vc)
-    else
+    if dim < 1
         error("arraysize: dimension out of range")
     end
+    return dim < 3 ? length(C.vc) : 1
 end
 
 function getindex(C::Circulant, i::Integer, j::Integer)
     n = size(C, 1)
-    if i > n || j > n
-        error("BoundsError()")
+    @boundscheck if i < 1 || i > n || j < 1 || j > n
+        throw(BoundsError(C, (i,j)))
     end
     return C.vc[mod(i - j, length(C.vc)) + 1]
 end
@@ -414,18 +399,12 @@ function LinearAlgebra.ldiv!(C::CirculantFactorization, b::AbstractVector)
     end
     dft = C.dft
     @inbounds begin
-        for i in 1:n
-            tmp[i] = b[i]
-        end
+        copyto!(tmp, b)
         dft * tmp
-        for i in 1:n
-            tmp[i] /= vcvr_dft[i]
-        end
+        tmp ./= vcvr_dft
         dft \ tmp
         T = eltype(C)
-        for i in 1:n
-            b[i] = maybereal(T, tmp[i])
-        end
+        b .= maybereal.(T, tmp)
     end
     return b
 end
@@ -489,16 +468,8 @@ function copyto!(dest::Circulant, src::Circulant)
     return dest
 end
 
-function (+)(C1::Circulant, C2::Circulant)
-    @boundscheck (size(C1)==size(C2)) || throw(BoundsError())
-    Circulant(C1.vc+C2.vc)
-end
-
-function (-)(C1::Circulant, C2::Circulant)
-    @boundscheck (size(C1)==size(C2)) || throw(BoundsError())
-    Circulant(C1.vc-C2.vc)
-end
-
+(+)(C1::Circulant, C2::Circulant) = Circulant(C1.vc + C2.vc)
+(-)(C1::Circulant, C2::Circulant) = Circulant(C1.vc - C2.vc)
 (-)(C::Circulant) = Circulant(-C.vc)
 
 Base.:*(A::Circulant, B::Circulant) = factorize(A) * factorize(B)
@@ -535,16 +506,14 @@ function Base.:*(A::Adjoint{<:CirculantFactorization}, B::CirculantFactorization
         ))
     end
 
-    tmp = map(C_vcvr_dft, B_vcvr_dft) do c, b
-        conj(c) * b
-    end
+    tmp = conj.(C_vcvr_dft) .* B_vcvr_dft
     vc = C.dft \ tmp
 
     return Circulant(maybereal(Base.promote_eltype(C, B), vc))
 end
 
-(*)(scalar::Number, C::Circulant) = Circulant(scalar*C.vc)
-(*)(C::Circulant,scalar::Number) = Circulant(scalar*C.vc)
+(*)(scalar::Number, C::Circulant) = Circulant(scalar * C.vc)
+(*)(C::Circulant,scalar::Number) = Circulant(C.vc * scalar)
 
 
 # Triangular
@@ -600,16 +569,17 @@ convert(::Type{TriangularToeplitz{T}}, A::TriangularToeplitz) where {T} =
 
 
 function size(A::TriangularToeplitz, dim::Int)
-    if dim == 1 || dim == 2
-        return length(A.ve)
-    elseif dim > 2
-        return 1
-    else
+    if dim < 1
         error("arraysize: dimension out of range")
     end
+    return dim < 3 ? length(A.ve) : 1
 end
 
 function getindex(A::TriangularToeplitz{T}, i::Integer, j::Integer) where T
+    n = size(A, 1)
+    @boundscheck if i < 1 || i > n || j < 1 || j > n
+        throw(BoundsError(A, (i,j)))
+    end
     if A.uplo == 'L'
         return i >= j ? A.ve[i - j + 1] : zero(T)
     else
@@ -778,11 +748,17 @@ convert(::Type{Hankel{T}}, A::Hankel) where {T<:Number} = _Hankel(convert(Toepli
 
 
 # Size
-size(H::Hankel,k...) = size(H.T,k...)
+size(H::Hankel, k...) = size(H.T, k...)
 
 
 # Retrieve an entry by two indices
-getindex(A::Hankel, i::Integer, j::Integer) = A.T[i,end-j+1]
+function getindex(A::Hankel, i::Integer, j::Integer)
+    m, n = size(A)
+    @boundscheck if i < 1 || i > m || j < 1 || j > n
+        throw(BoundsError(A, (i,j)))
+    end
+    return A.T[i,n-j+1]
+end
 
 # Fast application of a general Hankel matrix to a general vector
 *(A::Hankel, b::AbstractVector) = A.T * reverse(b)
