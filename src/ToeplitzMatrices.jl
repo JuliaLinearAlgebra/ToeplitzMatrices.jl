@@ -254,8 +254,8 @@ function tril(A::Toeplitz, k = 0)
     end
     Al = TriangularToeplitz(copy(A.vc), 'L', length(A.vr))
     if k < 0
-        for i in -1:-1:k
-            Al.ve[-i] = zero(eltype(A))
+        for i in 1:-k
+            Al.ve[i] = zero(eltype(A))
         end
     end
     return Al
@@ -424,12 +424,11 @@ function strang(A::AbstractMatrix{T}) where T
     n = size(A, 1)
     v = Vector{T}(undef, n)
     n2 = div(n, 2)
-    for i = 1:n
-        if i <= n2 + 1
-            v[i] = A[i,1]
-        else
-            v[i] = A[1, n - i + 2]
-        end
+    for i = 1:n2 + 1
+        v[i] = A[i,1]
+    end
+    for i in n2+2:n
+        v[i] = A[1, n - i + 2]
     end
     return Circulant(v)
 end
@@ -726,22 +725,7 @@ Hankel(vc::AbstractVector, vr::AbstractVector) =
 Hankel{T}(A::AbstractMatrix) where T = Hankel{T}(A[:,1], A[end,:])
 Hankel(A::AbstractMatrix) = Hankel(A[:,1], A[end,:])
 
-convert(::Type{Array}, A::Hankel) = convert(Matrix, A)
-convert(::Type{Matrix}, A::Hankel{T}) where T = convert(Matrix{T}, A)
-function convert(::Type{Matrix{T}}, A::Hankel) where T
-    m, n = size(A)
-    Af = Matrix{T}(undef, m, n)
-    for j = 1:n
-        for i = 1:m
-            Af[i,j] = A[i,j]
-        end
-    end
-    return Af
-end
-
-convert(::Type{AbstractArray{T}}, A::Hankel{T}) where {T<:Number} = A
 convert(::Type{AbstractArray{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
-convert(::Type{AbstractMatrix{T}}, A::Hankel{T}) where {T<:Number} = A
 convert(::Type{AbstractMatrix{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
 convert(::Type{Hankel{T}}, A::Hankel) where {T<:Number} = _Hankel(convert(Toeplitz{T}, A.T))
 
