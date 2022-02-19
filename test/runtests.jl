@@ -118,13 +118,13 @@ end
         @test diag(H) == [1,3,5,7,9]
 
         x = ones(5)
-        @test Matrix(H)*x ≈ H*x
+        @test mul!(copy(x), H, x) ≈ Matrix(H)*x ≈ H*x
 
         Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:ns-1))
         Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:nl-1))
         @test Hs * xs[:,1] ≈ Matrix(Hs) * xs[:,1]
-        @test Hs * xs ≈ Matrix(Hs) * xs
-        @test Hl * xl ≈ Matrix(Hl) * xl
+        @test mul!(copy(xs), Hs, xs) ≈ Hs * xs ≈ Matrix(Hs) * xs
+        @test mul!(copy(xl), Hl, xl) ≈ Hl * xl ≈ Matrix(Hl) * xl
         @test Matrix(Hankel(reverse(vc),vr)) == Matrix(Hankel(reverse(vv),vr))
     end
 

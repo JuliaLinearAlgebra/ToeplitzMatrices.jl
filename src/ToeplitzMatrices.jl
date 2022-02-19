@@ -737,7 +737,7 @@ mul!(y::StridedVector, A::Hankel, x::StridedVector, α::Number, β::Number) =
 # Fast application of a general Hankel matrix to a general matrix
 *(A::Hankel, B::AbstractMatrix) = A.T * reverse(B, dims=1)
 mul!(Y::StridedMatrix, A::Hankel, X::StridedMatrix, α::Number, β::Number) =
-    mul!(Y, A.T, view(X, reverse(axes(x, 1)), :), α, β)
+    mul!(Y, A.T, view(X, reverse(axes(X, 1)), :), α, β)
 
 ## BigFloat support
 
