@@ -35,8 +35,8 @@ end
 
 size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
 
-convert(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
-convert(::Type{AbstractArray{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
+convert(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) where {T<:Number} = convert(AbstractToeplitz{T}, S)
+convert(::Type{AbstractArray{T}}, S::AbstractToeplitz) where {T<:Number} = convert(AbstractToeplitz{T}, S)
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
 function mul!(
@@ -245,7 +245,7 @@ function getindex(A::Toeplitz, i::Integer, j::Integer)
 end
 
 # Form a lower triangular Toeplitz matrix by annihilating all entries above the k-th diaganal
-function tril(A::Toeplitz, k = 0)
+function tril(A::Toeplitz, k::Integer = 0)
     if k > 0
         error("Second argument cannot be positive")
     end
@@ -259,7 +259,7 @@ function tril(A::Toeplitz, k = 0)
 end
 
 # Form a lower triangular Toeplitz matrix by annihilating all entries below the k-th diagonal
-function triu(A::Toeplitz, k = 0)
+function triu(A::Toeplitz, k::Integer = 0)
     if k < 0
         error("Second argument cannot be negative")
     end
@@ -488,26 +488,16 @@ function Base.:*(A::CirculantFactorization, B::CirculantFactorization)
     return Circulant(maybereal(Base.promote_eltype(A, B), vc))
 end
 
-Base.:*(A::Adjoint{<:Circulant}, B::Circulant) = factorize(parent(A))' * factorize(B)
-Base.:*(A::Adjoint{<:Circulant}, B::CirculantFactorization) = factorize(parent(A))' * B
-Base.:*(A::Adjoint{<:CirculantFactorization}, B::Circulant) = A * factorize(B)
-function Base.:*(A::Adjoint{<:CirculantFactorization}, B::CirculantFactorization)
-    C = parent(A)
-    C_vcvr_dft = C.vcvr_dft
-    B_vcvr_dft = B.vcvr_dft
-    m = length(C_vcvr_dft)
-    n = length(B_vcvr_dft)
-    if m != n
-        throw(DimensionMismatch(
-            "size of matrix A, $(m)x$(m), does not match size of matrix B, $(n)x$(n)"
-        ))
-    end
-
-    tmp = conj.(C_vcvr_dft) .* B_vcvr_dft
-    vc = C.dft \ tmp
-
-    return Circulant(maybereal(Base.promote_eltype(C, B), vc))
-end
+# Make an eager adjoint, similar to adjoints of Diagonal in LinearAlgebra
+adjoint(C::ToeplitzFactorization{T,Circulant{T},S,P}) where {T,S,P} =
+    ToeplitzFactorization{T,Circulant{T},S,P}(conj.(C.vcvr_dft), C.tmp, C.dft)
+Base.:*(A::Adjoint{<:Any,<:Circulant}, B::Circulant) = factorize(parent(A))' * factorize(B)
+Base.:*(A::Adjoint{<:Any,<:Circulant}, B::CirculantFactorization) =
+    factorize(parent(A))' * B
+Base.:*(A::Adjoint{<:Any,<:Circulant}, B::Adjoint{<:Any,<:Circulant}) =
+    factorize(parent(A))' * factorize(parent(B))'
+Base.:*(A::Circulant, B::Adjoint{<:Any,<:Circulant}) = factorize(A) * factorize(parent(B))'
+Base.:*(A::CirculantFactorization, B::Adjoint{<:Any,<:Circulant}) = A * factorize(parent(B))'
 
 (*)(scalar::Number, C::Circulant) = Circulant(scalar * C.vc)
 (*)(C::Circulant,scalar::Number) = Circulant(C.vc * scalar)
@@ -595,7 +585,7 @@ function (*)(A::TriangularToeplitz, B::TriangularToeplitz)
     return Triangular(Matrix(A), A.uplo) * Triangular(Matrix(B), B.uplo)
 end
 
-function Base.:*(A::Adjoint{<:TriangularToeplitz}, b::AbstractVector)
+function Base.:*(A::Adjoint{<:Any,<:TriangularToeplitz}, b::AbstractVector)
     M = parent(A)
     return TriangularToeplitz{eltype(M)}(M.ve, M.uplo) * b
 end
