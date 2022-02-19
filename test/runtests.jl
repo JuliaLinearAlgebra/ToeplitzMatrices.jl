@@ -349,6 +349,15 @@ end
     for T in (TU, TL)
         @test inv(T)::TriangularToeplitz ≈ inv(Matrix(T))
     end
+    T = Toeplitz(A)
+    TU = triu(T)
+    @test TU isa TriangularToeplitz
+    @test istriu(TU)
+    @test TU == Toeplitz(triu(A))
+    TL = tril(T)
+    @test TL isa TriangularToeplitz
+    @test istril(TL)
+    @test TL == Toeplitz(tril(A))
     for n in (65, 128)
         A = randn(n, n)
         TU = TriangularToeplitz(A, :U)
