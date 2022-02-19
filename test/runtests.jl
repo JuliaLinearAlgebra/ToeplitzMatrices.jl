@@ -9,7 +9,6 @@ end
 
 using ToeplitzMatrices, StatsBase, Test, LinearAlgebra
 
-using Base: copyto!
 using FFTW: fft
 
 ns = 101
@@ -17,7 +16,7 @@ nl = 2000
 
 xs = randn(ns, 5)
 xl = randn(nl, 5)
-vc = LinRange(1,3,3) # for testing with AbstractVector
+vc = 1.0:3.0 # for testing with AbstractVector
 vv = Vector(vc)
 vr = [1, 5.]
 
@@ -259,9 +258,11 @@ end
     M4 = Matrix(C4)
     M5 = Matrix(C5)
 
-    C = C1*C2
-    @test C isa Circulant
-    @test C ≈ M1*M2
+    for t1 in (identity, adjoint), t2 in (identity, adjoint)
+        C = t1(C1)*t2(C2)
+        @test C isa Circulant
+        @test C ≈ t1(M1)*t2(M2)
+    end
 
     C = C1-C2
     @test C isa Circulant
