@@ -204,6 +204,15 @@ end
     @test isa(convert(ToeplitzMatrices.TriangularToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(Toeplitz, T), Toeplitz)
 
+    T = TriangularToeplitz(ones(2),:L)
+
+    @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
+    @test isa(convert(AbstractMatrix{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(AbstractArray{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.TriangularToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(Toeplitz, T), Toeplitz)
+
     T = Hankel(ones(2),ones(2))
 
     @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
@@ -354,10 +363,12 @@ end
     @test TU isa TriangularToeplitz
     @test istriu(TU)
     @test TU == Toeplitz(triu(A))
+    @test TU'ones(2) == Matrix(TU)'ones(2)
     TL = tril(T)
     @test TL isa TriangularToeplitz
     @test istril(TL)
     @test TL == Toeplitz(tril(A))
+    @test TL'ones(2) == Matrix(TL)'ones(2)
     for n in (65, 128)
         A = randn(n, n)
         TU = TriangularToeplitz(A, :U)
