@@ -4,11 +4,13 @@ version = "0.7.1"
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
+DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 AbstractFFTs = "0.4, 0.5, 1"
+DSP = "0.7"
 StatsBase = "0.32, 0.33"
 julia = "1.6"
 

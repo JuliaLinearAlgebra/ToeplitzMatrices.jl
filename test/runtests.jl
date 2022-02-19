@@ -202,6 +202,7 @@ end
     @test isa(convert(AbstractArray{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(ToeplitzMatrices.TriangularToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(Toeplitz, T), Toeplitz)
 
     T = Hankel(ones(2),ones(2))
 
@@ -258,8 +259,8 @@ end
     M4 = Matrix(C4)
     M5 = Matrix(C5)
 
-    for t1 in (identity, adjoint), t2 in (identity, adjoint)
-        C = t1(C1)*t2(C2)
+    for t1 in (identity, adjoint), t2 in (identity, adjoint), fact in (identity, factorize)
+        C = t1(fact(C1))*t2(fact(C2))
         @test C isa Circulant
         @test C ≈ t1(M1)*t2(M2)
     end
@@ -331,9 +332,31 @@ end
 
     # Test for issue #47
     I = inv(C1)*C1
+    I2 = inv(factorize(C1))*C1
     e = rand(5)
     # I should be close to identity
-    @test I*e ≈ e
+    @test I*e ≈ I2*e ≈ e
+end
+
+@testset "TriangularToeplitz" begin
+    A = [1.0 2.0;
+         3.0 4.0]
+    TU = TriangularToeplitz(A, :U)
+    TL = TriangularToeplitz(A, :L)
+    @test (TU * TU)::TriangularToeplitz ≈ Matrix(TU)*Matrix(TU)
+    @test (TL * TL)::TriangularToeplitz ≈ Matrix(TL)*Matrix(TL)
+    @test (TU * TL) ≈ Matrix(TU)*Matrix(TL)
+    for T in (TU, TL)
+        @test inv(T)::TriangularToeplitz ≈ inv(Matrix(T))
+    end
+    for n in (65, 128)
+        @show n
+        A = randn(n, n)
+        TU = TriangularToeplitz(A, :U)
+        TL = TriangularToeplitz(A, :L)
+        @test_broken inv(TU)::TriangularToeplitz ≈ inv(Matrix(TU))
+        @test inv(TL)::TriangularToeplitz ≈ inv(Matrix(TL))
+    end
 end
 
 @testset "Cholesky" begin
