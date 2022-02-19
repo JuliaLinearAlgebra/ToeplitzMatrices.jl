@@ -87,6 +87,7 @@ end
 
 @testset "Symmetric Toeplitz" begin
     As = SymmetricToeplitz(0.9.^(0:ns-1))
+    @test As' == transpose(As) == As
     Ab = SymmetricToeplitz(abs.(randn(ns)))
     Al = SymmetricToeplitz(0.9.^(0:nl-1))
     @test As * xs ≈ Matrix(As) * xs

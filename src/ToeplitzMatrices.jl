@@ -306,8 +306,7 @@ end
 convert(::Type{AbstractToeplitz{T}}, A::SymmetricToeplitz) where {T} = convert(SymmetricToeplitz{T},A)
 convert(::Type{SymmetricToeplitz{T}}, A::SymmetricToeplitz) where {T} = SymmetricToeplitz(convert(Vector{T},A.vc))
 
-adjoint(A::SymmetricToeplitz) = SymmetricToeplitz(conj(A.vr), conj(A.vc))
-adjoint(A::SymmetricToeplitz{<:Real}) = A
+adjoint(A::SymmetricToeplitz) = SymmetricToeplitz(conj(A.vc))
 transpose(A::SymmetricToeplitz) = A
 
 function size(A::SymmetricToeplitz, dim::Int)
@@ -488,8 +487,8 @@ function Base.:*(A::CirculantFactorization, B::CirculantFactorization)
 end
 
 # Make an eager adjoint, similar to adjoints of Diagonal in LinearAlgebra
-adjoint(C::ToeplitzFactorization{T,Circulant{T},S,P}) where {T,S,P} =
-    ToeplitzFactorization{T,Circulant{T},S,P}(conj.(C.vcvr_dft), C.tmp, C.dft)
+adjoint(C::CirculantFactorization{T,S,P}) where {T,S,P} =
+    CirculantFactorization{T,S,P}(conj.(C.vcvr_dft), C.tmp, C.dft)
 Base.:*(A::Adjoint{<:Any,<:Circulant}, B::Circulant) = factorize(parent(A))' * factorize(B)
 Base.:*(A::Adjoint{<:Any,<:Circulant}, B::CirculantFactorization) =
     factorize(parent(A))' * B
