@@ -214,7 +214,6 @@ convert(::Type{Toeplitz{T}}, A::Toeplitz) where {T} = Toeplitz(convert(Vector{T}
                                                                convert(Vector{T}, A.vr))
 
 adjoint(A::Toeplitz) = Toeplitz(conj(A.vr), conj(A.vc))
-adjoint(A::Toeplitz{<:Real}) = transpose(A)
 transpose(A::Toeplitz) = Toeplitz(A.vr, A.vc)
 
 # Size of a general Toeplitz matrix
@@ -585,10 +584,8 @@ function (*)(A::TriangularToeplitz, B::TriangularToeplitz)
     return A * Matrix(B)
 end
 
-function Base.:*(A::Adjoint{<:Any,<:TriangularToeplitz}, b::AbstractVector)
-    M = parent(A)
-    return TriangularToeplitz{eltype(M)}(M.ve, M.uplo) * b
-end
+adjoint(A::TriangularToeplitz) = TriangularToeplitz(conj(A.ve), A.uplo == 'U' ? (:L) : (:U))
+transpose(A::TriangularToeplitz) = TriangularToeplitz(A.ve, A.uplo == 'U' ? (:L) : (:U))
 
 # NB! only valid for lower triangular
 function smallinv(A::TriangularToeplitz{T}) where T
