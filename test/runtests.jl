@@ -350,7 +350,6 @@ end
         @test inv(T)::TriangularToeplitz ≈ inv(Matrix(T))
     end
     for n in (65, 128)
-        @show n
         A = randn(n, n)
         TU = TriangularToeplitz(A, :U)
         TL = TriangularToeplitz(A, :L)
