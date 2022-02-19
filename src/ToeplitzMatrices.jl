@@ -12,8 +12,6 @@ using LinearAlgebra: LinearAlgebra, Adjoint, Factorization, factorize, Cholesky,
 using AbstractFFTs
 using AbstractFFTs: Plan
 
-flipdim(A, d) = reverse(A, dims=d)
-
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel, chan, strang
 
 
@@ -734,9 +732,13 @@ end
 
 # Fast application of a general Hankel matrix to a general vector
 *(A::Hankel, b::AbstractVector) = A.T * reverse(b)
-
+mul!(y::StridedVector, A::Hankel, x::StridedVector, α::Number, β::Number) =
+    mul!(y, A.T, view(x, reverse(axes(x, 1))), α, β)
 # Fast application of a general Hankel matrix to a general matrix
-*(A::Hankel, B::AbstractMatrix) = A.T * flipdim(B, 1)
+*(A::Hankel, B::AbstractMatrix) = A.T * reverse(B, dims=1)
+mul!(Y::StridedMatrix, A::Hankel, X::StridedMatrix, α::Number, β::Number) =
+    mul!(Y, A.T, view(X, reverse(axes(x, 1)), :), α, β)
+
 ## BigFloat support
 
 (*)(A::Toeplitz{T}, b::AbstractVector) where {T<:BigFloat} = irfft(
