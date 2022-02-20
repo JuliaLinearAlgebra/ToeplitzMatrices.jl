@@ -269,8 +269,9 @@ end
     M4 = Matrix(C4)
     M5 = Matrix(C5)
 
-    for t1 in (identity, adjoint), t2 in (identity, adjoint), fact in (identity, factorize)
-        C = t1(fact(C1))*t2(fact(C2))
+    for t1 in (identity, adjoint), t2 in (identity, adjoint),
+            fact1 in (identity, factorize), fact2 in (identity, factorize)
+        C = t1(fact1(C1))*t2(fact2(C2))
         @test C isa Circulant
         @test C ≈ t1(M1)*t2(M2)
     end
