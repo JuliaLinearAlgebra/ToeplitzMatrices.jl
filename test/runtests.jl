@@ -7,9 +7,15 @@ using Pkg
     Pkg.instantiate()
 end
 
-using ToeplitzMatrices, StatsBase, Test, LinearAlgebra
+using ToeplitzMatrices, StatsBase, Test, LinearAlgebra, Aqua
 
 using FFTW: fft
+
+@testset "code quality" begin
+    Aqua.test_ambiguities(ToeplitzMatrices, recursive=false)
+    # Aqua.test_all includes Base and Core in ambiguity testing
+    Aqua.test_all(ToeplitzMatrices, ambiguities=false)
+end
 
 ns = 101
 nl = 2000
