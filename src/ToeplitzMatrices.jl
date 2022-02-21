@@ -692,9 +692,9 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
 function _Hankel end
 
 # Hankel Matrix
-mutable struct Hankel{TT<:Number} <: AbstractMatrix{TT}
+struct Hankel{TT<:Number} <: AbstractMatrix{TT}
     T::Toeplitz{TT}
-    global _Hankel(T::Toeplitz{TT}) where TT<:Number = new{TT}(T)
+    global _Hankel(T::Toeplitz{TT}) where {TT<:Number} = new{TT}(T)
 end
 
 # Ctor: vc is the leftmost column and vr is the bottom row.
@@ -732,12 +732,12 @@ function getindex(A::Hankel, i::Integer, j::Integer)
     return A.T[i,n-j+1]
 end
 
-# Fast application of a general Hankel matrix to a general vector
-*(A::Hankel, b::AbstractVector) = A.T * reverse(b)
+# Fast application of a general Hankel matrix to a strided vector
+*(A::Hankel, b::StridedVector) = A.T * reverse(b)
 mul!(y::StridedVector, A::Hankel, x::StridedVector, α::Number, β::Number) =
     mul!(y, A.T, view(x, reverse(axes(x, 1))), α, β)
-# Fast application of a general Hankel matrix to a general matrix
-*(A::Hankel, B::AbstractMatrix) = A.T * reverse(B, dims=1)
+# Fast application of a general Hankel matrix to a strided matrix
+*(A::Hankel, B::StridedMatrix) = A.T * reverse(B, dims=1)
 mul!(Y::StridedMatrix, A::Hankel, X::StridedMatrix, α::Number, β::Number) =
     mul!(Y, A.T, view(X, reverse(axes(X, 1)), :), α, β)
 
