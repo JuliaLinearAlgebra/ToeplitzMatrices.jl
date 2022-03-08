@@ -7,12 +7,12 @@ import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, si
 import LinearAlgebra: cholesky, cholesky!, eigvals, inv, ldiv!, mul!, pinv, tril, triu
 
 using LinearAlgebra: LinearAlgebra, Adjoint, Factorization, factorize, Cholesky,
-    DimensionMismatch, rmul!
+    DimensionMismatch, rmul!, sym_uplo
 
 using AbstractFFTs
 using AbstractFFTs: Plan
 
-flipdim(A, d) = reverse(A, dims=d)
+using DSP: conv
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel, chan, strang
 
@@ -34,12 +34,9 @@ struct ToeplitzFactorization{T<:Number,A<:AbstractToeplitz{T},S<:Number,P<:Plan{
 end
 
 size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
-function getindex(A::AbstractToeplitz, i::Integer)
-    return A[mod(i - 1, size(A, 1)) + 1, div(i - 1, size(A, 1)) + 1]
-end
 
-convert(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
-convert(::Type{AbstractArray{T}}, S::AbstractToeplitz) where {T} = convert(AbstractToeplitz{T}, S)
+convert(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) where {T<:Number} = convert(AbstractToeplitz{T}, S)
+convert(::Type{AbstractArray{T}}, S::AbstractToeplitz) where {T<:Number} = convert(AbstractToeplitz{T}, S)
 
 # Fast application of a general Toeplitz matrix to a column vector via FFT
 function mul!(
@@ -217,7 +214,6 @@ convert(::Type{Toeplitz{T}}, A::Toeplitz) where {T} = Toeplitz(convert(Vector{T}
                                                                convert(Vector{T}, A.vr))
 
 adjoint(A::Toeplitz) = Toeplitz(conj(A.vr), conj(A.vc))
-adjoint(A::Toeplitz{<:Real}) = transpose(A)
 transpose(A::Toeplitz) = Toeplitz(A.vr, A.vc)
 
 # Size of a general Toeplitz matrix
@@ -248,11 +244,11 @@ function getindex(A::Toeplitz, i::Integer, j::Integer)
 end
 
 # Form a lower triangular Toeplitz matrix by annihilating all entries above the k-th diaganal
-function tril(A::Toeplitz, k = 0)
+function tril(A::Toeplitz, k::Integer = 0)
     if k > 0
         error("Second argument cannot be positive")
     end
-    Al = TriangularToeplitz(copy(A.vc), 'L', length(A.vr))
+    Al = TriangularToeplitz(copy(A.vc), :L)
     if k < 0
         for i in 1:-k
             Al.ve[i] = zero(eltype(A))
@@ -262,11 +258,11 @@ function tril(A::Toeplitz, k = 0)
 end
 
 # Form a lower triangular Toeplitz matrix by annihilating all entries below the k-th diagonal
-function triu(A::Toeplitz, k = 0)
+function triu(A::Toeplitz, k::Integer = 0)
     if k < 0
         error("Second argument cannot be negative")
     end
-    Al = TriangularToeplitz(copy(A.vr), 'U', length(A.vc))
+    Al = TriangularToeplitz(copy(A.vr), :U)
     if k > 0
         for i in 1:k
             Al.ve[i] = zero(eltype(A))
@@ -310,8 +306,7 @@ end
 convert(::Type{AbstractToeplitz{T}}, A::SymmetricToeplitz) where {T} = convert(SymmetricToeplitz{T},A)
 convert(::Type{SymmetricToeplitz{T}}, A::SymmetricToeplitz) where {T} = SymmetricToeplitz(convert(Vector{T},A.vc))
 
-adjoint(A::SymmetricToeplitz) = SymmetricToeplitz(conj(A.vr), conj(A.vc))
-adjoint(A::SymmetricToeplitz{<:Real}) = A
+adjoint(A::SymmetricToeplitz) = SymmetricToeplitz(conj(A.vc))
 transpose(A::SymmetricToeplitz) = A
 
 function size(A::SymmetricToeplitz, dim::Int)
@@ -384,7 +379,8 @@ function getindex(C::Circulant, i::Integer, j::Integer)
     @boundscheck if i < 1 || i > n || j < 1 || j > n
         throw(BoundsError(C, (i,j)))
     end
-    return C.vc[mod(i - j, length(C.vc)) + 1]
+    d = i - j
+    return C.vc[d < 0 ? n+d+1 : d+1]
 end
 
 LinearAlgebra.ldiv!(C::Circulant, b::AbstractVector) = ldiv!(factorize(C), b)
@@ -415,9 +411,9 @@ function Base.inv(C::Circulant)
     vc = F.dft \ vdft
     return Circulant(maybereal(eltype(C), vc))
 end
-function Base.inv(C::CirculantFactorization)
+function Base.inv(C::CirculantFactorization{T,S,P}) where {T,S,P}
     vdft = map(inv, C.vcvr_dft)
-    return CirculantFactorization(vdft, similar(vdft), C.dft)
+    return CirculantFactorization{T,S,P}(vdft, similar(vdft), C.dft)
 end
 
 function strang(A::AbstractMatrix{T}) where T
@@ -490,26 +486,16 @@ function Base.:*(A::CirculantFactorization, B::CirculantFactorization)
     return Circulant(maybereal(Base.promote_eltype(A, B), vc))
 end
 
-Base.:*(A::Adjoint{<:Circulant}, B::Circulant) = factorize(parent(A))' * factorize(B)
-Base.:*(A::Adjoint{<:Circulant}, B::CirculantFactorization) = factorize(parent(A))' * B
-Base.:*(A::Adjoint{<:CirculantFactorization}, B::Circulant) = A * factorize(B)
-function Base.:*(A::Adjoint{<:CirculantFactorization}, B::CirculantFactorization)
-    C = parent(A)
-    C_vcvr_dft = C.vcvr_dft
-    B_vcvr_dft = B.vcvr_dft
-    m = length(C_vcvr_dft)
-    n = length(B_vcvr_dft)
-    if m != n
-        throw(DimensionMismatch(
-            "size of matrix A, $(m)x$(m), does not match size of matrix B, $(n)x$(n)"
-        ))
-    end
-
-    tmp = conj.(C_vcvr_dft) .* B_vcvr_dft
-    vc = C.dft \ tmp
-
-    return Circulant(maybereal(Base.promote_eltype(C, B), vc))
-end
+# Make an eager adjoint, similar to adjoints of Diagonal in LinearAlgebra
+adjoint(C::CirculantFactorization{T,S,P}) where {T,S,P} =
+    CirculantFactorization{T,S,P}(conj.(C.vcvr_dft), C.tmp, C.dft)
+Base.:*(A::Adjoint{<:Any,<:Circulant}, B::Circulant) = factorize(parent(A))' * factorize(B)
+Base.:*(A::Adjoint{<:Any,<:Circulant}, B::CirculantFactorization) =
+    factorize(parent(A))' * B
+Base.:*(A::Adjoint{<:Any,<:Circulant}, B::Adjoint{<:Any,<:Circulant}) =
+    factorize(parent(A))' * factorize(parent(B))'
+Base.:*(A::Circulant, B::Adjoint{<:Any,<:Circulant}) = factorize(A) * factorize(parent(B))'
+Base.:*(A::CirculantFactorization, B::Adjoint{<:Any,<:Circulant}) = A * factorize(parent(B))'
 
 (*)(scalar::Number, C::Circulant) = Circulant(scalar * C.vc)
 (*)(C::Circulant,scalar::Number) = Circulant(C.vc * scalar)
@@ -564,7 +550,7 @@ end
 
 convert(::Type{AbstractToeplitz{T}}, A::TriangularToeplitz) where {T} = convert(TriangularToeplitz{T},A)
 convert(::Type{TriangularToeplitz{T}}, A::TriangularToeplitz) where {T} =
-    TriangularToeplitz(convert(Vector{T},A.ve),A.uplo=='U' ? (:U) : (:L))
+    TriangularToeplitz(convert(Vector{T}, A.ve), A.uplo)
 
 
 function size(A::TriangularToeplitz, dim::Int)
@@ -587,20 +573,18 @@ function getindex(A::TriangularToeplitz{T}, i::Integer, j::Integer) where T
 end
 
 function (*)(A::TriangularToeplitz, B::TriangularToeplitz)
-    n = size(A, 1)
+    n = size(A, 2)
     if n != size(B, 1)
         throw(DimensionMismatch(""))
     end
     if A.uplo == B.uplo
         return TriangularToeplitz(conv(A.ve, B.ve)[1:n], A.uplo)
     end
-    return Triangular(Matrix(A), A.uplo) * Triangular(Matrix(B), B.uplo)
+    return A * Matrix(B)
 end
 
-function Base.:*(A::Adjoint{<:TriangularToeplitz}, b::AbstractVector)
-    M = parent(A)
-    return TriangularToeplitz{eltype(M)}(M.ve, M.uplo) * b
-end
+adjoint(A::TriangularToeplitz) = TriangularToeplitz(conj(A.ve), A.uplo == 'U' ? (:L) : (:U))
+transpose(A::TriangularToeplitz) = TriangularToeplitz(A.ve, A.uplo == 'U' ? (:L) : (:U))
 
 # NB! only valid for lower triangular
 function smallinv(A::TriangularToeplitz{T}) where T
@@ -614,7 +598,7 @@ function smallinv(A::TriangularToeplitz{T}) where T
         end
         b[k] = -tmp/A.ve[1]
     end
-    return TriangularToeplitz(b, symbol(A.uplo))
+    return TriangularToeplitz(b, A.uplo)
 end
 
 function inv(A::TriangularToeplitz{T}) where T
@@ -622,15 +606,19 @@ function inv(A::TriangularToeplitz{T}) where T
     if n <= 64
         return smallinv(A)
     end
-    np2 = nextpow2(n)
+    np2 = nextpow(2, n)
     if n != np2
-        return TriangularToeplitz(inv(TriangularToeplitz([A.ve, zeros(T, np2 - n)],
-            symbol(A.uplo))).ve[1:n], symbol(A.uplo))
+        return TriangularToeplitz(
+            inv(TriangularToeplitz([A.ve; zeros(T, np2 - n)], sym_uplo(A.uplo))).ve[1:n],
+            sym_uplo(A.uplo)
+        )
     end
     nd2 = div(n, 2)
-    a1 = inv(TriangularToeplitz(A.ve[1:nd2], symbol(A.uplo))).ve
-    return TriangularToeplitz([a1, -(TriangularToeplitz(a1, symbol(A.uplo)) *
-        (Toeplitz(A.ve[nd2 + 1:end], A.ve[nd2 + 1:-1:2]) * a1))], symbol(A.uplo))
+    a1 = inv(TriangularToeplitz(A.ve[1:nd2], sym_uplo(A.uplo))).ve
+    return TriangularToeplitz(
+        [a1; -(TriangularToeplitz(a1, sym_uplo(A.uplo)) * (Toeplitz(A.ve[nd2 + 1:end], A.ve[nd2 + 1:-1:2]) * a1))],
+        sym_uplo(A.uplo)
+    )
 end
 
 # ldiv!(A::TriangularToeplitz,b::StridedVector) = inv(A)*b
@@ -704,9 +692,9 @@ StatsBase.levinson(A::AbstractToeplitz, B::StridedVecOrMat) =
 function _Hankel end
 
 # Hankel Matrix
-mutable struct Hankel{TT<:Number} <: AbstractMatrix{TT}
+struct Hankel{TT<:Number} <: AbstractMatrix{TT}
     T::Toeplitz{TT}
-    global _Hankel(T::Toeplitz{TT}) where TT<:Number = new{TT}(T)
+    global _Hankel(T::Toeplitz{TT}) where {TT<:Number} = new{TT}(T)
 end
 
 # Ctor: vc is the leftmost column and vr is the bottom row.
@@ -744,11 +732,15 @@ function getindex(A::Hankel, i::Integer, j::Integer)
     return A.T[i,n-j+1]
 end
 
-# Fast application of a general Hankel matrix to a general vector
-*(A::Hankel, b::AbstractVector) = A.T * reverse(b)
+# Fast application of a general Hankel matrix to a strided vector
+*(A::Hankel, b::StridedVector) = A.T * reverse(b)
+mul!(y::StridedVector, A::Hankel, x::StridedVector, α::Number, β::Number) =
+    mul!(y, A.T, view(x, reverse(axes(x, 1))), α, β)
+# Fast application of a general Hankel matrix to a strided matrix
+*(A::Hankel, B::StridedMatrix) = A.T * reverse(B, dims=1)
+mul!(Y::StridedMatrix, A::Hankel, X::StridedMatrix, α::Number, β::Number) =
+    mul!(Y, A.T, view(X, reverse(axes(X, 1)), :), α, β)
 
-# Fast application of a general Hankel matrix to a general matrix
-*(A::Hankel, B::AbstractMatrix) = A.T * flipdim(B, 1)
 ## BigFloat support
 
 (*)(A::Toeplitz{T}, b::AbstractVector) where {T<:BigFloat} = irfft(

@@ -7,17 +7,22 @@ using Pkg
     Pkg.instantiate()
 end
 
-using ToeplitzMatrices, StatsBase, Test, LinearAlgebra
+using ToeplitzMatrices, StatsBase, Test, LinearAlgebra, Aqua
 
-using Base: copyto!
 using FFTW: fft
+
+@testset "code quality" begin
+    Aqua.test_ambiguities(ToeplitzMatrices, recursive=false)
+    # Aqua.test_all includes Base and Core in ambiguity testing
+    Aqua.test_all(ToeplitzMatrices, ambiguities=false)
+end
 
 ns = 101
 nl = 2000
 
 xs = randn(ns, 5)
 xl = randn(nl, 5)
-vc = LinRange(1,3,3) # for testing with AbstractVector
+vc = 1.0:3.0 # for testing with AbstractVector
 vv = Vector(vc)
 vr = [1, 5.]
 
@@ -88,6 +93,7 @@ end
 
 @testset "Symmetric Toeplitz" begin
     As = SymmetricToeplitz(0.9.^(0:ns-1))
+    @test As' == transpose(As) == As
     Ab = SymmetricToeplitz(abs.(randn(ns)))
     Al = SymmetricToeplitz(0.9.^(0:nl-1))
     @test As * xs ≈ Matrix(As) * xs
@@ -119,13 +125,13 @@ end
         @test diag(H) == [1,3,5,7,9]
 
         x = ones(5)
-        @test Matrix(H)*x ≈ H*x
+        @test mul!(copy(x), H, x) ≈ Matrix(H)*x ≈ H*x
 
         Hs = Hankel(0.9.^(ns-1:-1:0), 0.4.^(0:ns-1))
         Hl = Hankel(0.9.^(nl-1:-1:0), 0.4.^(0:nl-1))
         @test Hs * xs[:,1] ≈ Matrix(Hs) * xs[:,1]
-        @test Hs * xs ≈ Matrix(Hs) * xs
-        @test Hl * xl ≈ Matrix(Hl) * xl
+        @test mul!(copy(xs), Hs, xs) ≈ Hs * xs ≈ Matrix(Hs) * xs
+        @test mul!(copy(xl), Hl, xl) ≈ Hl * xl ≈ Matrix(Hl) * xl
         @test Matrix(Hankel(reverse(vc),vr)) == Matrix(Hankel(reverse(vv),vr))
     end
 
@@ -203,6 +209,16 @@ end
     @test isa(convert(AbstractArray{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(ToeplitzMatrices.TriangularToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(Toeplitz, T), Toeplitz)
+
+    T = TriangularToeplitz(ones(2),:L)
+
+    @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
+    @test isa(convert(AbstractMatrix{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(AbstractArray{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.TriangularToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(Toeplitz, T), Toeplitz)
 
     T = Hankel(ones(2),ones(2))
 
@@ -259,9 +275,12 @@ end
     M4 = Matrix(C4)
     M5 = Matrix(C5)
 
-    C = C1*C2
-    @test C isa Circulant
-    @test C ≈ M1*M2
+    for t1 in (identity, adjoint), t2 in (identity, adjoint),
+            fact1 in (identity, factorize), fact2 in (identity, factorize)
+        C = t1(fact1(C1))*t2(fact2(C2))
+        @test C isa Circulant
+        @test C ≈ t1(M1)*t2(M2)
+    end
 
     C = C1-C2
     @test C isa Circulant
@@ -330,9 +349,46 @@ end
 
     # Test for issue #47
     I = inv(C1)*C1
+    I2 = inv(factorize(C1))*C1
     e = rand(5)
     # I should be close to identity
-    @test I*e ≈ e
+    @test I*e ≈ I2*e ≈ e
+end
+
+@testset "TriangularToeplitz" begin
+    A = [1.0 2.0;
+         3.0 4.0]
+    TU = TriangularToeplitz(A, :U)
+    TL = TriangularToeplitz(A, :L)
+    @test (TU * TU)::TriangularToeplitz ≈ Matrix(TU)*Matrix(TU)
+    @test (TL * TL)::TriangularToeplitz ≈ Matrix(TL)*Matrix(TL)
+    @test (TU * TL) ≈ Matrix(TU)*Matrix(TL)
+    for T in (TU, TL)
+        @test inv(T)::TriangularToeplitz ≈ inv(Matrix(T))
+    end
+    A = randn(ComplexF64, 3, 3)
+    T = Toeplitz(A)
+    TU = triu(T)
+    @test TU isa TriangularToeplitz
+    @test istriu(TU)
+    @test TU == Toeplitz(triu(A))
+    @test TU'ones(3) == Matrix(TU)'ones(3)
+    @test transpose(TU)*ones(3) == transpose(Matrix(TU))*ones(3)
+    @test triu(T, 1)::TriangularToeplitz == triu(Matrix(T), 1)
+    TL = tril(T)
+    @test TL isa TriangularToeplitz
+    @test istril(TL)
+    @test TL == Toeplitz(tril(A))
+    @test TL'ones(3) == Matrix(TL)'ones(3)
+    @test transpose(TL)*ones(3) == transpose(Matrix(TL))*ones(3)
+    @test tril(T, -1)::TriangularToeplitz == tril(Matrix(T), -1)
+    for n in (65, 128)
+        A = randn(n, n)
+        TU = TriangularToeplitz(A, :U)
+        TL = TriangularToeplitz(A, :L)
+        @test_broken inv(TU)::TriangularToeplitz ≈ inv(Matrix(TU))
+        @test inv(TL)::TriangularToeplitz ≈ inv(Matrix(TL))
+    end
 end
 
 @testset "Cholesky" begin
