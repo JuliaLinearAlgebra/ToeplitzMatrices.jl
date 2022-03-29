@@ -1,15 +1,16 @@
 # implementation of direct linear solves and inversion (for symmetric p.d. matrices at this point)
 """
-durbin(r::AbstractVector)
-computes `y = T \\ (-r)` where T = SymmetricToeplitz(vcat(1, r[1:end-1])).
+    durbin(r::AbstractVector)
+
+Computes `y = T \\ (-r)` where `T = SymmetricToeplitz(vcat(1, r[1:end-1]))`.
 `T` is assumed to be positive definite. `r` is of length n.
 """
 durbin(r::AbstractVector) = durbin!(zero(r), r)
 
 """
-```
+
     durbin!(y::AbstractVector, r::AbstractVector)
-```
+
 Same as `durbin` but uses pre-allocated vector `y` to store the result.
 """
 function durbin!(y::AbstractVector, r::AbstractVector)
@@ -28,14 +29,14 @@ function durbin!(y::AbstractVector, r::AbstractVector)
 end
 
 """
-```
+
     trench(T::SymmetricToeplitz)
-```
+
 Trench's algorithm (see page 213 of Golub & van Loan) computes inverse of a
 symmetric positive definite Toeplitz matrix in `O(n^2)` operations.
 """
 function trench(T::SymmetricToeplitz)
-    n = checksquare(T)
+    n = length(T.vc)
     B = zeros(eltype(T), n, n)
     trench!(B, T)
 end
@@ -71,7 +72,7 @@ end
 # uses B to store the inverse
 # NOTE: only populates entries on upper triangle since the inverse is symmetric
 function trench!(B::AbstractMatrix, r::AbstractVector)
-    n = checksquare(B)
+    n = LinearAlgebra.checksquare(B)
     n == length(r) + 1 || throw(DimensionMismatch())
     y = durbin(r)
     γ = inv(1 + dot(r, y))
@@ -87,18 +88,19 @@ function trench!(B::AbstractMatrix, r::AbstractVector)
 end
 
 """
-```
+
     levinson(r::AbstractVector, b::AbstractVector)
-```
-solves `x = T \\ b where T = SymmetricToeplitz(vcat(1, r)), i.e. T_{ij} = r[abs(i-j)]`` where by assumption `r[0] = 1` and `T` is positive definite.
+
+solves `x = T \\ b` where `T = SymmetricToeplitz(vcat(1, r))`, i.e. `T_{ij} = r[abs(i-j)]`
+where by assumption `r[0] = 1` and `T` is positive definite.
 """
 levinson(r::AbstractVector, b::AbstractVector) = levinson!(zero(b), r, b)
 
 """
-```
+
     levinson!(x::AbstractVector, r::AbstractVector, b::AbstractVector, y::AbstractVector = zero(x))
-```
-same as `levinson`, but uses the pre-allocated vector `x` to store the result.
+
+Same as `levinson`, but uses the pre-allocated vector `x` to store the result.
 """
 function levinson!(x::AbstractVector, r::AbstractVector, b::AbstractVector,
                    y::AbstractVector = zero(x))
