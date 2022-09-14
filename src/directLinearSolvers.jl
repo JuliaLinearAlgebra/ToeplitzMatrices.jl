@@ -8,7 +8,6 @@ Computes `y = T \\ (-r)` where `T = SymmetricToeplitz(vcat(1, r[1:end-1]))`.
 durbin(r::AbstractVector) = durbin!(zero(r), r)
 
 """
-
     durbin!(y::AbstractVector, r::AbstractVector)
 
 Same as `durbin` but uses pre-allocated vector `y` to store the result.
@@ -29,7 +28,6 @@ function durbin!(y::AbstractVector, r::AbstractVector)
 end
 
 """
-
     trench(T::SymmetricToeplitz)
 
 Trench's algorithm (see page 213 of Golub & van Loan) computes inverse of a
@@ -42,11 +40,10 @@ function trench(T::SymmetricToeplitz)
 end
 
 """
-```
     trench!(B::AbstractMatrix, T::SymmetricToeplitz)
-```
+
 Same as `trench` but uses `B` to store the upper triangular portion of the inverse
-of T and returns a `Symmetric` wrapper of `B`.
+of `T` and returns a `Symmetric` wrapper of `B`.
 """
 function trench!(B::AbstractMatrix, T::SymmetricToeplitz)
     r_0 = T.vc[1]
@@ -88,16 +85,14 @@ function trench!(B::AbstractMatrix, r::AbstractVector)
 end
 
 """
-
     levinson(r::AbstractVector, b::AbstractVector)
 
-solves `x = T \\ b` where `T = SymmetricToeplitz(vcat(1, r))`, i.e. `T_{ij} = r[abs(i-j)]`
+Solves `x = T \\ b` where `T = SymmetricToeplitz(vcat(1, r))`, i.e. `T_{ij} = r[abs(i-j)]`
 where by assumption `r[0] = 1` and `T` is positive definite.
 """
 levinson(r::AbstractVector, b::AbstractVector) = levinson!(zero(b), r, b)
 
 """
-
     levinson!(x::AbstractVector, r::AbstractVector, b::AbstractVector, y::AbstractVector = zero(x))
 
 Same as `levinson`, but uses the pre-allocated vector `x` to store the result.
