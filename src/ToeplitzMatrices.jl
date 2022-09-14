@@ -7,7 +7,7 @@ import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, si
 import LinearAlgebra: cholesky, cholesky!, eigvals, inv, ldiv!, mul!, pinv, tril, triu
 
 using LinearAlgebra: LinearAlgebra, Adjoint, Factorization, factorize, Cholesky,
-    DimensionMismatch, dot, rmul!, sym_uplo
+    DimensionMismatch, dot, rmul!, sym_uplo, Symmetric
 
 using AbstractFFTs
 using AbstractFFTs: Plan
