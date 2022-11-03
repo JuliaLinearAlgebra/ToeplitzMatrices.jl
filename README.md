@@ -1,9 +1,9 @@
 ToeplitzMatrices.jl
 ===========
 
-[![Build Status](https://github.com/JuliaMatrices/ToeplitzMatrices.jl/workflows/CI/badge.svg?branch=master)](https://github.com/JuliaMatrices/ToeplitzMatrices.jl/actions/workflows/CI.yml?query=branch%3Amaster)
-[![Coverage](https://codecov.io/gh/JuliaMatrices/ToeplitzMatrices.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaMatrices/ToeplitzMatrices.jl)
-[![Coverage](https://coveralls.io/repos/github/JuliaMatrices/ToeplitzMatrices.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaMatrices/ToeplitzMatrices.jl?branch=master)
+[![Build Status](https://github.com/JuliaLinearAlgebra/ToeplitzMatrices.jl/workflows/CI/badge.svg?branch=master)](https://github.com/JuliaLinearAlgebra/ToeplitzMatrices.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+[![Coverage](https://codecov.io/gh/JuliaLinearAlgebra/ToeplitzMatrices.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaLinearAlgebra/ToeplitzMatrices.jl)
+[![Coverage](https://coveralls.io/repos/github/JuliaLinearAlgebra/ToeplitzMatrices.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaLinearAlgebra/ToeplitzMatrices.jl?branch=master)
 
 Fast matrix multiplication and division
 for Toeplitz, Hankel and circulant matrices in Julia
