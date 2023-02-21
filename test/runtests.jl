@@ -173,7 +173,6 @@ end
         @test Hankel(A) == [1 3; 3 4]
         T = Toeplitz([1.0,2,3,4,5],[1.0,6,7,8,0])
         @test Hankel(T) == Hankel([1.0,2,3,4,5],[5.0,4,3,2,1])
-        @test Hankel(T) ≠ ToeplitzMatrices._Hankel(T)
     end
 end
 
@@ -202,22 +201,24 @@ end
     @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),Circulant{ComplexF64})
     @test isa(convert(ToeplitzMatrices.Circulant{ComplexF64},T),Circulant{ComplexF64})
 
-    T = TriangularToeplitz(ones(2),:U)
+    T = UpperTriangularToeplitz(ones(2))
 
+    @test isa(T,TriangularToeplitz)
     @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
     @test isa(convert(AbstractMatrix{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(AbstractArray{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
-    @test isa(convert(ToeplitzMatrices.TriangularToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.UpperTriangularToeplitz{ComplexF64},T),UpperTriangularToeplitz{ComplexF64})
     @test isa(convert(Toeplitz, T), Toeplitz)
 
-    T = TriangularToeplitz(ones(2),:L)
+    T = LowerTriangularToeplitz(ones(2))
 
+    @test isa(T,TriangularToeplitz)
     @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
     @test isa(convert(AbstractMatrix{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(AbstractArray{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
-    @test isa(convert(ToeplitzMatrices.TriangularToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.LowerTriangularToeplitz{ComplexF64},T),LowerTriangularToeplitz{ComplexF64})
     @test isa(convert(Toeplitz, T), Toeplitz)
 
     T = Hankel(ones(2),ones(2))
@@ -368,20 +369,20 @@ end
     end
     A = randn(ComplexF64, 3, 3)
     T = Toeplitz(A)
-    TU = triu(T)
+    TU = UpperTriangular(T)
     @test TU isa TriangularToeplitz
     @test istriu(TU)
     @test TU == Toeplitz(triu(A))
     @test TU'ones(3) == Matrix(TU)'ones(3)
     @test transpose(TU)*ones(3) == transpose(Matrix(TU))*ones(3)
-    @test triu(T, 1)::TriangularToeplitz == triu(Matrix(T), 1)
-    TL = tril(T)
+    @test triu(TU, 1)::TriangularToeplitz == triu(Matrix(T), 1) == triu(T,1)
+    TL = LowerTriangular(T)
     @test TL isa TriangularToeplitz
     @test istril(TL)
-    @test TL == Toeplitz(tril(A))
+    @test TL == Toeplitz(tril(A)) == tril(T)
     @test TL'ones(3) == Matrix(TL)'ones(3)
     @test transpose(TL)*ones(3) == transpose(Matrix(TL))*ones(3)
-    @test tril(T, -1)::TriangularToeplitz == tril(Matrix(T), -1)
+    @test tril(TL, -1)::TriangularToeplitz == tril(Matrix(T), -1) == tril(T,-1)
     for n in (65, 128)
         A = randn(n, n)
         TU = TriangularToeplitz(A, :U)

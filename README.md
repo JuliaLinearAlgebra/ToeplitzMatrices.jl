@@ -26,113 +26,114 @@ initialize the required arrays and plan the FFT only once. You can precompute
 the FFT factorization with `LinearAlgebra.factorize` and then use the factorization
 for the FFT-based computations.
 
-# Supported matrices
+## Introduction
 
-## Toeplitz
-
+### Toeplitz
 A Toeplitz matrix has constant diagonals. It can be constructed using
-
-```julia
-Toeplitz(vc,vr)
 ```
-
+Toeplitz(vc,vr)
+Toeplitz{T}(vc,vr)
+```
 where `vc` are the entries in the first column and `vr` are the entries in the first row, where `vc[1]` must equal `vr[1]`. For example.
-
-```julia
+```
 Toeplitz(1:3, [1.,4.,5.])
 ```
-
 is a sparse representation of the matrix
-
-```julia
+```
 [ 1.0  4.0  5.0
   2.0  1.0  4.0
   3.0  2.0  1.0 ]
 ```
+### Special toeplitz
+`SymmetricToeplitz`, `Circulant`, `UpperTriangularToeplitz` and `LowerTriangularToeplitz` only store one vector. By convention, `Circulant` stores the first column rather than the first row. They are constructed using `TYPE(v)` where `TYPE`∈{`SymmetricToeplitz`, `Circulant`, `UpperTriangularToeplitz`, `LowerTriangularToeplitz`}.
 
-## SymmetricToeplitz
+### Hankel
+A Hankel matrix has constant anti-diagonals. It can be constructed using only one vector and the size. For example, `Hankel(1:5, (2,3))` or `Hankel(1:5, 2, 3)` gives
+```
+[ 1  2  3
+  2  3  4 ]
+```
+Hankel can be considered as the `reverse` of Toeplitz. The first column and the last row can be extracted by properties `:vc` and `:vr` respectively, just like Toeplitz where `:vr` denotes the first row. For that matter, `Hankel(1:2, 2:4)` can also construct the above example. To summarise, there are 3 ways to construct `Hankel` from vector(s)
+- `Hankel(v, (h,w))`
+- `Hankel(v, h, w)`
+- `Hankel(vc, vr)`
+Note that the width is usually useless, since ideally, `w=length(v)-h+1`. It exists for Hankel matrices with infinite height and finite width. Its existence also means that `v` could be longer than necessary.
 
-A symmetric Toeplitz matrix is a symmetric matrix with constant diagonals. It can be constructed with
+## Implemented interface
 
-```julia
-SymmetricToeplitz(vc)
+### Operations
+||Toeplitz|Symmetric~|Circulant|UpperTriangular~|LowerTriangular~|Hankel|
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+|getindex|✓|✓|✓|✓|✓|✓|
+|.vc|✓|✓|✓|✓|✓|✓|
+|.vr|✓|✓|✓|✓|✓|✓|
+|size|✓|✓|✓|✓|✓|✓|
+|copy|✓|✓|✓|✓|✓|✓|
+|similar|✓|✓|✓|✓|✓||
+|zero|✓|✓|✓|✓|✓||
+|fill!||✓|✓|✓|✓||
+|conj|✓|✓|✓|✓|✓||
+|transpose|✓|✓|✓|✓|✓|✓|
+|adjoint|✓|✓|✓|✓|✓||
+|tril!|✓|✗|✗|✓|✓||
+|triu!|✓|✗|✗|✓|✓||
+|+|✓|✓|✓|✓|✓||
+|-|✓|✓|✓|✓|✓||
+|scalar<br>mult||✓|✓|✓|✓||
+|==|✓|✓|✓|✓|✓||
+|copyto!|✓|✓|✓|✓|✓||
+|reverse|✓|✓|✓|✓|✓|✓|
+
+`reverse(Hankel, dims=1)` returns a `Toeplitz`, while `reverse(AbstractToeplitz, dims=1)` returns a `Hankel`.
+
+### LinearAlgebra
+
+### Constructors and conversions
+||Toeplitz|Symmetric~|Circulant|UpperTriangular~|LowerTriangular~|Hankel|
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+|from AbstractVector|✓|✓|✓|✓|✓|✓|
+|from AbstractMatrix|✓|✓|✓|✓|✓|✓|
+|from AbstractToeplitz|✓|✓|✓|✓|✓|✗|
+|to supertype|✓|✓|✓|✓|✓|✓|
+|to Toeplitz|-|✓|✓|✓|✓|✗|
+|to another eltype|✓|✓|✓|✓|✓|✓|
+When constructing `SymmetricToeplitz` or `Circulant` from `AbstractMatrix`, a second argument shall specify whether the first row or the first column is used. For example, for `A = [1 2; 3 4]`, 
+- `SymmetricToeplitz(A,:L)` gives `[1 3; 3 1]`, while
+- `SymmetricToeplitz(A,:U)` gives `[1 2; 2 1]`.
+
+For backward compatibility and consistency with `LinearAlgebra.Symmetric`,
+```
+SymmetricToeplitz(A) = SymmetricToeplitz(A, :U)
+Circulant(A) = Circulant(A, :L)
+```
+`Hankel` constructor also accepts the second argument, `:L` denoting the first column and the last row while `:U` denoting the first row and the last column.
+
+`Symmetric`, `UpperTriangular` and `LowerTriangular` from `LinearAlgebra` are also overloaded for convenience.
+```
+Symmetric(T::Toeplitz) = SymmetricToeplitz(T)
+UpperTriangular(T::Toeplitz) = UpperTriangularToeplitz(T)
+LowerTriangular(T::Toeplitz) = LowerTriangularToeplitz(T)
 ```
 
-where `vc` are the entries of the first column. For example,
-
-```julia
-SymmetricToeplitz([1.0, 2.0, 3.0])
+### TriangularToeplitz (obsolete)
+`TriangularToeplitz` is reserved for backward compatibility. 
 ```
-
-is a sparse representation of the matrix
-
-```julia
-[ 1.0  2.0  3.0
-  2.0  1.0  2.0
-  3.0  2.0  1.0 ]
+TriangularToeplitz = Union{UpperTriangularToeplitz,LowerTriangularToeplitz}
 ```
-
-## TriangularToeplitz
-
-A triangular Toeplitz matrix can be constructed using
-
-```julia
-TriangularToeplitz(ve,uplo)
+The old interface is implemented by
 ```
-
-where uplo is either `:L` or `:U` and `ve` are the rows or columns, respectively.  For example,
-
-```julia
-TriangularToeplitz([1.,2.,3.],:L)
+getproperty(UpperTriangularToeplitz,:uplo) = :U
+getproperty(LowerTriangularToeplitz,:uplo) = :L
 ```
+This type is **obsolete** and will not be updated for features. Despite that, backward compatibility should be maintained. Codes that were using `TriangularToeplitz` should still work.
 
-is a sparse representation of the matrix
+## Unexported interface
+Methods in this section are not exported.
 
-```julia
-[ 1.0  0.0  0.0
-  2.0  1.0  0.0
-  3.0  2.0  1.0 ]
-```
+`_vr(A::AbstractMatrix)` returns the first row as a vector.
+`_vc(A::AbstractMatrix)` returns the first column as a vector.
+`_vr` and `_vc` are implemented for `AbstractToeplitz` as well. They are used to merge similar codes for `AbstractMatrix` and `AbstractToeplitz`.
 
-## Hankel
+`_circulate(v::AbstractVector)` converts between the `vr` and `vc` of a `Circulant`.
 
-A Hankel matrix has constant anti-diagonals.  It can be constructed using
-
-```julia
-Hankel(vc,vr)
-```
-
-where `vc` are the entries in the first column and `vr` are the entries in the last row, where `vc[end]` must equal `vr[1]`.  For example.
-
-```julia
-Hankel([1.,2.,3.], 3:5)
-```
-
-is a sparse representation of the matrix
-
-```julia
-[  1.0  2.0  3.0
-   2.0  3.0  4.0
-   3.0  4.0  5.0 ]
-```
-
-## Circulant
-
-A circulant matrix is a special case of a Toeplitz matrix with periodic end conditions.
-It can be constructed using
-
-```julia
-Circulant(vc)
-```
-where `vc` is a vector with the entries for the first column.
-For example:
-```julia
-Circulant([1.0, 2.0, 3.0])
-```
-is a sparse representation of the matrix
-
-```julia
-[  1.0  3.0  2.0
-   2.0  1.0  3.0
-   3.0  2.0  1.0 ]
-```
+`isconcrete(A::Union{AbstractToeplitz,Hankel})` decides whether the stored vector(s) are concrete. It calls `Base.isconcretetype`.
