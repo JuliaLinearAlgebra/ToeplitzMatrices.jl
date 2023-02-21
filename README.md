@@ -8,7 +8,7 @@ ToeplitzMatrices.jl
 Fast matrix multiplication and division
 for Toeplitz, Hankel and circulant matrices in Julia
 
-# Note
+## Note
 
 Multiplication of large matrices and `sqrt`, `inv`, `LinearAlgebra.eigvals`,
 `LinearAlgebra.ldiv!`, and `LinearAlgebra.pinv` for circulant matrices
