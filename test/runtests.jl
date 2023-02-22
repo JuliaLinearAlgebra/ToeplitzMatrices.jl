@@ -201,24 +201,22 @@ end
     @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),Circulant{ComplexF64})
     @test isa(convert(ToeplitzMatrices.Circulant{ComplexF64},T),Circulant{ComplexF64})
 
-    T = UpperTriangularToeplitz(ones(2))
+    T = TriangularToeplitz(ones(2),:U)
 
-    @test isa(T,TriangularToeplitz)
     @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
     @test isa(convert(AbstractMatrix{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(AbstractArray{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
-    @test isa(convert(ToeplitzMatrices.UpperTriangularToeplitz{ComplexF64},T),UpperTriangularToeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.TriangularToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(Toeplitz, T), Toeplitz)
 
-    T = LowerTriangularToeplitz(ones(2))
+    T = TriangularToeplitz(ones(2),:L)
 
-    @test isa(T,TriangularToeplitz)
     @test isa(convert(Matrix{ComplexF64},T),Matrix{ComplexF64})
     @test isa(convert(AbstractMatrix{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(AbstractArray{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(ToeplitzMatrices.AbstractToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
-    @test isa(convert(ToeplitzMatrices.LowerTriangularToeplitz{ComplexF64},T),LowerTriangularToeplitz{ComplexF64})
+    @test isa(convert(ToeplitzMatrices.TriangularToeplitz{ComplexF64},T),TriangularToeplitz{ComplexF64})
     @test isa(convert(Toeplitz, T), Toeplitz)
 
     T = Hankel(ones(2),ones(2))
@@ -372,7 +370,7 @@ end
     TU = UpperTriangular(T)
     @test TU isa TriangularToeplitz
     @test istriu(TU)
-    @test TU == Toeplitz(triu(A))
+    @test TU == Toeplitz(triu(A)) == triu(T)
     @test TU'ones(3) == Matrix(TU)'ones(3)
     @test transpose(TU)*ones(3) == transpose(Matrix(TU))*ones(3)
     @test triu(TU, 1)::TriangularToeplitz == triu(Matrix(T), 1) == triu(T,1)

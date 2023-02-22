@@ -97,7 +97,7 @@ function triu!(A::Toeplitz, k::Integer)
     if k <= 0
         if isconcretetype(typeof(A.vc))
             for i in -k+2:lastindex(A.vc)
-                A.vr[i] = zero(eltype(A))
+                A.vc[i] = zero(eltype(A))
             end
         else
             A.vc=vcat(A.vc[1:-k+1], zero(A.vc[-k+2:end]))

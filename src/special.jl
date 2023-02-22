@@ -161,10 +161,12 @@ Symmetric(A::AbstractToeplitz, uplo::Symbol = :U) = SymmetricToeplitz(A,uplo)
 Circulant{T}(A::AbstractMatrix) where T<:Number = Circulant{T}(A, :L)
 UpperTriangularToeplitz{T}(A::AbstractMatrix) where T<:Number = UpperTriangularToeplitz{T}(_vr(A))
 LowerTriangularToeplitz{T}(A::AbstractMatrix) where T<:Number = LowerTriangularToeplitz{T}(_vc(A))
+_toeplitztype(s::Symbol) = Symbol(s,"Toeplitz")
 for TYPE in (:UpperTriangular, :LowerTriangular)
     @eval begin
-        $TYPE{T}(A::AbstractToeplitz) where T<:Number = $(Symbol(string(TYPE,"Toeplitz"))){T}(A)
+        $TYPE{T}(A::AbstractToeplitz) where T<:Number = $(_toeplitztype(TYPE)){T}(A)
         $TYPE(A::AbstractToeplitz) = $TYPE{eltype(A)}(A)
+        convert(::Type{TriangularToeplitz{T}},A::$(_toeplitztype(TYPE))) where T<:Number = convert($(_toeplitztype(TYPE)){T},A)
     end
 end
 
