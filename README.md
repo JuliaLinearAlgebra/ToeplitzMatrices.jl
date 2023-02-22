@@ -69,19 +69,19 @@ Note that the width is usually useless, since ideally, `w=length(v)-h+1`. It exi
 |.vr|✓|✓|✓|✓|✓|✓|
 |size|✓|✓|✓|✓|✓|✓|
 |copy|✓|✓|✓|✓|✓|✓|
-|similar|✓|✓|✓|✓|✓||
-|zero|✓|✓|✓|✓|✓||
-|fill!||✓|✓|✓|✓||
-|conj|✓|✓|✓|✓|✓||
+|similar|✓|✓|✓|✓|✓|✓|
+|zero|✓|✓|✓|✓|✓|✓|
+|fill!|✓|✓|✓|✓|✓|✓|
+|conj|✓|✓|✓|✓|✓|✓|
 |transpose|✓|✓|✓|✓|✓|✓|
-|adjoint|✓|✓|✓|✓|✓||
-|tril!|✓|✗|✗|✓|✓||
-|triu!|✓|✗|✗|✓|✓||
-|+|✓|✓|✓|✓|✓||
-|-|✓|✓|✓|✓|✓||
-|scalar<br>mult||✓|✓|✓|✓||
-|==|✓|✓|✓|✓|✓||
-|copyto!|✓|✓|✓|✓|✓||
+|adjoint|✓|✓|✓|✓|✓|✓|
+|tril!|✓|✗|✗|✓|✓|✗|
+|triu!|✓|✗|✗|✓|✓|✗|
+|+|✓|✓|✓|✓|✓|✓|
+|-|✓|✓|✓|✓|✓|✓|
+|scalar<br>mult|✓|✓|✓|✓|✓|✓|
+|==|✓|✓|✓|✓|✓|✓|
+|copyto!|✓|✓|✓|✓|✓|✓|
 |reverse|✓|✓|✓|✓|✓|✓|
 
 `reverse(Hankel, dims=1)` returns a `Toeplitz`, while `reverse(AbstractToeplitz, dims=1)` returns a `Hankel`.

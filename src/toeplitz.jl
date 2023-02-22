@@ -57,10 +57,7 @@ end
 
 # Retrieve an entry
 function getindex(A::Toeplitz, i::Integer, j::Integer)
-    m, n  = size(A)
-    @boundscheck if i < 1 || i > m || j < 1 || j > n
-        throw(BoundsError(A, (i,j)))
-    end
+    @boundscheck checkbounds(A,i,j)
     d = i - j
     if d >= 0
         return A.vc[d + 1]
@@ -128,3 +125,11 @@ for op in (:+, :-, :copyto!)
     end
 end
 (==)(A::Toeplitz,B::Toeplitz) = A.vr==B.vr && A.vc==B.vc
+
+function fill!(A::Toeplitz, x::Number)
+    fill!(A.vc,x)
+    fill!(A.vr,x)
+    A
+end
+(*)(scalar::Number, C::Toeplitz) = Hankel(scalar * C.vc, scalar * C.vr)
+(*)(C::Toeplitz,scalar::Number) = Toeplitz(C.vc * scalar, C.vr * scalar)

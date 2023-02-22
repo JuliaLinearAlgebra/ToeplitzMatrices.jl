@@ -2,7 +2,7 @@ module ToeplitzMatrices
 import StatsBase: levinson!, levinson
 import DSP: conv
 
-import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!
+import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds
 import Base: ==, +, -, *, \
 import LinearAlgebra: Cholesky, Factorization
 import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, Adjoint, cholesky!, cholesky, tril!, triu!

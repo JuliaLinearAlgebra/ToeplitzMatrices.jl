@@ -95,32 +95,20 @@ transpose(A::UpperTriangularToeplitz) = LowerTriangularToeplitz(A.v)
 
 # getindex
 function getindex(A::SymmetricToeplitz, i::Integer, j::Integer)
-    m  = size(A, 1)
-    @boundscheck if i < 1 || i > m || j < 1 || j > m
-        throw(BoundsError(A, (i,j)))
-    end
+    @boundscheck checkbounds(A,i,j)
     return A.v[abs(i - j) + 1]
 end
 function getindex(C::Circulant, i::Integer, j::Integer)
-    n = size(C, 1)
-    @boundscheck if i < 1 || i > n || j < 1 || j > n
-        throw(BoundsError(C, (i,j)))
-    end
+    @boundscheck checkbounds(C,i,j)
     d = i - j
-    return C.v[d < 0 ? n+d+1 : d+1]
+    return C.v[d < 0 ? size(C,1)+d+1 : d+1]
 end
 function getindex(A::LowerTriangularToeplitz{T}, i::Integer, j::Integer) where T
-    n = size(A, 1)
-    @boundscheck if i < 1 || i > n || j < 1 || j > n
-        throw(BoundsError(A, (i,j)))
-    end
+    @boundscheck checkbounds(A,i,j)
     return i >= j ? A.v[i - j + 1] : zero(T)
 end
 function getindex(A::UpperTriangularToeplitz{T}, i::Integer, j::Integer) where T
-    n = size(A, 1)
-    @boundscheck if i < 1 || i > n || j < 1 || j > n
-        throw(BoundsError(A, (i,j)))
-    end
+    @boundscheck checkbounds(A,i,j)
     return i <= j ? A.v[j - i + 1] : zero(T)
 end
 
@@ -319,15 +307,33 @@ size(H::Hankel)=H.s
 
 # Retrieve an entry by two indices
 function getindex(A::Hankel, i::Integer, j::Integer)
-    m, n = size(A)
-    @boundscheck if i < 1 || i > m || j < 1 || j > n
-        throw(BoundsError(A, (i,j)))
-    end
+    @boundscheck checkbounds(A,i,j)
     return A.v[i+j-1]
 end
 
-transpose(A::Hankel) = Hankel{eltype(A)}(A.v,(A.s[2],A.s[1]))
-copy(A::Hankel) = Hankel(copy(A.v), A.s)
+for fun in (:zero, :conj, :copy, :-, :similar)
+    @eval begin
+        $fun(A::Hankel)=Hankel($fun(A.v), A.s)
+    end
+end
+for op in (:+, :-, :copyto!)
+    @eval begin
+        function $op(A::Hankel,B::Hankel)
+            promote_shape(A,B)
+            Hankel($op(A.v,B.v),A.s)
+        end
+    end
+end
+
+transpose(A::Hankel) = Hankel(A.v,(A.s[2],A.s[1]))
+adjoint(A::Hankel) = transpose(conj(A))
+(==)(A::Hankel,B::Hankel) = A.v==B.v && A.s==B.s
+function fill!(A::Hankel, x::Number)
+    fill!(A.v,x)
+    A
+end
+(*)(scalar::Number, C::Hankel) = Hankel(scalar * C.v, C.s)
+(*)(C::Hankel,scalar::Number) = Hankel(C.v * scalar, C.s)
 
 isconcrete(A::Hankel) = isconcretetype(A.v)
 
