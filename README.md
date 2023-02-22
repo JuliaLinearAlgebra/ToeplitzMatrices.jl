@@ -8,7 +8,7 @@ ToeplitzMatrices.jl
 Fast matrix multiplication and division
 for Toeplitz, Hankel and circulant matrices in Julia
 
-# Note
+## Note
 
 Multiplication of large matrices and `sqrt`, `inv`, `LinearAlgebra.eigvals`,
 `LinearAlgebra.ldiv!`, and `LinearAlgebra.pinv` for circulant matrices
@@ -97,6 +97,7 @@ Note that the width is usually useless, since ideally, `w=length(v)-h+1`. It exi
 |to supertype|✓|✓|✓|✓|✓|✓|
 |to Toeplitz|-|✓|✓|✓|✓|✗|
 |to another eltype|✓|✓|✓|✓|✓|✓|
+
 When constructing `SymmetricToeplitz` or `Circulant` from `AbstractMatrix`, a second argument shall specify whether the first row or the first column is used. For example, for `A = [1 2; 3 4]`, 
 - `SymmetricToeplitz(A,:L)` gives `[1 3; 3 1]`, while
 - `SymmetricToeplitz(A,:U)` gives `[1 2; 2 1]`.
