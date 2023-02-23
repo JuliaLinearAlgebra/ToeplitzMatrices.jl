@@ -127,7 +127,7 @@ for op in (:+, :-)
         $op(A::AbstractToeplitz,B::AbstractToeplitz)=Toeplitz($op(A.vc,B.vc),$op(A.vr,B.vr))
     end
 end
-function copyto!(A::Toeplitz, B::Toeplitz)
+function copyto!(A::Toeplitz, B::AbstractToeplitz)
     copyto!(A.vc,B.vc)
     copyto!(A.vr,B.vr)
     A

@@ -74,7 +74,7 @@ Note that the width is usually useless, since ideally, `w=length(v)-h+1`. It exi
 |.vr|✓|✓|✓|✓|✓|✓|
 |size|✓|✓|✓|✓|✓|✓|
 |copy|✓|✓|✓|✓|✓|✓|
-|similar|✓|||||✓|
+|similar|✓|✓|✓|✓|✓|✓|
 |zero|✓|✓|✓|✓|✓|✓|
 |real|✓|✓|✓|✓|✓|✓|
 |imag|✓|✓|✓|✓|✓|✓|
@@ -91,7 +91,8 @@ Note that the width is usually useless, since ideally, `w=length(v)-h+1`. It exi
 |issymmetric|||||||
 |istriu|||||||
 |istril|||||||
-|iszero|||||||
+|iszero|✓|✓|✓|✓|✓||
+|isone|||||||
 |copyto!|✓|✓|✓|✓|✓|✓|
 |reverse|✓|✓|✓|✓|✓|✓|
 |broadcast|||||||

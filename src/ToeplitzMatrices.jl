@@ -27,6 +27,7 @@ convert(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) where {T<:Number} = conv
 convert(::Type{AbstractArray{T}}, S::AbstractToeplitz) where {T<:Number} = convert(AbstractToeplitz{T}, S)
 
 isconcrete(A::AbstractToeplitz) = isconcretetype(typeof(A.vc)) && isconcretetype(typeof(A.vr))
+iszero(A::AbstractToeplitz) = iszero(A.vc) && iszero(A.vr)
 
 """
     ToeplitzFactorization
@@ -41,6 +42,7 @@ end
 
 include("toeplitz.jl")
 include("special.jl")
+include("hankel.jl")
 include("linearalgebra.jl")
 
 """
