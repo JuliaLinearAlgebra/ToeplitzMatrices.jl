@@ -74,7 +74,7 @@ Note that the width is usually useless, since ideally, `w=length(v)-h+1`. It exi
 |.vr|✓|✓|✓|✓|✓|✓|
 |size|✓|✓|✓|✓|✓|✓|
 |copy|✓|✓|✓|✓|✓|✓|
-|similar|✓|✓|✓|✓|✓|✓|
+|similar|✓|||||✓|
 |zero|✓|✓|✓|✓|✓|✓|
 |real|✓|✓|✓|✓|✓|✓|
 |imag|✓|✓|✓|✓|✓|✓|

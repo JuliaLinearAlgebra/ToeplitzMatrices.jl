@@ -29,8 +29,9 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
             copyto!(A.v,B.v)
             A
         end
+
     end
-    for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
+    for fun in (:zero, :conj, :copy, :-, :real, :imag)
         @eval begin
             $fun(A::$TYPE)=$TYPE($fun(A.v))
         end
@@ -129,6 +130,7 @@ end
 Circulant(v::AbstractVector, uplo::Symbol) = Circulant{eltype(v)}(v,uplo)
 # from AbstractMatrix, AbstractToeplitz
 function Circulant{T}(A::AbstractMatrix, uplo::Symbol = :L) where T<:Number
+    checksquare(A)
     if uplo == :L
         Circulant{T}(_vc(A), uplo)
     elseif uplo == :U
@@ -139,6 +141,7 @@ function Circulant{T}(A::AbstractMatrix, uplo::Symbol = :L) where T<:Number
 end
 Circulant(A::AbstractMatrix, uplo::Symbol) = Circulant{eltype(A)}(A,uplo)
 function SymmetricToeplitz{T}(A::AbstractMatrix, uplo::Symbol = :U) where T<:Number
+    checksquare(A)
     if uplo == :L
         SymmetricToeplitz{T}(_vc(A))
     elseif uplo == :U
@@ -150,9 +153,14 @@ end
 SymmetricToeplitz(A::AbstractMatrix, uplo::Symbol) = SymmetricToeplitz{eltype(A)}(A,uplo)
 Symmetric(A::AbstractToeplitz, uplo::Symbol = :U) = SymmetricToeplitz(A,uplo)
 
-Circulant{T}(A::AbstractMatrix) where T<:Number = Circulant{T}(A, :L)
-UpperTriangularToeplitz{T}(A::AbstractMatrix) where T<:Number = UpperTriangularToeplitz{T}(_vr(A))
-LowerTriangularToeplitz{T}(A::AbstractMatrix) where T<:Number = LowerTriangularToeplitz{T}(_vc(A))
+function UpperTriangularToeplitz{T}(A::AbstractMatrix) where T<:Number 
+    checksquare(A)
+    UpperTriangularToeplitz{T}(_vr(A))
+end
+function LowerTriangularToeplitz{T}(A::AbstractMatrix) where T<:Number 
+    checksquare(A)
+    LowerTriangularToeplitz{T}(_vc(A))
+end
 _toeplitztype(s::Symbol) = Symbol(s,"Toeplitz")
 for TYPE in (:UpperTriangular, :LowerTriangular)
     @eval begin
@@ -257,7 +265,7 @@ triu!(A::UpperTriangularToeplitz, k::Integer) = _trisame!(A,-k)
 # Hankel
 struct Hankel{T<:Number} <: AbstractMatrix{T}
     v::AbstractVector{T}
-    s::NTuple{2,Integer} # size
+    s::Dims # size
 end
 
 Hankel{T}(v::AbstractVector, h::Integer, w::Integer) where T = Hankel{T}(v,(h,w))
@@ -314,7 +322,7 @@ function getindex(A::Hankel, i::Integer, j::Integer)
     @boundscheck checkbounds(A,i,j)
     return A.v[i+j-1]
 end
-
+similar(A::Hankel, T::Type, dims::Dims{2}) = Hankel{T}(similar(A.v, T, dims[1]+dims[2]-true), dims)
 for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
     @eval begin
         $fun(A::Hankel)=Hankel($fun(A.v), A.s)

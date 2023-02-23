@@ -111,7 +111,13 @@ end
 
 adjoint(A::AbstractToeplitz) = transpose(conj(A))
 transpose(A::AbstractToeplitz) = Toeplitz(A.vr, A.vc)
-for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
+function similar(A::AbstractToeplitz, T::Type, dims::Dims{2})
+    vc=similar(A.vc, T, dims[1])
+    vr=similar(A.vr, T, dims[2])
+    vr[1]=vc[1]
+    Toeplitz{T}(vc,vr)
+end
+for fun in (:zero, :conj, :copy, :-, :real, :imag)
     @eval begin
         $fun(A::AbstractToeplitz)=Toeplitz($fun(A.vc),$fun(A.vr))
     end
