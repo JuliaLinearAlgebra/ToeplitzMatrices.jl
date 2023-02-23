@@ -30,16 +30,16 @@ for the FFT-based computations.
 
 ### Toeplitz
 A Toeplitz matrix has constant diagonals. It can be constructed using
-```
+```julia
 Toeplitz(vc,vr)
 Toeplitz{T}(vc,vr)
 ```
 where `vc` are the entries in the first column and `vr` are the entries in the first row, where `vc[1]` must equal `vr[1]`. For example.
-```
+```julia
 Toeplitz(1:3, [1.,4.,5.])
 ```
 is a sparse representation of the matrix
-```
+```julia
 [ 1.0  4.0  5.0
   2.0  1.0  4.0
   3.0  2.0  1.0 ]
@@ -49,7 +49,7 @@ is a sparse representation of the matrix
 
 ### Hankel
 A Hankel matrix has constant anti-diagonals. It can be constructed using only one vector and the size. For example, `Hankel(1:5, (2,3))` or `Hankel(1:5, 2, 3)` gives
-```
+```julia
 [ 1  2  3
   2  3  4 ]
 ```
@@ -57,11 +57,16 @@ Hankel can be considered as the `reverse` of Toeplitz. The first column and the 
 - `Hankel(v, (h,w))`
 - `Hankel(v, h, w)`
 - `Hankel(vc, vr)`
+
 Note that the width is usually useless, since ideally, `w=length(v)-h+1`. It exists for Hankel matrices with infinite height and finite width. Its existence also means that `v` could be longer than necessary.
 
 ## Implemented interface
 
 ### Operations
+- ✓ implemented
+- ✗ error
+- _ fall back to `Matrix`
+
 ||Toeplitz|Symmetric~|Circulant|UpperTriangular~|LowerTriangular~|Hankel|
 |:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 |getindex|✓|✓|✓|✓|✓|✓|
@@ -71,6 +76,8 @@ Note that the width is usually useless, since ideally, `w=length(v)-h+1`. It exi
 |copy|✓|✓|✓|✓|✓|✓|
 |similar|✓|✓|✓|✓|✓|✓|
 |zero|✓|✓|✓|✓|✓|✓|
+|real|✓|✓|✓|✓|✓|✓|
+|imag|✓|✓|✓|✓|✓|✓|
 |fill!|✓|✓|✓|✓|✓|✓|
 |conj|✓|✓|✓|✓|✓|✓|
 |transpose|✓|✓|✓|✓|✓|✓|
@@ -81,10 +88,18 @@ Note that the width is usually useless, since ideally, `w=length(v)-h+1`. It exi
 |-|✓|✓|✓|✓|✓|✓|
 |scalar<br>mult|✓|✓|✓|✓|✓|✓|
 |==|✓|✓|✓|✓|✓|✓|
+|issymmetric|||||||
+|istriu|||||||
+|istril|||||||
+|iszero|||||||
 |copyto!|✓|✓|✓|✓|✓|✓|
 |reverse|✓|✓|✓|✓|✓|✓|
+|broadcast|||||||
+|broadcast!|||||||
 
-`reverse(Hankel, dims=1)` returns a `Toeplitz`, while `reverse(AbstractToeplitz, dims=1)` returns a `Hankel`.
+Note that scalar multiplication, `conj`, `+` and `-` could be removed once `broadcast` is implemented.
+
+`reverse(Hankel)` returns a `Toeplitz`, while `reverse(AbstractToeplitz)` returns a `Hankel`.
 
 ### LinearAlgebra
 
@@ -103,14 +118,14 @@ When constructing `SymmetricToeplitz` or `Circulant` from `AbstractMatrix`, a se
 - `SymmetricToeplitz(A,:U)` gives `[1 2; 2 1]`.
 
 For backward compatibility and consistency with `LinearAlgebra.Symmetric`,
-```
+```julia
 SymmetricToeplitz(A) = SymmetricToeplitz(A, :U)
 Circulant(A) = Circulant(A, :L)
 ```
 `Hankel` constructor also accepts the second argument, `:L` denoting the first column and the last row while `:U` denoting the first row and the last column.
 
 `Symmetric`, `UpperTriangular` and `LowerTriangular` from `LinearAlgebra` are also overloaded for convenience.
-```
+```julia
 Symmetric(T::Toeplitz) = SymmetricToeplitz(T)
 UpperTriangular(T::Toeplitz) = UpperTriangularToeplitz(T)
 LowerTriangular(T::Toeplitz) = LowerTriangularToeplitz(T)
@@ -118,11 +133,11 @@ LowerTriangular(T::Toeplitz) = LowerTriangularToeplitz(T)
 
 ### TriangularToeplitz (obsolete)
 `TriangularToeplitz` is reserved for backward compatibility. 
-```
+```julia
 TriangularToeplitz = Union{UpperTriangularToeplitz,LowerTriangularToeplitz}
 ```
 The old interface is implemented by
-```
+```julia
 getproperty(UpperTriangularToeplitz,:uplo) = :U
 getproperty(LowerTriangularToeplitz,:uplo) = :L
 ```

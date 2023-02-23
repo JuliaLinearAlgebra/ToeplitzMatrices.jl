@@ -66,8 +66,7 @@ function getindex(A::Toeplitz, i::Integer, j::Integer)
     end
 end
 
-# Form a lower triangular Toeplitz matrix by annihilating all entries above the k-th diaganal
-function tril!(A::Toeplitz, k::Integer)
+function tril!(A::Toeplitz, k::Integer=0)
     if k >= 0
         if isconcretetype(typeof(A.vr))
             for i in k+2:lastindex(A.vr)
@@ -88,9 +87,7 @@ function tril!(A::Toeplitz, k::Integer)
     end
     A
 end
-
-# Form a lower triangular Toeplitz matrix by annihilating all entries below the k-th diagonal
-function triu!(A::Toeplitz, k::Integer)
+function triu!(A::Toeplitz, k::Integer=0)
     if k <= 0
         if isconcretetype(typeof(A.vc))
             for i in -k+2:lastindex(A.vc)
@@ -112,24 +109,29 @@ function triu!(A::Toeplitz, k::Integer)
     A
 end
 
-adjoint(A::Toeplitz) = transpose(conj(A))
-transpose(A::Toeplitz) = Toeplitz(A.vr, A.vc)
-for fun in (:zero, :conj, :copy, :-, :similar)
+adjoint(A::AbstractToeplitz) = transpose(conj(A))
+transpose(A::AbstractToeplitz) = Toeplitz(A.vr, A.vc)
+for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
     @eval begin
-        $fun(A::Toeplitz)=Toeplitz($fun(A.vc),$fun(A.vr))
+        $fun(A::AbstractToeplitz)=Toeplitz($fun(A.vc),$fun(A.vr))
     end
 end
-for op in (:+, :-, :copyto!)
+for op in (:+, :-)
     @eval begin
-        $op(A::Toeplitz,B::Toeplitz)=Toeplitz($op(A.vc,B.vc),$op(A.vr,B.vr))
+        $op(A::AbstractToeplitz,B::AbstractToeplitz)=Toeplitz($op(A.vc,B.vc),$op(A.vr,B.vr))
     end
 end
-(==)(A::Toeplitz,B::Toeplitz) = A.vr==B.vr && A.vc==B.vc
+function copyto!(A::Toeplitz, B::Toeplitz)
+    copyto!(A.vc,B.vc)
+    copyto!(A.vr,B.vr)
+    A
+end
+(==)(A::AbstractToeplitz,B::AbstractToeplitz) = A.vr==B.vr && A.vc==B.vc
 
 function fill!(A::Toeplitz, x::Number)
     fill!(A.vc,x)
     fill!(A.vr,x)
     A
 end
-(*)(scalar::Number, C::Toeplitz) = Hankel(scalar * C.vc, scalar * C.vr)
-(*)(C::Toeplitz,scalar::Number) = Toeplitz(C.vc * scalar, C.vr * scalar)
+(*)(scalar::Number, C::AbstractToeplitz) = Toeplitz(scalar * C.vc, scalar * C.vr)
+(*)(C::AbstractToeplitz,scalar::Number) = Toeplitz(C.vc * scalar, C.vr * scalar)

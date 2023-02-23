@@ -25,13 +25,17 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
             fill!(A.v,x)
             A
         end
+        function copyto!(A::$TYPE,B::$TYPE)
+            copyto!(A.v,B.v)
+            A
+        end
     end
-    for fun in (:zero, :conj, :copy, :-, :similar)
+    for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
         @eval begin
             $fun(A::$TYPE)=$TYPE($fun(A.v))
         end
     end
-    for op in (:+, :-, :copyto!)
+    for op in (:+, :-)
         @eval begin
             $op(A::$TYPE,B::$TYPE)=$TYPE($op(A.v,B.v))
         end
@@ -311,18 +315,22 @@ function getindex(A::Hankel, i::Integer, j::Integer)
     return A.v[i+j-1]
 end
 
-for fun in (:zero, :conj, :copy, :-, :similar)
+for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
     @eval begin
         $fun(A::Hankel)=Hankel($fun(A.v), A.s)
     end
 end
-for op in (:+, :-, :copyto!)
+for op in (:+, :-)
     @eval begin
         function $op(A::Hankel,B::Hankel)
             promote_shape(A,B)
             Hankel($op(A.v,B.v),A.s)
         end
     end
+end
+function copyto!(A::Hankel, B::Hankel)
+    promote_shape(A,B)
+    copyto!(A.v,B.v)
 end
 
 transpose(A::Hankel) = Hankel(A.v,(A.s[2],A.s[1]))
