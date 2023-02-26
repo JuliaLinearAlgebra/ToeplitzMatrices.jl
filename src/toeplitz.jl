@@ -4,17 +4,18 @@
 
 A Toeplitz matrix.
 """
-struct Toeplitz{T<:Number} <: AbstractToeplitz{T}
-    vc::AbstractVector{T}
-    vr::AbstractVector{T}
+struct Toeplitz{T, VC<:AbstractVector{T}, VR<:AbstractVector{T}} <: AbstractToeplitz{T}
+    vc::VC
+    vr::VR
 
-    function Toeplitz{T}(vc::AbstractVector{T}, vr::AbstractVector{T}) where {T<:Number}
+    function Toeplitz{T, VC, VR}(vc::VC, vr::VR) where {T, VC<:AbstractVector{T}, VR<:AbstractVector{T}}
         if first(vc) != first(vr)
             error("First element of the vectors must be the same")
         end
-        return new{T}(vc, vr)
+        return new{T,VC,VR}(vc, vr)
     end
 end
+Toeplitz{T}(vc::AbstractVector{T}, vr::AbstractVector{T}) where T = Toeplitz{T,typeof(vc),typeof(vr)}(vc,vr)
 
 """
     Toeplitz(vc::AbstractVector, vr::AbstractVector)
@@ -25,7 +26,7 @@ Create a `Toeplitz` matrix from its first column `vc` and first row `vr` where
 function Toeplitz(vc::AbstractVector, vr::AbstractVector)
     return Toeplitz{Base.promote_eltype(vc, vr)}(vc, vr)
 end
-function Toeplitz{T}(vc::AbstractVector, vr::AbstractVector) where {T<:Number}
+function Toeplitz{T}(vc::AbstractVector, vr::AbstractVector) where T
     return Toeplitz{T}(convert(AbstractVector{T}, vc), convert(AbstractVector{T}, vr))
 end
 
@@ -82,7 +83,7 @@ function tril!(A::Toeplitz, k::Integer=0)
                 A.vc[i]=zero(eltype(A))
             end
         else
-            A.vc=vcat(A.vc[1:-k+1], zero(A.vc[-k+2:end]))
+            A.vc=vcat(zero(A.vc[1:-k]), A.vc[-k+1:end])
         end
     end
     A
@@ -103,7 +104,7 @@ function triu!(A::Toeplitz, k::Integer=0)
                 A.vr[i]=zero(eltype(A))
             end
         else
-            A.vr=vcat(A.vr[1:k+1], zero(A.vr[k+2:end]))
+            A.vr=vcat(zero(A.vr[1:k]), A.vr[k+1:end])
         end
     end
     A
