@@ -191,49 +191,6 @@ for TYPE in (:AbstractMatrix, :AbstractVector)
     end
 end
 
-
-# circulant
-const CirculantFactorization{T<:Number} = ToeplitzFactorization{T,Circulant{T}}
-function factorize(C::Circulant)
-    T = eltype(C)
-    vc = C.vc
-    S = promote_type(T, Complex{Float32})
-    tmp = Vector{S}(undef, length(vc))
-    copyto!(tmp, vc)
-    dft = plan_fft!(tmp)
-    return ToeplitzFactorization{T,typeof(C),S,typeof(dft)}(dft * tmp, similar(tmp), dft)
-end
-
-Base.:*(A::Circulant, B::Circulant) = factorize(A) * factorize(B)
-Base.:*(A::CirculantFactorization, B::Circulant) = A * factorize(B)
-Base.:*(A::Circulant, B::CirculantFactorization) = factorize(A) * B
-function Base.:*(A::CirculantFactorization, B::CirculantFactorization)
-    A_vcvr_dft = A.vcvr_dft
-    B_vcvr_dft = B.vcvr_dft
-    m = length(A_vcvr_dft)
-    n = length(B_vcvr_dft)
-    if m != n
-        throw(DimensionMismatch(
-            "size of matrix A, $(m)x$(m), does not match size of matrix B, $(n)x$(n)"
-        ))
-    end
-
-    vc = A.dft \ (A_vcvr_dft .* B_vcvr_dft)
-
-    return Circulant(maybereal(Base.promote_eltype(A, B), vc))
-end
-
-# Make an eager adjoint, similar to adjoints of Diagonal in LinearAlgebra
-adjoint(C::CirculantFactorization{T,S,P}) where {T,S,P} =
-    CirculantFactorization{T,S,P}(conj.(C.vcvr_dft), C.tmp, C.dft)
-Base.:*(A::Adjoint{<:Any,<:Circulant}, B::Circulant) = factorize(parent(A))' * factorize(B)
-Base.:*(A::Adjoint{<:Any,<:Circulant}, B::CirculantFactorization) =
-    factorize(parent(A))' * B
-Base.:*(A::Adjoint{<:Any,<:Circulant}, B::Adjoint{<:Any,<:Circulant}) =
-    factorize(parent(A))' * factorize(parent(B))'
-Base.:*(A::Circulant, B::Adjoint{<:Any,<:Circulant}) = factorize(A) * factorize(parent(B))'
-Base.:*(A::CirculantFactorization, B::Adjoint{<:Any,<:Circulant}) = A * factorize(parent(B))'
-
 # Triangular
 function _tridiff!(A::TriangularToeplitz, k::Integer)
     if k >= 0
