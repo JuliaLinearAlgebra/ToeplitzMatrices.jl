@@ -7,7 +7,7 @@ import Base: convert, *, \, getindex, print_matrix, size, Matrix, +, -, copy, si
 import LinearAlgebra: cholesky, cholesky!, eigvals, inv, ldiv!, mul!, pinv, tril, triu
 
 using LinearAlgebra: LinearAlgebra, Adjoint, Factorization, factorize, Cholesky,
-    DimensionMismatch, rmul!, sym_uplo
+    DimensionMismatch, dot, rmul!, sym_uplo, Symmetric
 
 using AbstractFFTs
 using AbstractFFTs: Plan
@@ -15,6 +15,8 @@ using AbstractFFTs: Plan
 using DSP: conv
 
 export Toeplitz, SymmetricToeplitz, Circulant, TriangularToeplitz, Hankel, chan, strang
+
+export durbin, durbin!, levinson, levinson!, trench, trench!
 
 
 include("iterativeLinearSolvers.jl")
@@ -290,6 +292,17 @@ SymmetricToeplitz(vc::AbstractVector) = SymmetricToeplitz{eltype(vc)}(vc)
 
 SymmetricToeplitz(A::AbstractMatrix) = SymmetricToeplitz{eltype(A)}(A)
 SymmetricToeplitz{T}(A::AbstractMatrix) where {T<:Number} = SymmetricToeplitz{T}(A[1, :])
+
+Base.:*(a::Number, T::SymmetricToeplitz) = SymmetricToeplitz(a * T.vc)
+Base.:*(T::SymmetricToeplitz, a::Number) = SymmetricToeplitz(T.vc * a)
+function LinearAlgebra.lmul!(a::Number, T::SymmetricToeplitz)
+    T.vc .= a .* T.vc
+    return T
+end
+function LinearAlgebra.rmul!(T::SymmetricToeplitz, a::Number)
+    T.vc .*= a
+    return T
+end
 
 function LinearAlgebra.factorize(A::SymmetricToeplitz{T}) where {T<:Number}
     vc = A.vc
@@ -789,5 +802,7 @@ Return real-valued part of `x` if `T` is a type of a real number, and `x` otherw
 """
 maybereal(::Type, x) = x
 maybereal(::Type{<:Real}, x) = real(x)
+
+include("directLinearSolvers.jl")
 
 end #module
