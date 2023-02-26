@@ -30,17 +30,9 @@ Hankel{T}(A::AbstractMatrix, uplo::Symbol = :L) where T<:Number = convert(Hankel
 function Hankel(A::AbstractMatrix, uplo::Symbol = :L)
     s=size(A)
     if uplo == :L
-        if s[1] == ℵ₀
-            Hankel(A[:,1],s)
-        else
-            Hankel(A[:,1],A[end,:])
-        end
+        Hankel(A[:,1],A[end,:])
     elseif uplo == :U
-        if s[2] == ℵ₀
-            Hankel(A[1,:],s)
-        else
-            Hankel(A[1,:],A[:,end])
-        end
+        Hankel(A[1,:],A[:,end])
     else
         throw(ArgumentError("expected :L or :U. got $uplo."))
     end

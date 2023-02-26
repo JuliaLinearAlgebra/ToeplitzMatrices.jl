@@ -8,7 +8,6 @@ import LinearAlgebra: Cholesky, Factorization
 import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, Adjoint, cholesky!, cholesky, tril!, triu!, checksquare
 import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric
 import AbstractFFTs: Plan, plan_fft!
-import Infinities: ℵ₀
 
 export AbstractToeplitz, Toeplitz, SymmetricToeplitz, Circulant, LowerTriangularToeplitz, UpperTriangularToeplitz, TriangularToeplitz, Hankel
 
