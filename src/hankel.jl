@@ -1,9 +1,11 @@
 # Hankel
-struct Hankel{T<:Number} <: AbstractMatrix{T}
-    v::AbstractVector{T}
+struct Hankel{T, V<:AbstractVector{T}} <: AbstractMatrix{T}
+    v::V
     s::Dims{2} # size
 end
 
+Hankel{T}(v::AbstractVector{T}, s::Dims) where T = Hankel{T,typeof(v)}(v,s)
+Hankel{T}(v::AbstractVector, s::Dims) where T = Hankel{T}(convert(AbstractVector{T},v),s)
 Hankel{T}(v::AbstractVector, h::Integer, w::Integer) where T = Hankel{T}(v,(h,w))
 Hankel(v::AbstractVector, h::Integer, w::Integer) = Hankel{eltype(v)}(v,h,w)
 Hankel(v::AbstractVector) = Hankel(v,((l+1)÷2,(l+1)÷2)) # square by default
