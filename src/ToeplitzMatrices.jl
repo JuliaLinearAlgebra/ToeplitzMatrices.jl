@@ -9,8 +9,6 @@ import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, Adjoint, cholesky!
 import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric
 import AbstractFFTs: Plan, plan_fft!
 
-export AbstractToeplitz, Toeplitz, SymmetricToeplitz, Circulant, LowerTriangularToeplitz, UpperTriangularToeplitz, TriangularToeplitz, Hankel
-
 include("iterativeLinearSolvers.jl")
 
 # Abstract
@@ -30,7 +28,7 @@ iszero(A::AbstractToeplitz) = iszero(A.vc) && iszero(A.vr)
 
 """
     ToeplitzFactorization
-
+    
 Factorization of a Toeplitz matrix using FFT.
 """
 struct ToeplitzFactorization{T<:Number,A<:AbstractToeplitz{T},S<:Number,P<:Plan{S}} <: Factorization{T}
@@ -51,5 +49,7 @@ Return real-valued part of `x` if `T` is a type of a real number, and `x` otherw
 """
 maybereal(::Type, x) = x
 maybereal(::Type{<:Real}, x) = real(x)
+
+include("directLinearSolvers.jl")
 
 end #module
