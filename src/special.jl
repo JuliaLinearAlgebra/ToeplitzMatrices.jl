@@ -18,18 +18,29 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
         
         adjoint(A::$TYPE) = transpose(conj(A))
         (*)(scalar::Number, C::$TYPE) = $TYPE(scalar * C.v)
-        (*)(C::$TYPE,scalar::Number) = $TYPE(C.v * scalar)
+        (*)(C::$TYPE, scalar::Number) = $TYPE(C.v * scalar)
         (==)(A::$TYPE,B::$TYPE) = A.v==B.v
 
-        function fill!(A::$TYPE, x::Number)
-            fill!(A.v,x)
-            A
-        end
         function copyto!(A::$TYPE,B::$TYPE)
             copyto!(A.v,B.v)
             A
         end
         similar(A::$TYPE, T::Type) = $TYPE{T}(similar(A.v, T))
+    end
+    for fun in (:lmul!,)
+        @eval begin
+            function $fun(x::Number, A::$TYPE)
+                $fun(x,A.v)
+                A
+            end
+        end
+    for fun in (:fill!, :rmul!)
+        @eval begin
+            function $fun(A::$TYPE, x::Number)
+                $fun(A.v,x)
+                A
+            end
+        end
     end
     for fun in (:zero, :conj, :copy, :-, :real, :imag)
         @eval begin
