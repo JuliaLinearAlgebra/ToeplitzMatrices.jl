@@ -69,7 +69,7 @@ end
 # uses B to store the inverse
 # NOTE: only populates entries on upper triangle since the inverse is symmetric
 function trench!(B::AbstractMatrix, r::AbstractVector)
-    n = LinearAlgebra.checksquare(B)
+    n = checksquare(B)
     n == length(r) + 1 || throw(DimensionMismatch())
     y = durbin(r)
     γ = inv(1 + dot(r, y))

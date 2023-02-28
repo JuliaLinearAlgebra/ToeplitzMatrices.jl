@@ -1,13 +1,17 @@
 module ToeplitzMatrices
-import StatsBase: levinson!, levinson
+# import StatsBase: levinson!, levinson
 import DSP: conv
 
 import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds, real, imag, isfinite
 import Base: ==, +, -, *, \
 import LinearAlgebra: Cholesky, Factorization
-import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, Adjoint, cholesky!, cholesky, tril!, triu!, checksquare
-import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric
+import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot
+import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric, Adjoint
 import AbstractFFTs: Plan, plan_fft!
+import StatsBase
+
+export AbstractToeplitz, Toeplitz, SymmetricToeplitz, Circulant, LowerTriangularToeplitz, UpperTriangularToeplitz, TriangularToeplitz, Hankel
+export durbin, trench, levinson
 
 include("iterativeLinearSolvers.jl")
 
@@ -28,7 +32,7 @@ iszero(A::AbstractToeplitz) = iszero(A.vc) && iszero(A.vr)
 
 """
     ToeplitzFactorization
-    
+
 Factorization of a Toeplitz matrix using FFT.
 """
 struct ToeplitzFactorization{T<:Number,A<:AbstractToeplitz{T},S<:Number,P<:Plan{S}} <: Factorization{T}

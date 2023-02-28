@@ -7,7 +7,8 @@ using Pkg
     Pkg.instantiate()
 end
 
-using ToeplitzMatrices, StatsBase, Test, LinearAlgebra, Aqua
+using ToeplitzMatrices, Test, LinearAlgebra, Aqua
+import StatsBase
 
 using FFTW: fft
 

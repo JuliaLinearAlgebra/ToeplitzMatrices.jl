@@ -34,6 +34,7 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
                 A
             end
         end
+    end
     for fun in (:fill!, :rmul!)
         @eval begin
             function $fun(A::$TYPE, x::Number)
