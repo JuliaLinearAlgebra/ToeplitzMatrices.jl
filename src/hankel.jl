@@ -1,12 +1,18 @@
 # Hankel
-struct Hankel{T, V<:AbstractVector{T}} <: AbstractMatrix{T}
+struct Hankel{T, V<:AbstractVector{T}, H<:Integer, W<:Integer} <: AbstractMatrix{T}
     v::V
-    s::Dims{2} # size
-end
+    s::Tuple{H,W} # size
 
-Hankel{T}(v::AbstractVector{T}, s::Dims) where T = Hankel{T,typeof(v)}(v,s)
-Hankel{T}(v::AbstractVector, s::Dims) where T = Hankel{T}(convert(AbstractVector{T},v),s)
+    function Hankel{T,V,H,W}(v::V, s::Tuple{H,W}) where {T, V<:AbstractVector{T}, H<:Integer, W<:Integer}
+        (s[1]<0 || s[2]<0) && throw(ArgumentError("negative size: $s"))
+        new{T,V,H,W}(v,s)
+    end
+end
+Hankel{T}(v::V, s::Tuple{H,W}) where {T, V<:AbstractVector{T}, H<:Integer, W<:Integer} = Hankel{T,V,H,W}(v,s)
+
+Hankel{T}(v::AbstractVector, s::DimsInteger) where T = Hankel{T}(convert(AbstractVector{T},v),s)
 Hankel{T}(v::AbstractVector, h::Integer, w::Integer) where T = Hankel{T}(v,(h,w))
+Hankel(v::AbstractVector, s::DimsInteger) = Hankel{eltype(v)}(v,s)
 Hankel(v::AbstractVector, h::Integer, w::Integer) = Hankel{eltype(v)}(v,h,w)
 Hankel(v::AbstractVector) = Hankel(v,((l+1)÷2,(l+1)÷2)) # square by default
 function Hankel(vc::AbstractVector, vr::AbstractVector)
@@ -60,7 +66,8 @@ function getindex(A::Hankel, i::Integer, j::Integer)
     @boundscheck checkbounds(A,i,j)
     return A.v[i+j-1]
 end
-similar(A::Hankel, T::Type, dims::Dims{2}) = Hankel{T}(similar(A.v, T, dims[1]+dims[2]-true), dims)
+similar(A::Hankel, T::Type, dims::DimsInteger{2}) = Hankel{T}(similar(A.v, T, dims[1]+dims[2]-true), dims)
+similar(A::Hankel, T::Type, dims::Tuple{Int64,Int64}) = Hankel{T}(similar(A.v, T, dims[1]+dims[2]-true), dims) # for ambiguity with `similar(a::AbstractArray, ::Type{T}, dims::Tuple{Vararg{Int64, N}}) where {T, N}` in Base
 for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
     @eval begin
         $fun(A::Hankel)=Hankel($fun(A.v), A.s)
