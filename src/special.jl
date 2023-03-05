@@ -2,12 +2,15 @@
 # Symmetric, Circulant, LowerTriangular, UpperTriangular
 for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTriangularToeplitz)
     @eval begin
-        struct $TYPE{T<:Number} <: AbstractToeplitz{T}
-            v::AbstractVector{T}
+        struct $TYPE{T, V<:AbstractVector{T}} <: AbstractToeplitz{T}
+            v::V
         end
+        $TYPE{T}(v::V) where {T,V<:AbstractVector{T}} = $TYPE{T,V}(v)
+        $TYPE{T}(v::AbstractVector) where T = $TYPE{T}(convert(AbstractVector{T},v))
 
-        convert(::Type{AbstractToeplitz{T}}, A::$TYPE) where {T} = convert($TYPE{T},A)
-        convert(::Type{$TYPE{T}}, A::$TYPE) where {T} = $TYPE(convert(AbstractVector{T},A.v))
+        AbstractToeplitz{T}(A::$TYPE) where T = $TYPE{T}(A)
+        $TYPE{T}(A::$TYPE) where T = $TYPE{T}(convert(AbstractVector{T},A.v))
+        convert(::Type{$TYPE{T}}, A::$TYPE) where {T} = $TYPE{T}(A)
 
         function size(A::$TYPE, dim::Int)
             if dim < 1
@@ -44,24 +47,16 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
         end
     end
     for fun in (:zero, :conj, :copy, :-, :real, :imag)
-        @eval begin
-            $fun(A::$TYPE) = $TYPE($fun(A.v))
-        end
+        @eval $fun(A::$TYPE) = $TYPE($fun(A.v))
     end
     for fun in (:iszero,)
-        @eval begin
-            $fun(A::$TYPE) = $fun(A.v)
-        end
+        @eval $fun(A::$TYPE) = $fun(A.v)
     end
     for op in (:+, :-)
-        @eval begin
-            $op(A::$TYPE,B::$TYPE) = $TYPE($op(A.v,B.v))
-        end
+        @eval $op(A::$TYPE,B::$TYPE) = $TYPE($op(A.v,B.v))
     end
-    for TY in (:AbstractVector, :AbstractMatrix, :AbstractToeplitz)
-        @eval begin
-            $TYPE(v::$TY) = $TYPE{eltype(v)}(v)
-        end
+    for TY in (:AbstractMatrix, :AbstractToeplitz)
+        @eval $TYPE(v::$TY) = $TYPE{eltype(v)}(v)
     end
 end
 TriangularToeplitz{T}=Union{UpperTriangularToeplitz{T},LowerTriangularToeplitz{T}}
@@ -135,7 +130,7 @@ function getindex(A::UpperTriangularToeplitz{T}, i::Integer, j::Integer) where T
 end
 
 # constructors
-function Circulant{T}(v::AbstractVector, uplo::Symbol) where T<:Number
+function Circulant{T}(v::AbstractVector, uplo::Symbol) where T
     if uplo == :L
         Circulant{T}(v)
     elseif uplo == :U
@@ -146,7 +141,7 @@ function Circulant{T}(v::AbstractVector, uplo::Symbol) where T<:Number
 end
 Circulant(v::AbstractVector, uplo::Symbol) = Circulant{eltype(v)}(v,uplo)
 # from AbstractMatrix, AbstractToeplitz
-function Circulant{T}(A::AbstractMatrix, uplo::Symbol = :L) where T<:Number
+function Circulant{T}(A::AbstractMatrix, uplo::Symbol = :L) where T
     checksquare(A)
     if uplo == :L
         Circulant{T}(_vc(A), uplo)
@@ -157,7 +152,7 @@ function Circulant{T}(A::AbstractMatrix, uplo::Symbol = :L) where T<:Number
     end
 end
 Circulant(A::AbstractMatrix, uplo::Symbol) = Circulant{eltype(A)}(A,uplo)
-function SymmetricToeplitz{T}(A::AbstractMatrix, uplo::Symbol = :U) where T<:Number
+function SymmetricToeplitz{T}(A::AbstractMatrix, uplo::Symbol = :U) where T
     checksquare(A)
     if uplo == :L
         SymmetricToeplitz{T}(_vc(A))
@@ -170,18 +165,18 @@ end
 SymmetricToeplitz(A::AbstractMatrix, uplo::Symbol) = SymmetricToeplitz{eltype(A)}(A,uplo)
 Symmetric(A::AbstractToeplitz, uplo::Symbol = :U) = SymmetricToeplitz(A,uplo)
 
-function UpperTriangularToeplitz{T}(A::AbstractMatrix) where T<:Number 
+function UpperTriangularToeplitz{T}(A::AbstractMatrix) where T
     checksquare(A)
     UpperTriangularToeplitz{T}(_vr(A))
 end
-function LowerTriangularToeplitz{T}(A::AbstractMatrix) where T<:Number 
+function LowerTriangularToeplitz{T}(A::AbstractMatrix) where T
     checksquare(A)
     LowerTriangularToeplitz{T}(_vc(A))
 end
 _toeplitztype(s::Symbol) = Symbol(s,"Toeplitz")
 for TYPE in (:UpperTriangular, :LowerTriangular)
     @eval begin
-        $TYPE{T}(A::AbstractToeplitz) where T<:Number = $(_toeplitztype(TYPE)){T}(A)
+        $TYPE{T}(A::AbstractToeplitz) where T = $(_toeplitztype(TYPE)){T}(A)
         $TYPE(A::AbstractToeplitz) = $TYPE{eltype(A)}(A)
         convert(::Type{TriangularToeplitz{T}},A::$(_toeplitztype(TYPE))) where T<:Number = convert($(_toeplitztype(TYPE)){T},A)
     end
@@ -191,7 +186,7 @@ end
 for TYPE in (:AbstractMatrix, :AbstractVector)
     @eval begin
         TriangularToeplitz(A::$TYPE, uplo::Symbol) = TriangularToeplitz{eltype(A)}(A, uplo)
-        function TriangularToeplitz{T}(A::$TYPE, uplo::Symbol) where T<:Number
+        function TriangularToeplitz{T}(A::$TYPE, uplo::Symbol) where T
             if uplo == :L
                 LowerTriangularToeplitz{T}(A)
             elseif uplo == :U

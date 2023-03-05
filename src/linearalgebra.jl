@@ -195,7 +195,7 @@ function StatsBase.levinson!(C::StridedMatrix, A::SymmetricToeplitz, B::StridedM
 end
 
 # circulant
-const CirculantFactorization{T<:Number} = ToeplitzFactorization{T,Circulant{T}}
+const CirculantFactorization{T, V<:AbstractVector{T}} = ToeplitzFactorization{T,Circulant{T,V}}
 function factorize(C::Circulant)
     T = eltype(C)
     vc = C.vc
@@ -226,8 +226,8 @@ function Base.:*(A::CirculantFactorization, B::CirculantFactorization)
 end
 
 # Make an eager adjoint, similar to adjoints of Diagonal in LinearAlgebra
-adjoint(C::CirculantFactorization{T,S,P}) where {T,S,P} =
-    CirculantFactorization{T,S,P}(conj.(C.vcvr_dft), C.tmp, C.dft)
+adjoint(C::CirculantFactorization{T,V,S,P}) where {T,V,S,P} =
+    CirculantFactorization{T,V,S,P}(conj.(C.vcvr_dft), C.tmp, C.dft)
 Base.:*(A::Adjoint{<:Any,<:Circulant}, B::Circulant) = factorize(parent(A))' * factorize(B)
 Base.:*(A::Adjoint{<:Any,<:Circulant}, B::CirculantFactorization) =
     factorize(parent(A))' * B
@@ -264,9 +264,9 @@ function inv(C::Circulant)
     vc = F.dft \ vdft
     return Circulant(maybereal(eltype(C), vc))
 end
-function inv(C::CirculantFactorization{T,S,P}) where {T,S,P}
+function inv(C::CirculantFactorization{T,V,S,P}) where {T,V,S,P}
     vdft = map(inv, C.vcvr_dft)
-    return CirculantFactorization{T,S,P}(vdft, similar(vdft), C.dft)
+    return CirculantFactorization{T,V,S,P}(vdft, similar(vdft), C.dft)
 end
 
 function strang(A::AbstractMatrix{T}) where T

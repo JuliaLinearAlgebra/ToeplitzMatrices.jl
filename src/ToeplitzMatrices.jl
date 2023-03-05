@@ -24,8 +24,8 @@ size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
 @inline _vr(A::AbstractMatrix) = A[1,:]
 @inline _vc(A::AbstractMatrix) = A[:,1]
 
-convert(::Type{AbstractMatrix{T}}, S::AbstractToeplitz) where {T<:Number} = convert(AbstractToeplitz{T}, S)
-convert(::Type{AbstractArray{T}}, S::AbstractToeplitz) where {T<:Number} = convert(AbstractToeplitz{T}, S)
+AbstractArray{T}(A::AbstractToeplitz) where T = AbstractToeplitz{T}(A)
+convert(::Type{AbstractToeplitz{T}}, A::AbstractToeplitz) where T = AbstractToeplitz{T}(A)
 
 isconcrete(A::AbstractToeplitz) = isconcretetype(typeof(A.vc)) && isconcretetype(typeof(A.vr))
 iszero(A::AbstractToeplitz) = iszero(A.vc) && iszero(A.vr)
@@ -35,7 +35,7 @@ iszero(A::AbstractToeplitz) = iszero(A.vc) && iszero(A.vr)
 
 Factorization of a Toeplitz matrix using FFT.
 """
-struct ToeplitzFactorization{T<:Number,A<:AbstractToeplitz{T},S<:Number,P<:Plan{S}} <: Factorization{T}
+struct ToeplitzFactorization{T,A<:AbstractToeplitz{T},S<:Number,P<:Plan{S}} <: Factorization{T}
     vcvr_dft::Vector{S}
     tmp::Vector{S}
     dft::P

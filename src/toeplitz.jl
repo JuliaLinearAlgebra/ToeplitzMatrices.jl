@@ -36,15 +36,14 @@ end
 "Project" matrix `A` onto its Toeplitz part using the first row/col of `A`.
 """
 Toeplitz(A::AbstractMatrix) = Toeplitz{eltype(A)}(A)
-Toeplitz{T}(A::AbstractMatrix) where {T<:Number} = Toeplitz{T}(A[:,1], A[1,:])
+Toeplitz{T}(A::AbstractMatrix) where {T} = Toeplitz{T}(_vc(A), _vr(A))
 
-convert(::Type{AbstractToeplitz{T}}, A::Toeplitz) where {T} = convert(Toeplitz{T}, A)
-convert(::Type{Toeplitz{T}}, A::Toeplitz) where {T} = Toeplitz(convert(AbstractVector{T}, A.vc),convert(AbstractVector{T}, A.vr))
-convert(::Type{Toeplitz{T}}, A::AbstractToeplitz) where {T} = Toeplitz{T}(A.vc,A.vr)
-convert(::Type{Toeplitz}, A::AbstractToeplitz) = Toeplitz(A.vc,A.vr)
+AbstractToeplitz{T}(A::Toeplitz) where T = Toeplitz{T}(A)
+convert(::Type{Toeplitz{T}}, A::AbstractToeplitz) where {T} = Toeplitz{T}(A)
+convert(::Type{Toeplitz}, A::AbstractToeplitz) = Toeplitz(A)
 
 # Size of a general Toeplitz matrix
-function size(A::Toeplitz, dim::Int)
+function size(A::AbstractToeplitz, dim::Int)
     if dim == 1
         return length(A.vc)
     elseif dim == 2
@@ -57,7 +56,7 @@ function size(A::Toeplitz, dim::Int)
 end
 
 # Retrieve an entry
-function getindex(A::Toeplitz, i::Integer, j::Integer)
+function getindex(A::AbstractToeplitz, i::Integer, j::Integer)
     @boundscheck checkbounds(A,i,j)
     d = i - j
     if d >= 0
@@ -119,14 +118,10 @@ function similar(A::AbstractToeplitz, T::Type, dims::Dims{2})
     Toeplitz{T}(vc,vr)
 end
 for fun in (:zero, :conj, :copy, :-, :real, :imag)
-    @eval begin
-        $fun(A::AbstractToeplitz)=Toeplitz($fun(A.vc),$fun(A.vr))
-    end
+    @eval $fun(A::AbstractToeplitz)=Toeplitz($fun(A.vc),$fun(A.vr))
 end
 for op in (:+, :-)
-    @eval begin
-        $op(A::AbstractToeplitz,B::AbstractToeplitz)=Toeplitz($op(A.vc,B.vc),$op(A.vr,B.vr))
-    end
+    @eval $op(A::AbstractToeplitz,B::AbstractToeplitz)=Toeplitz($op(A.vc,B.vc),$op(A.vr,B.vr))
 end
 function copyto!(A::Toeplitz, B::AbstractToeplitz)
     copyto!(A.vc,B.vc)

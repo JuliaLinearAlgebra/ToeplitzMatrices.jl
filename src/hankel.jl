@@ -1,14 +1,14 @@
 # Hankel
-struct Hankel{T, V<:AbstractVector{T}, H<:Integer, W<:Integer} <: AbstractMatrix{T}
+struct Hankel{T, V<:AbstractVector{T}, S<:DimsInteger} <: AbstractMatrix{T}
     v::V
-    s::Tuple{H,W} # size
+    s::S # size
 
-    function Hankel{T,V,H,W}(v::V, s::Tuple{H,W}) where {T, V<:AbstractVector{T}, H<:Integer, W<:Integer}
+    function Hankel{T,V,S}(v::V, s::DimsInteger) where {T, V<:AbstractVector{T}, S<:DimsInteger}
         (s[1]<0 || s[2]<0) && throw(ArgumentError("negative size: $s"))
-        new{T,V,H,W}(v,s)
+        new{T,V,S}(v,s)
     end
 end
-Hankel{T}(v::V, s::Tuple{H,W}) where {T, V<:AbstractVector{T}, H<:Integer, W<:Integer} = Hankel{T,V,H,W}(v,s)
+Hankel{T}(v::V, s::S) where {T, V<:AbstractVector{T}, S<:DimsInteger} = Hankel{T,V,S}(v,s)
 
 Hankel{T}(v::AbstractVector, s::DimsInteger) where T = Hankel{T}(convert(AbstractVector{T},v),s)
 Hankel{T}(v::AbstractVector, h::Integer, w::Integer) where T = Hankel{T}(v,(h,w))
