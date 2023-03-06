@@ -40,17 +40,17 @@ cases = [
     (Circulant(complex(0.9.^(0:ns - 1))),
         Circulant(complex(0.9.^(0:nl - 1))),
         "Complex circulant"),
-    (TriangularToeplitz(0.9.^(0:ns - 1), :U),
-        TriangularToeplitz(0.9.^(0:nl - 1), :U),
+    (UpperTriangularToeplitz(0.9.^(0:ns - 1)),
+        UpperTriangularToeplitz(0.9.^(0:nl - 1)),
         "Real upper triangular"),
-    (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :U),
-        TriangularToeplitz(complex(0.9.^(0:nl - 1)), :U),
+    (UpperTriangularToeplitz(complex(0.9.^(0:ns - 1))),
+        UpperTriangularToeplitz(complex(0.9.^(0:nl - 1))),
         "Complex upper triangular"),
-    (TriangularToeplitz(0.9.^(0:ns - 1), :L),
-        TriangularToeplitz(0.9.^(0:nl - 1), :L),
+    (LowerTriangularToeplitz(0.9.^(0:ns - 1)),
+        LowerTriangularToeplitz(0.9.^(0:nl - 1)),
         "Real lower triangular"),
-    (TriangularToeplitz(complex(0.9.^(0:ns - 1)), :L),
-         TriangularToeplitz(complex(0.9.^(0:nl - 1)), :L),
+    (LowerTriangularToeplitz(complex(0.9.^(0:ns - 1))),
+         LowerTriangularToeplitz(complex(0.9.^(0:nl - 1))),
          "Complex lower triangular"),
 ]
 
@@ -75,7 +75,7 @@ end
     @test Circulant(Float32.(1:3)) * ones(Float64, 3) == fill(6, 3)
     @test Matrix(Toeplitz(vc, vr)) == Matrix(Toeplitz(vv, vr))
     @test Matrix(Circulant(vc)) == Matrix(Circulant(vv))
-    @test Matrix(TriangularToeplitz(vc,:U)) == Matrix(TriangularToeplitz(vv,:U))
+    @test Matrix(UpperTriangularToeplitz(vc)) == Matrix(UpperTriangularToeplitz(vv))
 end
 
 @testset "Real general rectangular" begin
@@ -215,6 +215,9 @@ end
         @test Hankel(A) == [1 3; 3 4]
         T = Toeplitz([1.0,2,3,4,5],[1.0,6,7,8,0])
         @test Hankel(T) == Hankel([1.0,2,3,4,5],[5.0,4,3,2,1])
+        @test isa(reverse(T),Hankel)
+        @test isa(reverse(T,dims=1),Hankel)
+        @test isa(reverse(T,dims=2),Hankel)
     end
 end
 
@@ -275,25 +278,26 @@ end
 
 @testset "Constructors" begin
     A = ones(10, 10)
-    @test Matrix(Toeplitz(A)) == Matrix(Toeplitz{Float64}(A)) == A
-    @test Matrix(SymmetricToeplitz(A)) == Matrix(SymmetricToeplitz{Float64}(A)) == A
-    @test Matrix(Circulant(A)) == Matrix(Circulant{Float64}(A)) == A
-    @test Matrix(Hankel(A)) == Matrix(Hankel{Float64}(A)) == A
+    @test Toeplitz(A) == Toeplitz{Float64}(A) == A
+    @test SymmetricToeplitz(A) == SymmetricToeplitz{Float64}(A) == A
+    @test Circulant(A) == Circulant{Float64}(A) == A
+    @test Hankel(A) == Hankel{Float64}(A) == A
 
 
     A = [1.0 2.0;
          3.0 4.0]
 
-    @test Toeplitz(A) == Toeplitz([1.,3.], [1.,2.])
-    @test Toeplitz{Float64}(A) == Toeplitz([1.,3.], [1.,2.])
-    @test Matrix(SymmetricToeplitz(A)) == Matrix(SymmetricToeplitz{Float64}(A)) ==
-                Matrix(Toeplitz(Symmetric(A))) == Matrix(Symmetric(Toeplitz(A))) == [1. 2.; 2. 1.]
-    @test Matrix(Circulant(A)) == [1 3; 3 1]
+    @test Toeplitz(A) == Toeplitz([1.,3.], [1.,2.]) == Toeplitz{Float64}(A)
+    @test SymmetricToeplitz(A) == SymmetricToeplitz{Float64}(A) ==
+                Toeplitz(Symmetric(A)) == Symmetric(Toeplitz(A)) == [1. 2.; 2. 1.]
+    @test Circulant(A) == [1 3; 3 1]
 
-    @test TriangularToeplitz(A, :U) == TriangularToeplitz{Float64}(A, :U) == Toeplitz(UpperTriangular(A)) == UpperTriangular(Toeplitz(A))
-    @test TriangularToeplitz(A, :L) == TriangularToeplitz{Float64}(A, :L) == Toeplitz(LowerTriangular(A)) == LowerTriangular(Toeplitz(A))
+    @test TriangularToeplitz(A, :U) == TriangularToeplitz{Float64}(A, :U) == Toeplitz(UpperTriangular(A)) == UpperTriangular(Toeplitz(A)) == UpperTriangularToeplitz(A) == UpperTriangularToeplitz{Float64}(A)
+    @test TriangularToeplitz(A, :L) == TriangularToeplitz{Float64}(A, :L) == Toeplitz(LowerTriangular(A)) == LowerTriangular(Toeplitz(A)) == LowerTriangularToeplitz(A) == LowerTriangularToeplitz{Float64}(A)
 
-    @test Matrix(Hankel(A)) == Matrix(Hankel{Float64}(A)) == [1.0 3; 3 4]
+    @test Hankel(A) == Hankel{Float64}(A) == [1.0 3; 3 4] == Hankel([1.0,3],[3,4]) == Hankel([1.0,3,4],(2,2)) == Hankel([1.0,3,4],2,2) == Hankel{Float64}([1.0,3,4],(2,2)) == Hankel{Float64}([1.0,3,4],2,2)
+    @test Hankel(A,:U) == [1.0 2;2 4]
+    @test_throws ArgumentError Hankel(A,:🤣)
 
     # Constructors should be projections
     @test Toeplitz(Toeplitz(A)) == Toeplitz(A)
@@ -302,6 +306,41 @@ end
     @test TriangularToeplitz(TriangularToeplitz(A, :U), :U) == TriangularToeplitz(A, :U)
     @test TriangularToeplitz(TriangularToeplitz(A, :L), :L) == TriangularToeplitz(A, :L)
     @test Hankel(Hankel(A)) == Hankel(A)
+
+    @test_throws ArgumentError Hankel(1:2,1:2)
+end
+
+@testset "General Interface" begin
+    for Toep in (:Toeplitz, :Circulant, :SymmetricToeplitz, :UpperTriangularToeplitz, :LowerTriangularToeplitz, :Hankel)
+        @eval (A = [1.0 3.0; 3.0 4.0]; TA=$Toep(A); A = Matrix(TA))
+        @eval (B = [2   1  ; 1   5  ]; TB=$Toep(B); B = Matrix(TB))
+
+        for fun in (:zero, :conj, :copy, :-, :real, :imag, :adjoint, :transpose)
+            @eval @test $fun(TA) == $fun(A)
+        end
+
+        @test 2*TA == 2*A
+        @test TA*2 == A*2
+        @test TA+TB == A+B
+        @test TA-TB == A-B
+
+        @test_throws ArgumentError reverse(TA,dims=3)
+        if isa(TA,AbstractToeplitz)
+            @test isa(reverse(TA),Hankel)
+            @test isa(reverse(TA,dims=1),Hankel)
+            @test isa(reverse(TA,dims=2),Hankel)
+        else
+            @test isa(reverse(TA),Toeplitz)
+            @test isa(reverse(TA,dims=1),Toeplitz)
+            @test isa(reverse(TA,dims=2),Toeplitz)
+        end
+
+        T=copy(TA)
+        copyto!(T,TB)
+        @test T == B
+        fill!(T,1) == fill!(similar(A),1)
+
+    end
 end
 
 @testset "Circulant mathematics" begin
@@ -399,10 +438,10 @@ end
 @testset "TriangularToeplitz" begin
     A = [1.0 2.0;
          3.0 4.0]
-    TU = TriangularToeplitz(A, :U)
-    TL = TriangularToeplitz(A, :L)
-    @test (TU * TU)::TriangularToeplitz ≈ Matrix(TU)*Matrix(TU)
-    @test (TL * TL)::TriangularToeplitz ≈ Matrix(TL)*Matrix(TL)
+    TU = UpperTriangularToeplitz(A)
+    TL = LowerTriangularToeplitz(A)
+    @test (TU * TU)::UpperTriangularToeplitz ≈ Matrix(TU)*Matrix(TU)
+    @test (TL * TL)::LowerTriangularToeplitz ≈ Matrix(TL)*Matrix(TL)
     @test (TU * TL) ≈ Matrix(TU)*Matrix(TL)
     for T in (TU, TL)
         @test inv(T)::TriangularToeplitz ≈ inv(Matrix(T))
