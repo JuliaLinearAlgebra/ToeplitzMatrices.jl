@@ -42,19 +42,6 @@ AbstractToeplitz{T}(A::Toeplitz) where T = Toeplitz{T}(A)
 convert(::Type{Toeplitz{T}}, A::AbstractToeplitz) where {T} = Toeplitz{T}(A)
 convert(::Type{Toeplitz}, A::AbstractToeplitz) = Toeplitz(A)
 
-# Size of a general Toeplitz matrix
-function size(A::AbstractToeplitz, dim::Int)
-    if dim == 1
-        return length(A.vc)
-    elseif dim == 2
-        return length(A.vr)
-    elseif dim > 2
-        return 1
-    else
-        error("arraysize: dimension out of range")
-    end
-end
-
 # Retrieve an entry
 function getindex(A::AbstractToeplitz, i::Integer, j::Integer)
     @boundscheck checkbounds(A,i,j)

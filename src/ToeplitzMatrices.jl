@@ -18,7 +18,7 @@ include("iterativeLinearSolvers.jl")
 # Abstract
 abstract type AbstractToeplitz{T<:Number} <: AbstractMatrix{T} end
 
-size(A::AbstractToeplitz) = (size(A, 1), size(A, 2))
+size(A::AbstractToeplitz) = (length(A.vc),length(A.vr))
 @inline _vr(A::AbstractToeplitz) = A.vr
 @inline _vc(A::AbstractToeplitz) = A.vc
 @inline _vr(A::AbstractMatrix) = A[1,:]

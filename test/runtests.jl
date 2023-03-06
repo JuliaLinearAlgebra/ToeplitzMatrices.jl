@@ -314,7 +314,7 @@ end
     @test Hankel(Hankel(A)) == Hankel(A)
 
     @test_throws ArgumentError Hankel(1:2,1:2)
-    @test_throws "" Toeplitz(1:2,2:1)
+    @test_throws ErrorException Toeplitz(1:2,2:1)
 end
 
 @testset "General Interface" begin
@@ -322,10 +322,7 @@ end
         @eval (A = [1.0 3.0; 3.0 4.0]; TA=$Toep(A); A = Matrix(TA))
         @eval (B = [2   1  ; 1   5  ]; TB=$Toep(B); B = Matrix(TB))
 
-        @test size(TA,3) == 1
-        @test_throws "" size(TA,0)
-
-        for fun in (:zero, :conj, :copy, :-, :real, :imag, :adjoint, :transpose, :iszero)
+        for fun in (:zero, :conj, :copy, :-, :real, :imag, :adjoint, :transpose, :iszero, :size)
             @eval @test $fun(TA) == $fun(A)
         end
 

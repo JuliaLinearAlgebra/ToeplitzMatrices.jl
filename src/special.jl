@@ -12,12 +12,7 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
         $TYPE{T}(A::$TYPE) where T = $TYPE{T}(convert(AbstractVector{T},A.v))
         convert(::Type{$TYPE{T}}, A::$TYPE) where {T} = $TYPE{T}(A)
 
-        function size(A::$TYPE, dim::Int)
-            if dim < 1
-                error("arraysize: dimension out of range")
-            end
-            return dim < 3 ? length(A.v) : 1
-        end
+        size(A::$TYPE) = (length(A.v),length(A.v))
         
         adjoint(A::$TYPE) = transpose(conj(A))
         (*)(scalar::Number, C::$TYPE) = $TYPE(scalar * C.v)
