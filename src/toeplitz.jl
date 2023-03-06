@@ -137,3 +137,14 @@ function fill!(A::Toeplitz, x::Number)
 end
 (*)(scalar::Number, C::AbstractToeplitz) = Toeplitz(scalar * C.vc, scalar * C.vr)
 (*)(C::AbstractToeplitz,scalar::Number) = Toeplitz(C.vc * scalar, C.vr * scalar)
+
+function lmul!(x::Number, A::Toeplitz)
+    lmul!(x,A.vc)
+    lmul!(x,A.vr)
+    A
+end
+function rmul!(A::Toeplitz, x::Number)
+    rmul!(A.vc,x)
+    rmul!(A.vr,x)
+    A
+end

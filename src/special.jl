@@ -23,27 +23,26 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
         (*)(scalar::Number, C::$TYPE) = $TYPE(scalar * C.v)
         (*)(C::$TYPE, scalar::Number) = $TYPE(C.v * scalar)
         (==)(A::$TYPE,B::$TYPE) = A.v==B.v
+        function zero!(A::$TYPE)
+            if isconcrete(A)
+                fill!(A.v,zero(eltype(A)))
+            else
+                A.v=zero(A.v)
+            end
+        end
 
         function copyto!(A::$TYPE,B::$TYPE)
             copyto!(A.v,B.v)
             A
         end
         similar(A::$TYPE, T::Type) = $TYPE{T}(similar(A.v, T))
-    end
-    for fun in (:lmul!,)
-        @eval begin
-            function $fun(x::Number, A::$TYPE)
-                $fun(x,A.v)
-                A
-            end
+        function lmul!(x::Number, A::$TYPE)
+            lmul!(x,A.v)
+            A
         end
-    end
-    for fun in (:fill!, :rmul!)
-        @eval begin
-            function $fun(A::$TYPE, x::Number)
-                $fun(A.v,x)
-                A
-            end
+        function rmul!(A::$TYPE, x::Number)
+            rmul!(A.v,x)
+            A
         end
     end
     for fun in (:zero, :conj, :copy, :-, :real, :imag)
@@ -198,7 +197,9 @@ for TYPE in (:AbstractMatrix, :AbstractVector)
     end
 end
 
-# Triangular
+# tril and triu
+tril(A::Union{SymmetricToeplitz,Circulant}, k::Integer=0) = tril!(copy(Toeplitz(A)),k)
+triu(A::Union{SymmetricToeplitz,Circulant}, k::Integer=0) = triu!(copy(Toeplitz(A)),k)
 function _tridiff!(A::TriangularToeplitz, k::Integer)
     if k >= 0
         if isconcretetype(typeof(A.v))
@@ -209,7 +210,7 @@ function _tridiff!(A::TriangularToeplitz, k::Integer)
             A.v=vcat(A.v[1:k+1], zero(A.v[k+2:end]))
         end
     else
-        fill!(A,zero(eltype(A)))
+        zero!(A)
     end
     A
 end

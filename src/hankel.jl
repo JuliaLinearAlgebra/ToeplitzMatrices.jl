@@ -85,14 +85,26 @@ function copyto!(A::Hankel, B::Hankel)
     promote_shape(A,B)
     copyto!(A.v,B.v)
 end
+for fun in (:lmul!,)
+    @eval begin
+        function $fun(x::Number, A::Hankel)
+            $fun(x,A.v)
+            A
+        end
+    end
+end
+for fun in (:fill!, :rmul!)
+    @eval begin
+        function $fun(A::Hankel, x::Number)
+            $fun(A.v,x)
+            A
+        end
+    end
+end
 
 transpose(A::Hankel) = Hankel(A.v,(A.s[2],A.s[1]))
 adjoint(A::Hankel) = transpose(conj(A))
 (==)(A::Hankel,B::Hankel) = A.v==B.v && A.s==B.s
-function fill!(A::Hankel, x::Number)
-    fill!(A.v,x)
-    A
-end
 (*)(scalar::Number, C::Hankel) = Hankel(scalar * C.v, C.s)
 (*)(C::Hankel,scalar::Number) = Hankel(C.v * scalar, C.s)
 

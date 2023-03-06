@@ -5,7 +5,7 @@ import DSP: conv
 import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds, real, imag, isfinite, DimsInteger, iszero
 import Base: ==, +, -, *, \
 import LinearAlgebra: Cholesky, Factorization
-import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!
+import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu
 import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric, Adjoint
 import AbstractFFTs: Plan, plan_fft!
 import StatsBase

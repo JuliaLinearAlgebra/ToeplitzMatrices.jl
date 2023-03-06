@@ -78,12 +78,14 @@ Note that the width is usually useless, since ideally, `w=length(v)-h+1`. It exi
 |zero|✓|✓|✓|✓|✓|✓|
 |real|✓|✓|✓|✓|✓|✓|
 |imag|✓|✓|✓|✓|✓|✓|
-|fill!|✓|✓|✓|✓|✓|✓|
+|fill!|✓|||||✓|
 |conj|✓|✓|✓|✓|✓|✓|
 |transpose|✓|✓|✓|✓|✓|✓|
 |adjoint|✓|✓|✓|✓|✓|✓|
 |tril!|✓|✗|✗|✓|✓|✗|
 |triu!|✓|✗|✗|✓|✓|✗|
+|tril|✓|✓|✓|✓|✓|✗|
+|triu|✓|✓|✓|✓|✓|✗|
 |+|✓|✓|✓|✓|✓|✓|
 |-|✓|✓|✓|✓|✓|✓|
 |scalar<br>mult|✓|✓|✓|✓|✓|✓|
