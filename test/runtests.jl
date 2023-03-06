@@ -296,12 +296,13 @@ end
     @test TriangularToeplitz(A, :U) == TriangularToeplitz{Float64}(A, :U) == Toeplitz(UpperTriangular(A)) == UpperTriangular(Toeplitz(A)) == UpperTriangularToeplitz(A) == UpperTriangularToeplitz{Float64}(A)
     @test TriangularToeplitz(A, :L) == TriangularToeplitz{Float64}(A, :L) == Toeplitz(LowerTriangular(A)) == LowerTriangular(Toeplitz(A)) == LowerTriangularToeplitz(A) == LowerTriangularToeplitz{Float64}(A)
 
-    @test Hankel(A) == Hankel{Float64}(A) == [1.0 3; 3 4] == Hankel([1.0,3],[3,4]) == Hankel([1.0,3,4],(2,2)) == Hankel([1.0,3,4],2,2) == Hankel{Float64}([1.0,3,4],(2,2)) == Hankel{Float64}([1.0,3,4],2,2)
+    @test Hankel(A) == Hankel{Float64}(A) == [1.0 3; 3 4] == Hankel([1.0,3],[3,4]) == Hankel([1.0,3,4],(2,2)) == Hankel([1.0,3,4],2,2) == Hankel{Float64}([1,3,4],(2,2)) == Hankel{Float64}([1.0,3,4],2,2) == Hankel([1.0,3,4])
     @test Hankel(A,:U) == [1.0 2;2 4]
 
     @test_throws ArgumentError Hankel(A,:🤣)
     @test_throws ArgumentError SymmetricToeplitz(A,:🤣)
     @test_throws ArgumentError Circulant(A,:🤣)
+    @test_throws ArgumentError Circulant(1:5,:🤣)
     @test_throws ArgumentError TriangularToeplitz(A,:🤣)
 
     # Constructors should be projections
@@ -313,12 +314,16 @@ end
     @test Hankel(Hankel(A)) == Hankel(A)
 
     @test_throws ArgumentError Hankel(1:2,1:2)
+    @test_throws "" Toeplitz(1:2,2:1)
 end
 
 @testset "General Interface" begin
     for Toep in (:Toeplitz, :Circulant, :SymmetricToeplitz, :UpperTriangularToeplitz, :LowerTriangularToeplitz, :Hankel)
         @eval (A = [1.0 3.0; 3.0 4.0]; TA=$Toep(A); A = Matrix(TA))
         @eval (B = [2   1  ; 1   5  ]; TB=$Toep(B); B = Matrix(TB))
+
+        @test size(TA,3) == 1
+        @test_throws "" size(TA,0)
 
         for fun in (:zero, :conj, :copy, :-, :real, :imag, :adjoint, :transpose, :iszero)
             @eval @test $fun(TA) == $fun(A)
@@ -352,6 +357,7 @@ end
         
         T=copy(TA)
     end
+    @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
 end
 
 @testset "Circulant mathematics" begin

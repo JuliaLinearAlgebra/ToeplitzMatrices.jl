@@ -14,7 +14,7 @@ Hankel{T}(v::AbstractVector, s::DimsInteger) where T = Hankel{T}(convert(Abstrac
 Hankel{T}(v::AbstractVector, h::Integer, w::Integer) where T = Hankel{T}(v,(h,w))
 Hankel(v::AbstractVector, s::DimsInteger) = Hankel{eltype(v)}(v,s)
 Hankel(v::AbstractVector, h::Integer, w::Integer) = Hankel{eltype(v)}(v,h,w)
-Hankel(v::AbstractVector) = Hankel(v,((l+1)÷2,(l+1)÷2)) # square by default
+Hankel(v::AbstractVector) = (l=length(v);Hankel(v,((l+1)÷2,(l+1)÷2))) # square by default
 function Hankel(vc::AbstractVector, vr::AbstractVector)
     if vc[end] != vr[1]
         throw(ArgumentError("vc[end] != vr[1]"))
