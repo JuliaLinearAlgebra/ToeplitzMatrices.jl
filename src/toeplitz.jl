@@ -36,7 +36,7 @@ end
 "Project" matrix `A` onto its Toeplitz part using the first row/col of `A`.
 """
 Toeplitz(A::AbstractMatrix) = Toeplitz{eltype(A)}(A)
-Toeplitz{T}(A::AbstractMatrix) where {T} = Toeplitz{T}(_vc(A), _vr(A))
+Toeplitz{T}(A::AbstractMatrix) where {T} = Toeplitz{T}(copy(_vc(A)), copy(_vr(A)))
 
 AbstractToeplitz{T}(A::Toeplitz) where T = Toeplitz{T}(A)
 convert(::Type{Toeplitz{T}}, A::AbstractToeplitz) where {T} = Toeplitz{T}(A)
