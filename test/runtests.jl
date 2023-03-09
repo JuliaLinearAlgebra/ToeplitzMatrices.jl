@@ -219,6 +219,11 @@ end
         @test isa(reverse(T,dims=1),Hankel)
         @test isa(reverse(T,dims=2),Hankel)
     end
+
+    @testset "v too small" begin
+        @test_throws ArgumentError Hankel(Int[], (3,4))
+        @test_throws ArgumentError Hankel(1:5, (3,4))
+    end
 end
 
 @testset "Convert" begin
@@ -355,6 +360,19 @@ end
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
+
+    @testset "aliasing" begin
+        v = [1,2,3]
+        T = Toeplitz(v, v)
+        @test_throws ArgumentError triu!(T)
+        @test_throws ArgumentError tril!(T)
+        @test_throws ArgumentError copyto!(T, Toeplitz(1:3, 1:3))
+        @test_throws ArgumentError lmul!(2, T)
+        @test_throws ArgumentError rmul!(T, 2)
+
+        @test triu(T) == triu(Matrix(T))
+        @test tril(T) == tril(Matrix(T))
+    end
 end
 
 @testset "Circulant mathematics" begin

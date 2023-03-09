@@ -1,11 +1,12 @@
 # Hankel
 struct Hankel{T, V<:AbstractVector{T}, S<:DimsInteger} <: AbstractMatrix{T}
     v::V
-    s::S # size
+    size::S # size
 
-    function Hankel{T,V,S}(v::V, s::DimsInteger) where {T, V<:AbstractVector{T}, S<:DimsInteger}
-        (s[1]<0 || s[2]<0) && throw(ArgumentError("negative size: $s"))
-        new{T,V,S}(v,s)
+    function Hankel{T,V,S}(v::V, (m,n)::DimsInteger) where {T, V<:AbstractVector{T}, S<:DimsInteger}
+        (m < 0 || n < 0) && throw(ArgumentError("negative size: $s"))
+        length(v) ≥ m+n-1 || throw(ArgumentError("inconsistency between size and number of anti-diagonals"))
+        new{T,V,S}(v, (m,n))
     end
 end
 Hankel{T}(v::V, s::S) where {T, V<:AbstractVector{T}, S<:DimsInteger} = Hankel{T,V,S}(v,s)
@@ -23,10 +24,11 @@ function Hankel(vc::AbstractVector, vr::AbstractVector)
 end
 
 function getproperty(A::Hankel, s::Symbol)
-    if s==:vc
-        A.v[1:A.s[1]]
-    elseif s==:vr
-        A.v[A.s[1]:end]
+    m,_ = getfield(A, :size)
+    if s == :vc
+        A.v[1:m]
+    elseif s == :vr
+        A.v[m:end]
     else
         getfield(A,s)
     end
@@ -36,18 +38,18 @@ end
 Hankel{T}(A::AbstractMatrix, uplo::Symbol = :L) where T<:Number = convert(Hankel{T}, Hankel(A,uplo))
 # using the first column and last row
 function Hankel(A::AbstractMatrix, uplo::Symbol = :L)
-    s=size(A)
+    m,n = size(A)
     if uplo == :L
-        if isfinite(s[1])
-            Hankel(A[:,1],A[end,:])
+        if isfinite(m) # InfiniteArrays.jl supports infinite
+            Hankel(A[:,1], A[end,:])
         else
-            Hankel(A[:,1],s)
+            Hankel(A[:,1], (m,n))
         end
     elseif uplo == :U
-        if isfinite(s[2])
-            Hankel(A[1,:],A[:,end])
+        if isfinite(n)
+            Hankel(A[1,:], A[:,end])
         else
-            Hankel(A[1,:],s)
+            Hankel(A[1,:], (m,n))
         end
     else
         throw(ArgumentError("expected :L or :U. got $uplo."))
@@ -56,29 +58,25 @@ end
 
 convert(::Type{AbstractArray{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
 convert(::Type{AbstractMatrix{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
-convert(::Type{Hankel{T}}, A::Hankel) where {T<:Number} = Hankel{T}(convert(AbstractVector{T}, A.v), A.s)
+convert(::Type{Hankel{T}}, A::Hankel) where {T<:Number} = Hankel{T}(convert(AbstractVector{T}, A.v), size(A))
 
 # Size
-size(H::Hankel)=H.s
+size(H::Hankel) = H.size
 
 # Retrieve an entry by two indices
-function getindex(A::Hankel, i::Integer, j::Integer)
-    @boundscheck checkbounds(A,i,j)
+Base.@propagate_inbounds function getindex(A::Hankel, i::Integer, j::Integer)
+    @boundscheck checkbounds(A, i, j)
     return A.v[i+j-1]
 end
 similar(A::Hankel, T::Type, dims::DimsInteger{2}) = Hankel{T}(similar(A.v, T, dims[1]+dims[2]-true), dims)
 similar(A::Hankel, T::Type, dims::Tuple{Int64,Int64}) = Hankel{T}(similar(A.v, T, dims[1]+dims[2]-true), dims) # for ambiguity with `similar(a::AbstractArray, ::Type{T}, dims::Tuple{Vararg{Int64, N}}) where {T, N}` in Base
 for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
-    @eval begin
-        $fun(A::Hankel)=Hankel($fun(A.v), A.s)
-    end
+    @eval $fun(A::Hankel) = Hankel($fun(A.v), size(A))
 end
 for op in (:+, :-)
-    @eval begin
-        function $op(A::Hankel,B::Hankel)
-            promote_shape(A,B)
-            Hankel($op(A.v,B.v),A.s)
-        end
+    @eval function $op(A::Hankel, B::Hankel)
+        promote_shape(A,B)
+        Hankel($op(A.v,B.v), size(A))
     end
 end
 function copyto!(A::Hankel, B::Hankel)
@@ -86,44 +84,41 @@ function copyto!(A::Hankel, B::Hankel)
     copyto!(A.v,B.v)
 end
 for fun in (:lmul!,)
-    @eval begin
-        function $fun(x::Number, A::Hankel)
-            $fun(x,A.v)
-            A
-        end
+    @eval function $fun(x::Number, A::Hankel)
+        $fun(x, A.v)
+        A
     end
 end
 for fun in (:fill!, :rmul!)
-    @eval begin
-        function $fun(A::Hankel, x::Number)
-            $fun(A.v,x)
-            A
-        end
+    @eval function $fun(A::Hankel, x::Number)
+        $fun(A.v, x)
+        A
     end
 end
 
-transpose(A::Hankel) = Hankel(A.v,(A.s[2],A.s[1]))
+transpose(A::Hankel) = Hankel(A.v, reverse(size(A)))
 adjoint(A::Hankel) = transpose(conj(A))
-(==)(A::Hankel,B::Hankel) = A.v==B.v && A.s==B.s
-(*)(scalar::Number, C::Hankel) = Hankel(scalar * C.v, C.s)
-(*)(C::Hankel,scalar::Number) = Hankel(C.v * scalar, C.s)
+(==)(A::Hankel, B::Hankel) = A.v == B.v && size(A) == size(B)
+(*)(scalar::Number, C::Hankel) = Hankel(scalar * C.v, size(C))
+(*)(C::Hankel,scalar::Number) = Hankel(C.v * scalar, size(C))
 
 isconcrete(A::Hankel) = isconcretetype(A.v)
 
 function reverse(A::Hankel; dims=1)
+    _,n = size(A)
     if dims==1
         Toeplitz(reverse(A.vc), A.vr)
     elseif dims==2
-        Toeplitz(A.v[A.s[2]:end], A.v[A.s[2]:-1:1])
+        Toeplitz(A.v[n:end], A.v[n:-1:1])
     else
         throw(ArgumentError("invalid dimension $dims in reverse"))
     end
 end
 function reverse(A::AbstractToeplitz; dims=1)
     if dims==1
-        Hankel(reverse(A.vc),A.vr)
+        Hankel(reverse(A.vc), A.vr)
     elseif dims==2
-        Hankel(vcat(reverse(A.vr),A.vc), size(A))
+        Hankel(vcat(reverse(A.vr), A.vc), size(A))
     else
         throw(ArgumentError("invalid dimension $dims in reverse"))
     end

@@ -57,38 +57,38 @@ TriangularToeplitz{T}=Union{UpperTriangularToeplitz{T},LowerTriangularToeplitz{T
 
 # vc and vr
 function getproperty(A::SymmetricToeplitz, s::Symbol)
-    if s==:vc || s==:vr
+    if s == :vc || s == :vr
         getfield(A,:v)
     else
         getfield(A,s)
     end
 end
 function getproperty(A::Circulant, s::Symbol)
-    if s==:vc
+    if s == :vc
         getfield(A,:v)
-    elseif s==:vr
+    elseif s == :vr
         _circulate(getfield(A,:v))
     else
         getfield(A,s)
     end
 end
 function getproperty(A::LowerTriangularToeplitz, s::Symbol)
-    if s==:vc
+    if s == :vc
         getfield(A,:v)
-    elseif s==:vr
+    elseif s == :vr
         _firstnonzero(getfield(A,:v))
-    elseif s==:uplo
+    elseif s == :uplo
         :L
     else
         getfield(A,s)
     end
 end
 function getproperty(A::UpperTriangularToeplitz, s::Symbol)
-    if s==:vr
+    if s == :vr
         getfield(A,:v)
-    elseif s==:vc
+    elseif s == :vc
         _firstnonzero(getfield(A,:v))
-    elseif s==:uplo
+    elseif s == :uplo
         :U
     else
         getfield(A,s)
@@ -105,20 +105,20 @@ transpose(A::LowerTriangularToeplitz) = UpperTriangularToeplitz(A.v)
 transpose(A::UpperTriangularToeplitz) = LowerTriangularToeplitz(A.v)
 
 # getindex
-function getindex(A::SymmetricToeplitz, i::Integer, j::Integer)
+Base.@propagate_inbounds function getindex(A::SymmetricToeplitz, i::Integer, j::Integer)
     @boundscheck checkbounds(A,i,j)
     return A.v[abs(i - j) + 1]
 end
-function getindex(C::Circulant, i::Integer, j::Integer)
+Base.@propagate_inbounds function getindex(C::Circulant, i::Integer, j::Integer)
     @boundscheck checkbounds(C,i,j)
     d = i - j
     return C.v[d < 0 ? size(C,1)+d+1 : d+1]
 end
-function getindex(A::LowerTriangularToeplitz{T}, i::Integer, j::Integer) where T
+Base.@propagate_inbounds function getindex(A::LowerTriangularToeplitz{T}, i::Integer, j::Integer) where T
     @boundscheck checkbounds(A,i,j)
     return i >= j ? A.v[i - j + 1] : zero(T)
 end
-function getindex(A::UpperTriangularToeplitz{T}, i::Integer, j::Integer) where T
+Base.@propagate_inbounds function getindex(A::UpperTriangularToeplitz{T}, i::Integer, j::Integer) where T
     @boundscheck checkbounds(A,i,j)
     return i <= j ? A.v[j - i + 1] : zero(T)
 end
@@ -202,7 +202,7 @@ function _tridiff!(A::TriangularToeplitz, k::Integer)
                 A.v[i] = zero(eltype(A))
             end
         else
-            A.v=vcat(A.v[1:k+1], zero(A.v[k+2:end]))
+            A.v = vcat(A.v[1:k+1], zero(A.v[k+2:end]))
         end
     else
         zero!(A)
@@ -216,7 +216,7 @@ function _trisame!(A::TriangularToeplitz, k::Integer)
     if k < 0
         if isconcretetype(typeof(A.v))
             for i in 1:-k
-                A.v[i]=zero(eltype(A))
+                A.v[i] = zero(eltype(A))
             end
         else
             A.v=vcat(A.v[1:-k+1], zero(A.v[-k+2:end]))

@@ -43,7 +43,7 @@ convert(::Type{Toeplitz{T}}, A::AbstractToeplitz) where {T} = Toeplitz{T}(A)
 convert(::Type{Toeplitz}, A::AbstractToeplitz) = Toeplitz(A)
 
 # Retrieve an entry
-function getindex(A::AbstractToeplitz, i::Integer, j::Integer)
+Base.@propagate_inbounds function getindex(A::AbstractToeplitz, i::Integer, j::Integer)
     @boundscheck checkbounds(A,i,j)
     d = i - j
     if d >= 0
@@ -53,7 +53,11 @@ function getindex(A::AbstractToeplitz, i::Integer, j::Integer)
     end
 end
 
+checknonaliased(A::Toeplitz) = Base.mightalias(A.vc, A.vr) && throw(ArgumentError("Cannot modify Toeplitz matrices in place with aliased data"))
+
 function tril!(A::Toeplitz, k::Integer=0)
+    checknonaliased(A)
+
     if k >= 0
         if isconcretetype(typeof(A.vr))
             for i in k+2:lastindex(A.vr)
@@ -75,6 +79,8 @@ function tril!(A::Toeplitz, k::Integer=0)
     A
 end
 function triu!(A::Toeplitz, k::Integer=0)
+    checknonaliased(A)
+
     if k <= 0
         if isconcretetype(typeof(A.vc))
             for i in -k+2:lastindex(A.vc)
@@ -111,6 +117,7 @@ for op in (:+, :-)
     @eval $op(A::AbstractToeplitz,B::AbstractToeplitz)=Toeplitz($op(A.vc,B.vc),$op(A.vr,B.vr))
 end
 function copyto!(A::Toeplitz, B::AbstractToeplitz)
+    checknonaliased(A)
     copyto!(A.vc,B.vc)
     copyto!(A.vr,B.vr)
     A
@@ -126,12 +133,14 @@ end
 (*)(C::AbstractToeplitz,scalar::Number) = Toeplitz(C.vc * scalar, C.vr * scalar)
 
 function lmul!(x::Number, A::Toeplitz)
-    lmul!(x,A.vc)
-    lmul!(x,A.vr)
+    checknonaliased(A)
+    lmul!(x, A.vc)
+    lmul!(x, A.vr)
     A
 end
 function rmul!(A::Toeplitz, x::Number)
-    rmul!(A.vc,x)
-    rmul!(A.vr,x)
+    checknonaliased(A)
+    rmul!(A.vc, x)
+    rmul!(A.vr, x)
     A
 end
