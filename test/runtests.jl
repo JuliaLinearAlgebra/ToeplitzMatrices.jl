@@ -166,6 +166,8 @@ end
         @test H[7]  == 3
         @test diag(H) == [1,3,5,7,9]
 
+        @test copy(H) == copyto!(similar(H), H)
+
         x = ones(5)
         @test mul!(copy(x), H, x) ≈ Matrix(H)*x ≈ H*x
 

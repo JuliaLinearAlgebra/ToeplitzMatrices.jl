@@ -81,7 +81,8 @@ for op in (:+, :-)
 end
 function copyto!(A::Hankel, B::Hankel)
     promote_shape(A,B)
-    copyto!(A.v,B.v)
+    copyto!(A.v, B.v)
+    return A
 end
 for fun in (:lmul!,)
     @eval function $fun(x::Number, A::Hankel)
