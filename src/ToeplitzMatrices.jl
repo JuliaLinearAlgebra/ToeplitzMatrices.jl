@@ -2,8 +2,9 @@ module ToeplitzMatrices
 # import StatsBase: levinson!, levinson
 import DSP: conv
 
-import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds, real, imag, isfinite, DimsInteger, iszero
+import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds, real, isfinite, DimsInteger, _all
 import Base: ==, +, -, *, \
+import Base.Broadcast: broadcasted, DefaultMatrixStyle
 import LinearAlgebra: Cholesky, Factorization
 import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu
 import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric, Adjoint
@@ -16,7 +17,7 @@ export durbin, trench, levinson
 include("iterativeLinearSolvers.jl")
 
 # Abstract
-abstract type AbstractToeplitz{T<:Number} <: AbstractMatrix{T} end
+abstract type AbstractToeplitz{T} <: AbstractMatrix{T} end
 
 size(A::AbstractToeplitz) = (length(A.vc),length(A.vr))
 @inline _vr(A::AbstractToeplitz) = A.vr
@@ -28,7 +29,7 @@ AbstractArray{T}(A::AbstractToeplitz) where T = AbstractToeplitz{T}(A)
 convert(::Type{AbstractToeplitz{T}}, A::AbstractToeplitz) where T = AbstractToeplitz{T}(A)
 
 isconcrete(A::AbstractToeplitz) = isconcretetype(typeof(A.vc)) && isconcretetype(typeof(A.vr))
-iszero(A::AbstractToeplitz) = iszero(A.vc) && iszero(A.vr)
+_all(f, A::AbstractToeplitz, ::Colon) = _all(f, A.vc, :) && _all(f, A.vr, :)
 
 """
     ToeplitzFactorization

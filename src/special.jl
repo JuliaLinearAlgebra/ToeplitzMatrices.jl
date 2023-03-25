@@ -14,9 +14,10 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
 
         size(A::$TYPE) = (length(A.v),length(A.v))
         
+        broadcasted(::DefaultMatrixStyle, f, A::$TYPE) = $TYPE(f.(A.v))
+        broadcasted(::DefaultMatrixStyle, f, x::Number, A::$TYPE) = $TYPE(f.(x, A.v))
+        broadcasted(::DefaultMatrixStyle, f, A::$TYPE, x::Number) = $TYPE(f.(A.v, x))
         adjoint(A::$TYPE) = transpose(conj(A))
-        (*)(scalar::Number, C::$TYPE) = $TYPE(scalar * C.v)
-        (*)(C::$TYPE, scalar::Number) = $TYPE(C.v * scalar)
         (==)(A::$TYPE,B::$TYPE) = A.v==B.v
         function zero!(A::$TYPE)
             if isconcrete(A)
@@ -40,11 +41,8 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
             A
         end
     end
-    for fun in (:zero, :conj, :copy, :-, :real, :imag)
+    for fun in (:zero, :copy)
         @eval $fun(A::$TYPE) = $TYPE($fun(A.v))
-    end
-    for fun in (:iszero,)
-        @eval $fun(A::$TYPE) = $fun(A.v)
     end
     for op in (:+, :-)
         @eval $op(A::$TYPE,B::$TYPE) = $TYPE($op(A.v,B.v))

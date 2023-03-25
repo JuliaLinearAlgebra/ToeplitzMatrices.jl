@@ -53,6 +53,9 @@ Base.@propagate_inbounds function getindex(A::AbstractToeplitz, i::Integer, j::I
     end
 end
 
+broadcasted(::DefaultMatrixStyle, f, A::AbstractToeplitz) = Toeplitz(f.(A.vc), f.(A.vr))
+broadcasted(::DefaultMatrixStyle, f, x::Number, A::AbstractToeplitz) = Toeplitz(f.(x, A.vc), f.(x, A.vr))
+
 checknonaliased(A::Toeplitz) = Base.mightalias(A.vc, A.vr) && throw(ArgumentError("Cannot modify Toeplitz matrices in place with aliased data"))
 
 function tril!(A::Toeplitz, k::Integer=0)
@@ -110,7 +113,7 @@ function similar(A::AbstractToeplitz, T::Type, dims::Dims{2})
     vr[1]=vc[1]
     Toeplitz{T}(vc,vr)
 end
-for fun in (:zero, :conj, :copy, :-, :real, :imag)
+for fun in (:zero, :copy)
     @eval $fun(A::AbstractToeplitz)=Toeplitz($fun(A.vc),$fun(A.vr))
 end
 for op in (:+, :-)
@@ -129,8 +132,6 @@ function fill!(A::Toeplitz, x::Number)
     fill!(A.vr,x)
     A
 end
-(*)(scalar::Number, C::AbstractToeplitz) = Toeplitz(scalar * C.vc, scalar * C.vr)
-(*)(C::AbstractToeplitz,scalar::Number) = Toeplitz(C.vc * scalar, C.vr * scalar)
 
 function lmul!(x::Number, A::Toeplitz)
     checknonaliased(A)
