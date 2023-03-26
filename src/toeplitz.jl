@@ -71,6 +71,7 @@ end
 
 broadcasted(::DefaultMatrixStyle, f, A::AbstractToeplitz) = Toeplitz(f.(A.vc), f.(A.vr))
 broadcasted(::DefaultMatrixStyle, f, x::Number, A::AbstractToeplitz) = Toeplitz(f.(x, A.vc), f.(x, A.vr))
+broadcasted(::DefaultMatrixStyle, f, A::AbstractToeplitz, x::Number) = Toeplitz(f.(A.vc, x), f.(A.vr, x))
 
 checknonaliased(A::Toeplitz) = Base.mightalias(A.vc, A.vr) && throw(ArgumentError("Cannot modify Toeplitz matrices in place with aliased data"))
 
