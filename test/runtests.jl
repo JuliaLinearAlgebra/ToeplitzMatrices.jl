@@ -378,6 +378,17 @@ end
     end
 end
 
+@testset "Broadcast" begin
+    A = rand(ComplexF64, 3, 3)
+    T = Toeplitz(A)
+    S = Symmetric(T)
+    C = Circulant(T)
+    U = UpperTriangular(T)
+    L = LowerTriangular(T)
+
+    @test U .+ 1 == Matrix(U) .+ 1
+end
+
 @testset "Circulant mathematics" begin
     C1 = Circulant(rand(5))
     C2 = Circulant(rand(5))
