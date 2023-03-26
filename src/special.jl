@@ -14,9 +14,6 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
 
         size(A::$TYPE) = (length(A.v),length(A.v))
         
-        broadcasted(::DefaultMatrixStyle, f, A::$TYPE) = $TYPE(f.(A.v))
-        broadcasted(::DefaultMatrixStyle, f, x::Number, A::$TYPE) = $TYPE(f.(x, A.v))
-        broadcasted(::DefaultMatrixStyle, f, A::$TYPE, x::Number) = $TYPE(f.(A.v, x))
         adjoint(A::$TYPE) = transpose(conj(A))
         (==)(A::$TYPE,B::$TYPE) = A.v==B.v
         function zero!(A::$TYPE)
