@@ -386,7 +386,13 @@ end
     U = UpperTriangular(T)
     L = LowerTriangular(T)
 
-    @test U .+ 1 == Matrix(U) .+ 1
+    for M in (T, S, C, U, L)
+        @testset "$(typeof(M))" begin
+            @test M .+ 1 == Matrix(M) .+ 1
+            @test exp.(M) == exp.(Matrix(M))
+            @test isa(M .* 2, typeof(M))
+        end
+    end
 end
 
 @testset "Circulant mathematics" begin

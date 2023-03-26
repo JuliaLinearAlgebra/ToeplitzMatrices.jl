@@ -69,9 +69,12 @@ Base.@propagate_inbounds function getindex(A::AbstractToeplitz, i::Integer, j::I
     end
 end
 
-broadcasted(::DefaultMatrixStyle, f, A::AbstractToeplitz) = Toeplitz(f.(A.vc), f.(A.vr))
-broadcasted(::DefaultMatrixStyle, f, x::Number, A::AbstractToeplitz) = Toeplitz(f.(x, A.vc), f.(x, A.vr))
-broadcasted(::DefaultMatrixStyle, f, A::AbstractToeplitz, x::Number) = Toeplitz(f.(A.vc, x), f.(A.vr, x))
+broadcasted(::DefaultMatrixStyle, f, A::AbstractToeplitz) = _toep_broadcast(f, A)
+broadcasted(::DefaultMatrixStyle, f, x::Number, A::AbstractToeplitz) = _toep_broadcast(f, x, A)
+broadcasted(::DefaultMatrixStyle, f, A::AbstractToeplitz, x::Number) = _toep_broadcast(f, A, x)
+_toep_broadcast(f, A::AbstractToeplitz) = Toeplitz(f.(A.vc), f.(A.vr))
+_toep_broadcast(f, x::Number, A::AbstractToeplitz) = Toeplitz(f.(x, A.vc), f.(x, A.vr))
+_toep_broadcast(f, A::AbstractToeplitz, x::Number) = Toeplitz(f.(A.vc, x), f.(A.vr, x))
 
 checknonaliased(A::Toeplitz) = Base.mightalias(A.vc, A.vr) && throw(ArgumentError("Cannot modify Toeplitz matrices in place with aliased data"))
 
