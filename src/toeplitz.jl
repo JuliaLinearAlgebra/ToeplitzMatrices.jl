@@ -9,7 +9,7 @@ struct Toeplitz{T, VC<:AbstractVector{T}, VR<:AbstractVector{T}} <: AbstractToep
     vr::VR
 
     function Toeplitz{T, VC, VR}(vc::VC, vr::VR) where {T, VC<:AbstractVector{T}, VR<:AbstractVector{T}}
-        if first(vc) != first(vr)
+        if !isequal(first(vc), first(vr))
             error("First element of the vectors must be the same")
         end
         return new{T,VC,VR}(vc, vr)
@@ -41,6 +41,22 @@ Toeplitz{T}(A::AbstractMatrix) where {T} = Toeplitz{T}(copy(_vc(A)), copy(_vr(A)
 AbstractToeplitz{T}(A::Toeplitz) where T = Toeplitz{T}(A)
 convert(::Type{Toeplitz{T}}, A::AbstractToeplitz) where {T} = Toeplitz{T}(A)
 convert(::Type{Toeplitz}, A::AbstractToeplitz) = Toeplitz(A)
+
+# Dims for disambiguity
+for DIM in (:DimsInteger, :Dims)
+    @eval function similar(::Type{Toeplitz{T, VC, VR}}, dims::$DIM{2}) where {T, VC, VR}
+        vc = similar(VC, dims[1])
+        vr = similar(VR, dims[2])
+        vr[1] = vc[1]
+        Toeplitz(vc, vr)
+    end
+    @eval function similar(A::AbstractToeplitz, T::Type = eltype(A), dims::$DIM{2} = size(A))
+        vc = similar(A.vc, T, dims[1])
+        vr = similar(A.vr, T, dims[2])
+        vr[1] = vc[1]
+        Toeplitz{T}(vc, vr)
+    end
+end
 
 # Retrieve an entry
 Base.@propagate_inbounds function getindex(A::AbstractToeplitz, i::Integer, j::Integer)
@@ -107,12 +123,6 @@ end
 
 adjoint(A::AbstractToeplitz) = transpose(conj(A))
 transpose(A::AbstractToeplitz) = Toeplitz(A.vr, A.vc)
-function similar(A::AbstractToeplitz, T::Type, dims::Dims{2})
-    vc=similar(A.vc, T, dims[1])
-    vr=similar(A.vr, T, dims[2])
-    vr[1]=vc[1]
-    Toeplitz{T}(vc,vr)
-end
 for fun in (:zero, :copy)
     @eval $fun(A::AbstractToeplitz)=Toeplitz($fun(A.vc),$fun(A.vr))
 end
