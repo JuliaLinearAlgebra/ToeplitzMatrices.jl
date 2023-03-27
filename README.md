@@ -94,9 +94,9 @@ The `reverse` can transform between Hankel and Toeplitz. It is used to achieve f
 |isone|||||||
 |copyto!|✓|✓|✓|✓|✓|✓|
 |reverse|✓|✓|✓|✓|✓|✓|
-|\_all|✓|✓|✓|✓|✓||
-|unary broadcast|✓|✓|✓|✓|✓||
-|number broadcast|✓|✓|✓|✓|✓||
+|\_all|✓|✓|✓|✓|✓|✓|
+|unary broadcast|✓|✓|✓|✓|✓|✓|
+|number broadcast|✓|✓|✓|✓|✓|✓|
 |broadcast!|||||||
 
 Note that `+` and `-` could be removed once binary `broadcast` is implemented.
