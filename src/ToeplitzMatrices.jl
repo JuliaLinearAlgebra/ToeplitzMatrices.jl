@@ -2,7 +2,7 @@ module ToeplitzMatrices
 # import StatsBase: levinson!, levinson
 import DSP: conv
 
-import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds, real, isfinite, DimsInteger, _all
+import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds, real, isfinite, DimsInteger, all
 import Base: ==, +, -, *, \
 import Base.Broadcast: broadcasted, DefaultMatrixStyle
 import LinearAlgebra: Cholesky, Factorization
@@ -29,7 +29,7 @@ AbstractArray{T}(A::AbstractToeplitz) where T = AbstractToeplitz{T}(A)
 convert(::Type{AbstractToeplitz{T}}, A::AbstractToeplitz) where T = AbstractToeplitz{T}(A)
 
 isconcrete(A::AbstractToeplitz) = isconcretetype(typeof(A.vc)) && isconcretetype(typeof(A.vr))
-_all(f, A::AbstractToeplitz, ::Colon) = _all(f, A.vc, :) && _all(f, A.vr, :)
+all(f, A::AbstractToeplitz, ::Colon) = all(f, A.vc, :) && all(f, A.vr, :)
 
 """
     ToeplitzFactorization

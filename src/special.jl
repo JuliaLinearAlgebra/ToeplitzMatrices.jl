@@ -101,8 +101,8 @@ transpose(A::LowerTriangularToeplitz) = UpperTriangularToeplitz(A.v)
 transpose(A::UpperTriangularToeplitz) = LowerTriangularToeplitz(A.v)
 
 # _all
-_all(f, A::SymToeplitzOrCirc, ::Colon) = _all(f, A.v, :)
-_all(f, A::TriangularToeplitz, ::Colon) = f(zero(eltype(A))) && _all(f, A.v, :)
+all(f, A::SymToeplitzOrCirc, ::Colon) = all(f, A.v, :)
+all(f, A::TriangularToeplitz, ::Colon) = f(zero(eltype(A))) && all(f, A.v, :)
 
 # broadcast
 for TYPE in (:SymmetricToeplitz, :Circulant)

@@ -62,7 +62,7 @@ convert(::Type{Hankel{T}}, A::Hankel) where {T<:Number} = Hankel{T}(convert(Abst
 broadcasted(::DefaultMatrixStyle, f, A::Hankel) = Hankel(f.(A.v), A.size)
 broadcasted(::DefaultMatrixStyle, f, x::Number, A::Hankel) = Hankel(f.(x, A.v), A.size)
 broadcasted(::DefaultMatrixStyle, f, A::Hankel, x::Number) = Hankel(f.(A.v, x), A.size)
-_all(f, A::Hankel, ::Colon) = _all(f, A.v, :)
+all(f, A::Hankel, ::Colon) = all(f, A.v, :)
 
 # Size
 size(H::Hankel) = H.size
