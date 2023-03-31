@@ -65,6 +65,10 @@ The `reverse` can transform between Hankel and Toeplitz. It is used to achieve f
 ## Implemented interface
 
 ### Operations
+
+<details>
+  <summary>Full list</summary>
+  
 - ✓ implemented
 - ✗ error
 - _ fall back to `Matrix`
@@ -102,6 +106,8 @@ The `reverse` can transform between Hankel and Toeplitz. It is used to achieve f
 |reverse|✓|✓|✓|✓|✓|✓|
 |broadcast|||||||
 |broadcast!|||||||
+  
+</details>
 
 Note that scalar multiplication, `conj`, `+` and `-` could be removed once `broadcast` is implemented.
 
