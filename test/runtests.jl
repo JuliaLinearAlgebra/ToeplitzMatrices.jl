@@ -7,7 +7,7 @@ using Pkg
     Pkg.instantiate()
 end
 
-using ToeplitzMatrices, Test, LinearAlgebra, Aqua
+using ToeplitzMatrices, Test, LinearAlgebra, Aqua, FillArrays
 import StatsBase
 
 using FFTW: fft
@@ -349,6 +349,7 @@ end
             @test isa(triu(TA,1),AbstractToeplitz) && triu(TA,1)==triu(A,1)
             @test isa(tril(TA,-1),AbstractToeplitz) && tril(TA,-1)==tril(A,-1)
             @test isa(triu(TA,-1),AbstractToeplitz) && triu(TA,-1)==triu(A,-1)
+            @test diag(TA) isa Fill{eltype(A)}
         else
             @test isa(reverse(TA),Toeplitz)
             @test isa(reverse(TA,dims=1),Toeplitz)
@@ -362,6 +363,7 @@ end
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
+    @test diag(Hankel(1:11)) ≡ 1:2:11
 
     @testset "aliasing" begin
         v = [1,2,3]

@@ -5,10 +5,11 @@ import DSP: conv
 import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds, real, imag, isfinite, DimsInteger, iszero
 import Base: ==, +, -, *, \
 import LinearAlgebra: Cholesky, Factorization
-import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu
+import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu, diag
 import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric, Adjoint
 import AbstractFFTs: Plan, plan_fft!
 import StatsBase
+import FillArrays: Fill
 
 export AbstractToeplitz, Toeplitz, SymmetricToeplitz, Circulant, LowerTriangularToeplitz, UpperTriangularToeplitz, TriangularToeplitz, Hankel
 export durbin, trench, levinson
@@ -29,6 +30,7 @@ convert(::Type{AbstractToeplitz{T}}, A::AbstractToeplitz) where T = AbstractToep
 
 isconcrete(A::AbstractToeplitz) = isconcretetype(typeof(A.vc)) && isconcretetype(typeof(A.vr))
 iszero(A::AbstractToeplitz) = iszero(A.vc) && iszero(A.vr)
+diag(A::AbstractToeplitz) = Fill(A.vc[1], min(size(A)...))
 
 """
     ToeplitzFactorization
