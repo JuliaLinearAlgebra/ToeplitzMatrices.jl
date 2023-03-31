@@ -97,6 +97,7 @@ The `reverse` can transform between Hankel and Toeplitz. It is used to achieve f
 |istril|||||||
 |iszero|✓|✓|✓|✓|✓||
 |isone|||||||
+|diag|✓|✓|✓|✓|✓|✓|
 |copyto!|✓|✓|✓|✓|✓|✓|
 |reverse|✓|✓|✓|✓|✓|✓|
 |broadcast|||||||
