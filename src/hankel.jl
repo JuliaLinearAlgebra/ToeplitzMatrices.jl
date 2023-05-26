@@ -5,6 +5,7 @@ struct Hankel{T, V<:AbstractVector{T}, S<:DimsInteger} <: AbstractMatrix{T}
 
     function Hankel{T,V,S}(v::V, (m,n)::DimsInteger) where {T, V<:AbstractVector{T}, S<:DimsInteger}
         (m < 0 || n < 0) && throw(ArgumentError("negative size: $s"))
+        require_one_based_indexing(v)
         length(v) ≥ m+n-1 || throw(ArgumentError("inconsistency between size and number of anti-diagonals"))
         new{T,V,S}(v, (m,n))
     end

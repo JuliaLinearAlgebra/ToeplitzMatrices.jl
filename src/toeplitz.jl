@@ -9,6 +9,7 @@ struct Toeplitz{T, VC<:AbstractVector{T}, VR<:AbstractVector{T}} <: AbstractToep
     vr::VR
 
     function Toeplitz{T, VC, VR}(vc::VC, vr::VR) where {T, VC<:AbstractVector{T}, VR<:AbstractVector{T}}
+        require_one_based_indexing(vr, vc)
         if first(vc) != first(vr)
             error("First element of the vectors must be the same")
         end

@@ -347,6 +347,9 @@ end
         @test TA+TB == A+B
         @test TA-TB == A-B
 
+        @test all(k -> istril(TA, k) == istril(A, k), -5:5)
+        @test all(k -> istriu(TA, k) == istriu(A, k), -5:5)
+
         @test_throws ArgumentError reverse(TA,dims=3)
         if isa(TA,AbstractToeplitz)
             @test isa(reverse(TA),Hankel)
@@ -371,6 +374,20 @@ end
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
+
+    @testset "istril/istriu/isdiag" begin
+        for (vc,vr) in (([1,2,0,0], [1,4,5,0]), ([0,0,0], [0,5,0]), ([3,0,0], [3,0,0]), ([0], [0]))
+            for T in (Toeplitz(vc, vr), Circulant(vr),
+                            SymmetricToeplitz(vc), LowerTriangularToeplitz(vc),
+                            UpperTriangularToeplitz(vr))
+                M = Matrix(T)
+                for k in -5:5, f in [istriu, istril]
+                    @test f(T, k) == f(M, k)
+                end
+                @test isdiag(T) == isdiag(M)
+            end
+        end
+    end
 
     @testset "aliasing" begin
         v = [1,2,3]
