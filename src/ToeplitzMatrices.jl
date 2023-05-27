@@ -30,7 +30,13 @@ convert(::Type{AbstractToeplitz{T}}, A::AbstractToeplitz) where T = AbstractToep
 
 isconcrete(A::AbstractToeplitz) = isconcretetype(typeof(A.vc)) && isconcretetype(typeof(A.vr))
 iszero(A::AbstractToeplitz) = iszero(A.vc) && iszero(A.vr)
-diag(A::AbstractToeplitz) = Fill(A.vc[1], min(size(A)...))
+function diag(A::AbstractToeplitz, k::Integer=0)
+    if k >= 0
+        Fill(A.vr[k + 1], min(size(A)...))
+    else
+        Fill(A.vc[-k + 1], min(size(A)...))
+    end
+end
 
 """
     ToeplitzFactorization
