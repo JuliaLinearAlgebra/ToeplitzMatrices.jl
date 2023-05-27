@@ -62,7 +62,7 @@ convert(::Type{Hankel{T}}, A::Hankel) where {T<:Number} = Hankel{T}(convert(Abst
 
 # Size
 size(H::Hankel) = H.size
-diag(H::Hankel, k::Integer=0) = H.v[range(k + 1, length = min(H.size...), step = 2)]
+diag(H::Hankel, k::Integer=0) = H.v[range(k + 1, min(H.size...), step = 2)]
 
 # Retrieve an entry by two indices
 Base.@propagate_inbounds function getindex(A::Hankel, i::Integer, j::Integer)
