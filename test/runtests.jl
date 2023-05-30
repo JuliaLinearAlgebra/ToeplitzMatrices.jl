@@ -475,6 +475,9 @@ end
     e = rand(5)
     # I should be close to identity
     @test I*e ≈ I2*e ≈ e
+
+    D = Diagonal(axes(C1,2))
+    @test mul!(similar(C1), C1, D) ≈ C1 * D
 end
 
 @testset "TriangularToeplitz" begin
