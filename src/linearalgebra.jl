@@ -317,7 +317,7 @@ function eigvecs(C::Circulant)
     invnorm = 1/√n
     for CI in CartesianIndices(M)
         k, j = Tuple(CI)
-        M[CI] = cispi((k-1) * (j-1) * x) * invnorm
+        M[CI] = _cispi((k-1) * (j-1) * x) * invnorm
     end
     return M
 end
