@@ -349,9 +349,9 @@ end
             @test isa(triu(TA,1),AbstractToeplitz) && triu(TA,1)==triu(A,1)
             @test isa(tril(TA,-1),AbstractToeplitz) && tril(TA,-1)==tril(A,-1)
             @test isa(triu(TA,-1),AbstractToeplitz) && triu(TA,-1)==triu(A,-1)
-            @test diag(TA) isa Fill{eltype(A)}
-            @test diag(TA, 1) isa Fill{eltype(A)}
-            @test diag(TA, -1) isa Fill{eltype(A)}
+            @test diag(TA) isa Fill{eltype(A)} && diag(TA)==diag(A)
+            @test diag(TA, 1) isa Fill{eltype(A)} && diag(TA,1)==diag(A,1)
+            @test diag(TA, -1) isa Fill{eltype(A)} && diag(TA,-1)==diag(A,-1)
         else
             @test isa(reverse(TA),Toeplitz)
             @test isa(reverse(TA,dims=1),Toeplitz)
