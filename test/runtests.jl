@@ -7,7 +7,7 @@ using Pkg
     Pkg.instantiate()
 end
 
-using ToeplitzMatrices, Test, LinearAlgebra, Aqua
+using ToeplitzMatrices, Test, LinearAlgebra, Aqua, Random
 import StatsBase
 
 using FFTW: fft
@@ -20,6 +20,8 @@ end
 
 ns = 101
 nl = 2000
+
+Random.seed!(0)
 
 xs = randn(ns, 5)
 xl = randn(nl, 5)
