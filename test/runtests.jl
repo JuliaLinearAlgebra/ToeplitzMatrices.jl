@@ -354,6 +354,7 @@ end
             @test diag(TA) isa Fill{eltype(A)} && diag(TA)==diag(A)
             @test diag(TA, 1) isa Fill{eltype(A)} && diag(TA,1)==diag(A,1)
             @test diag(TA, -1) isa Fill{eltype(A)} && diag(TA,-1)==diag(A,-1)
+            @test diag(TA, 4) isa Fill{eltype(A)} && diag(TA,4)==diag(A,4)
         else
             @test isa(reverse(TA),Toeplitz)
             @test isa(reverse(TA,dims=1),Toeplitz)
@@ -369,6 +370,7 @@ end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
     @test diag(Hankel(1:11)) ≡ 1:2:11
     @test diag(Hankel(1:11), 1) ≡ diag(Hankel(1:11), 1) ≡ 2:2:10
+    @test diag(Hankel(1:11), 100) == []
 
     @testset "aliasing" begin
         v = [1,2,3]

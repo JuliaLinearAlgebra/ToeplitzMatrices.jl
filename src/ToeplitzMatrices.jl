@@ -31,10 +31,12 @@ convert(::Type{AbstractToeplitz{T}}, A::AbstractToeplitz) where T = AbstractToep
 isconcrete(A::AbstractToeplitz) = isconcretetype(typeof(A.vc)) && isconcretetype(typeof(A.vr))
 iszero(A::AbstractToeplitz) = iszero(A.vc) && iszero(A.vr)
 function diag(A::AbstractToeplitz, k::Integer=0)
-    if k >= 0
-        Fill(A.vr[k + 1], min(size(A)...))
+    if k >= size(A, 2) || -k >= size(A, 1)
+        Fill(zero(eltype(A)), 0)
+    elseif k >= 0
+        Fill(A.vr[k + 1], min(size(A)...) - k)
     else
-        Fill(A.vc[-k + 1], min(size(A)...))
+        Fill(A.vc[-k + 1], min(size(A)...) + k)
     end
 end
 
