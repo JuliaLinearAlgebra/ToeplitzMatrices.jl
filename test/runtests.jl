@@ -7,7 +7,7 @@ using Pkg
     Pkg.instantiate()
 end
 
-using ToeplitzMatrices, Test, LinearAlgebra, Aqua, FillArrays
+using ToeplitzMatrices, Test, LinearAlgebra, Aqua, FillArrays, Random
 import StatsBase
 
 using FFTW: fft
@@ -20,6 +20,8 @@ end
 
 ns = 101
 nl = 2000
+
+Random.seed!(0)
 
 xs = randn(ns, 5)
 xl = randn(nl, 5)
@@ -361,7 +363,7 @@ end
         T=copy(TA)
         copyto!(T,TB)
         @test T == B
-        
+
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
