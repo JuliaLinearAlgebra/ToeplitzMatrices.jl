@@ -305,6 +305,11 @@ eigvals(C::CirculantFactorization) = copy(C.vcvr_dft)
 _det(C) = prod(eigvals(C))
 det(C::Circulant) = _det(C)
 det(C::Circulant{<:Real}) = real(_det(C))
+@static if VERSION <= v"1.6"
+    _cispi(x) = cis(pi*x)
+else
+    _cispi(x) = cispi(x)
+end
 function eigvecs(C::Circulant)
     n = size(C,1)
     M = Array{complex(float(eltype(C)))}(undef, size(C))
