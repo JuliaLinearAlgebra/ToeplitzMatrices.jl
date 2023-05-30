@@ -351,10 +351,6 @@ end
             @test isa(triu(TA,1),AbstractToeplitz) && triu(TA,1)==triu(A,1)
             @test isa(tril(TA,-1),AbstractToeplitz) && tril(TA,-1)==tril(A,-1)
             @test isa(triu(TA,-1),AbstractToeplitz) && triu(TA,-1)==triu(A,-1)
-            @test diag(TA) isa Fill{eltype(A)} && diag(TA)==diag(A)
-            @test diag(TA, 1) isa Fill{eltype(A)} && diag(TA,1)==diag(A,1)
-            @test diag(TA, -1) isa Fill{eltype(A)} && diag(TA,-1)==diag(A,-1)
-            @test diag(TA, 4) isa Fill{eltype(A)} && diag(TA,4)==diag(A,4)
         else
             @test isa(reverse(TA),Toeplitz)
             @test isa(reverse(TA,dims=1),Toeplitz)
@@ -368,9 +364,20 @@ end
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
-    @test diag(Hankel(1:11)) ≡ 1:2:11
-    @test diag(Hankel(1:11), 1) ≡ diag(Hankel(1:11), 1) ≡ 2:2:10
-    @test diag(Hankel(1:11), 100) == []
+
+    H = Hankel(1:11, 4, 8)
+    @test diag(H) ≡ 1:2:7
+    @test diag(H, 1) ≡ 2:2:8
+    @test diag(H, -1) ≡ 2:2:6
+    @test diag(H, 5) ≡ 6:2:10
+    @test diag(H, 100) == diag(H, -100) == []
+
+    T = Toeplitz(1:4, 1:8)
+    @test diag(T) ≡ Fill(1, 4)
+    @test diag(T, 1) ≡ Fill(2, 4)
+    @test diag(T, -1) ≡ Fill(2, 3)
+    @test diag(T, 5) ≡ Fill(6, 3)
+    @test diag(T, 100) == diag(T, -100) == []
 
     @testset "aliasing" begin
         v = [1,2,3]

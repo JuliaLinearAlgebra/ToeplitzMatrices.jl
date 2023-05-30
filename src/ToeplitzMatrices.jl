@@ -34,9 +34,9 @@ function diag(A::AbstractToeplitz, k::Integer=0)
     if k >= size(A, 2) || -k >= size(A, 1)
         Fill(zero(eltype(A)), 0)
     elseif k >= 0
-        Fill(A.vr[k + 1], min(size(A)...) - k)
+        Fill(A.vr[k + 1], diaglenpos(size(A)..., k))
     else
-        Fill(A.vc[-k + 1], min(size(A)...) + k)
+        Fill(A.vc[-k + 1], diaglenneg(size(A)..., k))
     end
 end
 
@@ -63,6 +63,10 @@ Return real-valued part of `x` if `T` is a type of a real number, and `x` otherw
 """
 maybereal(::Type, x) = x
 maybereal(::Type{<:Real}, x) = real(x)
+
+# length of LinearAlgebra.diagind, for positive and negative k respectively
+@inline diaglenpos(m::Integer, n::Integer, k::Integer=0) = min(m, n-k)
+@inline diaglenneg(m::Integer, n::Integer, k::Integer=0) = min(m+k, n)
 
 include("directLinearSolvers.jl")
 
