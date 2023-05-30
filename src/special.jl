@@ -13,7 +13,7 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
         convert(::Type{$TYPE{T}}, A::$TYPE) where {T} = $TYPE{T}(A)
 
         size(A::$TYPE) = (length(A.v),length(A.v))
-        
+
         adjoint(A::$TYPE) = transpose(conj(A))
         (*)(scalar::Number, C::$TYPE) = $TYPE(scalar * C.v)
         (*)(C::$TYPE, scalar::Number) = $TYPE(C.v * scalar)

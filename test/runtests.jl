@@ -360,7 +360,7 @@ end
         T=copy(TA)
         copyto!(T,TB)
         @test T == B
-        
+
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
