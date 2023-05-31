@@ -6,7 +6,7 @@ import Base: adjoint, convert, transpose, size, getindex, similar, copy, getprop
 import Base: ==, +, -, *, \
 import LinearAlgebra: Cholesky, Factorization
 import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu
-import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric, Adjoint
+import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric, Adjoint, Transpose
 import AbstractFFTs: Plan, plan_fft!
 import StatsBase
 
@@ -17,6 +17,26 @@ include("iterativeLinearSolvers.jl")
 
 # Abstract
 abstract type AbstractToeplitz{T<:Number} <: AbstractMatrix{T} end
+
+function getproperty(A::Transpose{<:Number, <:AbstractToeplitz}, s::Symbol)
+    if s == :vc
+        getproperty(parent(A), :vr)
+    elseif s == :vr
+        getproperty(parent(A), :vc)
+    else
+        getfield(A, s)
+    end
+end
+
+function getproperty(A::Adjoint{<:Number, <:AbstractToeplitz}, s::Symbol)
+    if s == :vc
+        vec(adjoint(getproperty(parent(A), :vr)))
+    elseif s == :vr
+        vec(adjoint(getproperty(parent(A), :vc)))
+    else
+        getfield(A, s)
+    end
+end
 
 size(A::AbstractToeplitz) = (length(A.vc),length(A.vr))
 @inline _vr(A::AbstractToeplitz) = A.vr

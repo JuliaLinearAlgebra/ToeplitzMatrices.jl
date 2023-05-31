@@ -71,6 +71,28 @@ for (As, Al, st) in cases
     end
 end
 
+@testset "Transpose/Adjoint wrappers" begin
+    vc, vr = [0,im,0], [0, 2+3im, 0]
+    @testset "Toeplitz" begin
+        T = Toeplitz(vc, vr)
+        @test Transpose(T).vc == vr
+        @test Transpose(T).vr == vc
+        @test Adjoint(T).vc == vec(vr')
+        @test Adjoint(T).vr == vec(vc')
+    end
+
+    @testset for TT in (Circulant,
+                UpperTriangularToeplitz, LowerTriangularToeplitz,
+                SymmetricToeplitz)
+        T = TT(vc)
+        M = Matrix(T)
+        @test Transpose(T).vc == ToeplitzMatrices._vr(M)
+        @test Transpose(T).vr == ToeplitzMatrices._vc(M)
+        @test Adjoint(T).vc == vec(ToeplitzMatrices._vr(M)')
+        @test Adjoint(T).vr == vec(ToeplitzMatrices._vc(M)')
+    end
+end
+
 @testset "Mixed types" begin
     @test eltype(Toeplitz([1, 2], [1, 2])) === Int
     @test Toeplitz([1, 2], [1, 2]) * ones(2) == fill(3, 2)
