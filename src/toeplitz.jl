@@ -105,8 +105,8 @@ end
 adjoint(A::AbstractToeplitz) = transpose(conj(A))
 transpose(A::AbstractToeplitz) = Toeplitz(A.vr, A.vc)
 function AbstractMatrix{T}(A::AbstractToeplitz) where {T}
-    vc = convert(AbstractVector{T}, _vc(A))
-    vr = convert(AbstractVector{T}, _vr(A))
+    vc = AbstractVector{T}(_vc(A))
+    vr = AbstractVector{T}(_vr(A))
     Toeplitz{T}(vc,vr)
 end
 for fun in (:zero, :conj, :copy, :-, :real, :imag)

@@ -30,7 +30,7 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
             copyto!(A.v,B.v)
             A
         end
-        AbstractMatrix{T}(A::$TYPE) where {T} = $TYPE{T}(convert(AbstractVector{T}, A.v))
+        AbstractMatrix{T}(A::$TYPE) where {T} = $TYPE{T}(AbstractVector{T}(A.v))
         function lmul!(x::Number, A::$TYPE)
             lmul!(x,A.v)
             A
