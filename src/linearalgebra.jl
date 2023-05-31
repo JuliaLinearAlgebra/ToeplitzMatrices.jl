@@ -329,6 +329,23 @@ function sqrt(C::CirculantFactorization)
     return Circulant(maybereal(eltype(C), vc))
 end
 
+function _vc_first_rest_rev(C::Circulant)
+    v = _vc(C)
+    v1 = first(v)
+    v2 = @view v[begin+1:end]
+    v2rev = view(v2, reverse(eachindex(v2)))
+    v1, v2, v2rev
+end
+
+function issymmetric(C::Circulant)
+    v1, v2, v2rev = _vc_first_rest_rev(C)
+    issymmetric(v1) && all(((a,b),) -> a == transpose(b), zip(v2, v2rev))
+end
+function ishermitian(C::Circulant)
+    v1, v2, v2rev = _vc_first_rest_rev(C)
+    ishermitian(v1) && all(((a,b),) -> a == adjoint(b), zip(v2, v2rev))
+end
+
 # Triangular
 
 # NB! only valid for lower triangular
