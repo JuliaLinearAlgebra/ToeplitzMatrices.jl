@@ -74,8 +74,10 @@ end
 @testset "vector indexing" begin
     T = Toeplitz(rand(3,3))
     @test T[1:2, 1:2] == Matrix(T)[1:2, 1:2]
+    @test AbstractMatrix{ComplexF64}(T) == Toeplitz{ComplexF64}(T.vc, T.vr)
     C = Circulant(1:4)
     @test C[1:2, 1:2] == Matrix(C)[1:2, 1:2]
+    @test AbstractMatrix{ComplexF64}(C) == Circulant{ComplexF64}(C.vc)
 end
 
 @testset "Mixed types" begin
@@ -176,6 +178,9 @@ end
         @test diag(H) == [1,3,5,7,9]
 
         @test H[1:2, 1:2] == Matrix(H)[1:2, 1:2]
+        Hc = AbstractMatrix{ComplexF64}(H)
+        @test Hc isa Hankel{ComplexF64}
+        @test size(Hc) == size(H)
 
         @test copy(H) == copyto!(similar(H), H)
 

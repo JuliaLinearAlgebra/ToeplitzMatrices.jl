@@ -68,7 +68,7 @@ Base.@propagate_inbounds function getindex(A::Hankel, i::Integer, j::Integer)
     @boundscheck checkbounds(A, i, j)
     return A.v[i+j-1]
 end
-AbstractMatrix{T}(A::Hankel) where {T} = Hankel{T}(AbstractVector{T}(A.v), dims)
+AbstractMatrix{T}(A::Hankel) where {T} = Hankel{T}(AbstractVector{T}(A.v), A.size)
 for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
     @eval $fun(A::Hankel) = Hankel($fun(A.v), size(A))
 end
