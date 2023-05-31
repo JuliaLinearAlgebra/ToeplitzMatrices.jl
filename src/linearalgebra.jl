@@ -332,18 +332,18 @@ end
 function _vc_first_rest_rev(C::Circulant)
     v = _vc(C)
     v1 = first(v)
-    v2 = @view v[begin+1:end]
-    v2rev = view(v2, reverse(eachindex(v2)))
-    v1, v2, v2rev
+    vrest = @view v[firstindex(v)+1:lastindex(v)]
+    vrestrev = view(vrest, reverse(eachindex(vrest)))
+    v1, vrest, vrestrev
 end
 
 function issymmetric(C::Circulant)
-    v1, v2, v2rev = _vc_first_rest_rev(C)
-    issymmetric(v1) && all(((a,b),) -> a == transpose(b), zip(v2, v2rev))
+    v1, vrest, vrestrev = _vc_first_rest_rev(C)
+    issymmetric(v1) && all(((a,b),) -> a == transpose(b), zip(vrest, vrestrev))
 end
 function ishermitian(C::Circulant)
-    v1, v2, v2rev = _vc_first_rest_rev(C)
-    ishermitian(v1) && all(((a,b),) -> a == adjoint(b), zip(v2, v2rev))
+    v1, vrest, vrestrev = _vc_first_rest_rev(C)
+    ishermitian(v1) && all(((a,b),) -> a == adjoint(b), zip(vrest, vrestrev))
 end
 
 # Triangular
