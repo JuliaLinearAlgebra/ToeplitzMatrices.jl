@@ -247,14 +247,12 @@ function ldiv!(C::CirculantFactorization, b::AbstractVector)
         ))
     end
     dft = C.dft
-    @inbounds begin
-        copyto!(tmp, b)
-        dft * tmp
-        tmp ./= vcvr_dft
-        dft \ tmp
-        T = eltype(C)
-        b .= maybereal.(T, tmp)
-    end
+    copyto!(tmp, b)
+    dft * tmp
+    tmp ./= vcvr_dft
+    dft \ tmp
+    T = eltype(C)
+    b .= maybereal.(T, tmp)
     return b
 end
 
