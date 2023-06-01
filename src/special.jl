@@ -3,28 +3,30 @@
 
 abstract type AbstractToeplitzSingleVector{T} <: AbstractToeplitz{T} end
 
+parent(A::AbstractToeplitzSingleVector) = A.v
+
 function size(A::AbstractToeplitzSingleVector)
-    n = length(A.v)
+    n = length(parent(A))
     (n,n)
 end
 
 adjoint(A::AbstractToeplitzSingleVector) = transpose(conj(A))
 function zero!(A::AbstractToeplitzSingleVector)
-    fill!(A.v, zero(eltype(A)))
+    fill!(parent(A), zero(eltype(A)))
     return A
 end
 
 function lmul!(x::Number, A::AbstractToeplitzSingleVector)
-    lmul!(x,A.v)
+    lmul!(x,parent(A))
     A
 end
 function rmul!(A::AbstractToeplitzSingleVector, x::Number)
-    rmul!(A.v,x)
+    rmul!(parent(A),x)
     A
 end
 
 for fun in (:iszero,)
-    @eval $fun(A::AbstractToeplitzSingleVector) = $fun(A.v)
+    @eval $fun(A::AbstractToeplitzSingleVector) = $fun(parent(A))
 end
 
 for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTriangularToeplitz)
