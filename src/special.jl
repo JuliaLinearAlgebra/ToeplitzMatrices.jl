@@ -29,6 +29,13 @@ for fun in (:iszero,)
     @eval $fun(A::AbstractToeplitzSingleVector) = $fun(parent(A))
 end
 
+AbstractToeplitz{T}(A::AbstractToeplitzSingleVector) where T = basetype(A){T}(A)
+
+(*)(scalar::Number, C::AbstractToeplitzSingleVector) = basetype(C)(scalar * parent(C))
+(*)(C::AbstractToeplitzSingleVector, scalar::Number) = basetype(C)(parent(C) * scalar)
+
+AbstractMatrix{T}(A::AbstractToeplitzSingleVector) where {T} = basetype(A){T}(AbstractVector{T}(A.v))
+
 for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTriangularToeplitz)
     @eval begin
         struct $TYPE{T, V<:AbstractVector{T}} <: AbstractToeplitzSingleVector{T}
@@ -39,18 +46,16 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
             $TYPE{T, typeof(vT)}(vT)
         end
 
-        AbstractToeplitz{T}(A::$TYPE) where T = $TYPE{T}(A)
-        convert(::Type{$TYPE{T}}, A::$TYPE) where {T} = A isa $TYPE{T} ? A : $TYPE{T}(A)::$TYPE{T}
+        basetype(::$TYPE) = $TYPE
 
-        (*)(scalar::Number, C::$TYPE) = $TYPE(scalar * C.v)
-        (*)(C::$TYPE, scalar::Number) = $TYPE(C.v * scalar)
-        (==)(A::$TYPE,B::$TYPE) = A.v==B.v
+        (==)(A::$TYPE, B::$TYPE) = A.v == B.v
+
+        convert(::Type{$TYPE{T}}, A::$TYPE) where {T} = A isa $TYPE{T} ? A : $TYPE{T}(A)::$TYPE{T}
 
         function copyto!(A::$TYPE,B::$TYPE)
             copyto!(A.v,B.v)
             A
         end
-        AbstractMatrix{T}(A::$TYPE) where {T} = $TYPE{T}(AbstractVector{T}(A.v))
     end
     for fun in (:zero, :conj, :copy, :-, :real, :imag)
         @eval $fun(A::$TYPE) = $TYPE($fun(A.v))
