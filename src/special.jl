@@ -4,6 +4,7 @@
 abstract type AbstractToeplitzSingleVector{T} <: AbstractToeplitz{T} end
 
 parent(A::AbstractToeplitzSingleVector) = A.v
+basetype(x) = basetype(typeof(x))
 
 function size(A::AbstractToeplitzSingleVector)
     n = length(parent(A))
@@ -36,6 +37,10 @@ AbstractToeplitz{T}(A::AbstractToeplitzSingleVector) where T = basetype(A){T}(A)
 
 AbstractMatrix{T}(A::AbstractToeplitzSingleVector) where {T} = basetype(A){T}(AbstractVector{T}(A.v))
 
+for fun in (:zero, :conj, :copy, :-, :real, :imag)
+    @eval $fun(A::AbstractToeplitzSingleVector) = basetype(A)($fun(parent(A)))
+end
+
 for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTriangularToeplitz)
     @eval begin
         struct $TYPE{T, V<:AbstractVector{T}} <: AbstractToeplitzSingleVector{T}
@@ -46,7 +51,7 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
             $TYPE{T, typeof(vT)}(vT)
         end
 
-        basetype(::$TYPE) = $TYPE
+        basetype(::Type{T}) where {T<:$TYPE} = $TYPE
 
         (==)(A::$TYPE, B::$TYPE) = A.v == B.v
 
@@ -56,9 +61,6 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
             copyto!(A.v,B.v)
             A
         end
-    end
-    for fun in (:zero, :conj, :copy, :-, :real, :imag)
-        @eval $fun(A::$TYPE) = $TYPE($fun(A.v))
     end
     for op in (:+, :-)
         @eval $op(A::$TYPE,B::$TYPE) = $TYPE($op(A.v,B.v))
