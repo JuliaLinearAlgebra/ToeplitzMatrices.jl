@@ -40,8 +40,7 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
         end
 
         AbstractToeplitz{T}(A::$TYPE) where T = $TYPE{T}(A)
-        $TYPE{T}(A::$TYPE) where T = $TYPE{T}(convert(AbstractVector{T},A.v))
-        convert(::Type{$TYPE{T}}, A::$TYPE) where {T} = $TYPE{T}(A)
+        convert(::Type{$TYPE{T}}, A::$TYPE) where {T} = A isa $TYPE{T} ? A : $TYPE{T}(A)::$TYPE{T}
 
         (*)(scalar::Number, C::$TYPE) = $TYPE(scalar * C.v)
         (*)(C::$TYPE, scalar::Number) = $TYPE(C.v * scalar)
