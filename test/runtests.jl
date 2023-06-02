@@ -462,6 +462,12 @@ end
     for v1i in v1
         @test minimum(abs.(v1i .- v2)) < sqrt(eps(Float64))
     end
+    for (C,M) in ((C1,M1), (C3,M3), (C5,M5))
+        λ, V = eigen(C)
+        @test C * V ≈ V * Diagonal(λ)
+        @test V'V ≈ LinearAlgebra.I
+        @test det(C) ≈ det(M)
+    end
 
     # Test for issue #47
     I = inv(C1)*C1
