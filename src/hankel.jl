@@ -68,8 +68,7 @@ Base.@propagate_inbounds function getindex(A::Hankel, i::Integer, j::Integer)
     @boundscheck checkbounds(A, i, j)
     return A.v[i+j-1]
 end
-similar(A::Hankel, T::Type, dims::DimsInteger{2}) = Hankel{T}(similar(A.v, T, dims[1]+dims[2]-true), dims)
-similar(A::Hankel, T::Type, dims::Tuple{Int64,Int64}) = Hankel{T}(similar(A.v, T, dims[1]+dims[2]-true), dims) # for ambiguity with `similar(a::AbstractArray, ::Type{T}, dims::Tuple{Vararg{Int64, N}}) where {T, N}` in Base
+AbstractMatrix{T}(A::Hankel) where {T} = Hankel{T}(AbstractVector{T}(A.v), A.size)
 for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
     @eval $fun(A::Hankel) = Hankel($fun(A.v), size(A))
 end

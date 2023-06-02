@@ -71,6 +71,15 @@ for (As, Al, st) in cases
     end
 end
 
+@testset "vector indexing" begin
+    T = Toeplitz(rand(3,3))
+    @test T[1:2, 1:2] == Matrix(T)[1:2, 1:2]
+    @test AbstractMatrix{ComplexF64}(T) == Toeplitz{ComplexF64}(T.vc, T.vr)
+    C = Circulant(1:4)
+    @test C[1:2, 1:2] == Matrix(C)[1:2, 1:2]
+    @test AbstractMatrix{ComplexF64}(C) == Circulant{ComplexF64}(C.vc)
+end
+
 @testset "Mixed types" begin
     @test eltype(Toeplitz([1, 2], [1, 2])) === Int
     @test Toeplitz([1, 2], [1, 2]) * ones(2) == fill(3, 2)
@@ -167,6 +176,11 @@ end
         @test H[2,2] == 3
         @test H[7]  == 3
         @test diag(H) == [1,3,5,7,9]
+
+        @test H[1:2, 1:2] == Matrix(H)[1:2, 1:2]
+        Hc = AbstractMatrix{ComplexF64}(H)
+        @test Hc isa Hankel{ComplexF64}
+        @test size(Hc) == size(H)
 
         @test copy(H) == copyto!(similar(H), H)
 
@@ -475,6 +489,9 @@ end
     e = rand(5)
     # I should be close to identity
     @test I*e ≈ I2*e ≈ e
+
+    D = Diagonal(axes(C1,2))
+    @test mul!(similar(C1), C1, D) ≈ C1 * D
 end
 
 @testset "TriangularToeplitz" begin
