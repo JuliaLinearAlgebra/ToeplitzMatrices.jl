@@ -45,11 +45,16 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
     @eval begin
         struct $TYPE{T, V<:AbstractVector{T}} <: AbstractToeplitzSingleVector{T}
             v::V
+            function $TYPE{T,V}(v::V) where {T,V<:AbstractVector{T}}
+                require_one_based_indexing(v)
+                new{T,V}(v)
+            end
         end
         function $TYPE{T}(v::AbstractVector) where T
             vT = convert(AbstractVector{T},v)
             $TYPE{T, typeof(vT)}(vT)
         end
+        $TYPE(v::V) where {T,V<:AbstractVector{T}} = $TYPE{T,V}(v)
 
         basetype(::Type{T}) where {T<:$TYPE} = $TYPE
 
@@ -111,8 +116,12 @@ function getproperty(A::UpperTriangularToeplitz, s::Symbol)
     end
 end
 
-_circulate(v::AbstractVector) = vcat(v[1],v[end:-1:2])
-_firstnonzero(v::AbstractVector) = vcat(v[1],zero(view(v,2:lastindex(v))))
+_circulate(v::AbstractVector) = reverse(v, 2)
+function _firstnonzero(v::AbstractVector)
+    w = zero(v)
+    w[1] = v[1]
+    w
+end
 
 # transpose
 transpose(A::SymmetricToeplitz) = A
@@ -242,3 +251,6 @@ function _trisame!(A::TriangularToeplitz, k::Integer)
 end
 tril!(A::LowerTriangularToeplitz, k::Integer) = _trisame!(A,k)
 triu!(A::UpperTriangularToeplitz, k::Integer) = _trisame!(A,-k)
+
+isdiag(A::Union{Circulant, LowerTriangularToeplitz, SymmetricToeplitz}) = all(iszero, @view _vc(A)[2:end])
+isdiag(A::UpperTriangularToeplitz) = all(iszero, @view _vr(A)[2:end])
