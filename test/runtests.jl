@@ -387,6 +387,14 @@ end
                 @test isdiag(T) == isdiag(M)
             end
         end
+
+        for (vr, vc) in (([1,2], [1,2,3,4]), ([1,2,3,4], [1,2]))
+            T = Toeplitz(vr, vc)
+            M = Matrix(T)
+            @testset for f in (istril, istriu)
+                @test all(k -> f(T,k) == f(M,k), -5:5)
+            end
+        end
     end
 
     @testset "aliasing" begin
