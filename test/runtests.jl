@@ -553,3 +553,77 @@ end
     @test cholesky(T).U ≈ cholesky(Matrix(T)).U
     @test cholesky(T).L ≈ cholesky(Matrix(T)).L
 end
+
+
+@testset "NEW TODO MODIFY" begin
+    function getdata(m=1760, n=4097)
+
+        T = Toeplitz{Float64}(
+            [1.0; rand([0.0, 1.0], m-1)],
+            [1.0; rand([0.0, 1.0], n-1)],
+        )
+
+        x = rand(Float64[0, 1], n)
+
+        return T, x
+    end
+
+    @testset "adsf" begin
+        T, x = getdata()
+
+        correct_result = T * x
+
+        Tfac = factorize(T)
+
+        result = zeros(Float64, 1760)
+        @test Tfac * x == T * x == correct_result
+        @test Tfac * x == correct_result  # can(!) reuse factorization 
+        @test Tfac * x == correct_result == mul!(result, Tfac, x, 1.0, 0.0)  # modifies Tfac.tmp
+        @test correct_result == mul!(result, Tfac, x, 1.0, 0.0)  # but we still can reuse factorization!
+
+        result = zeros(Float64, 1760)
+
+        xcopy = copy(x)
+
+        @test mul!(result, factorize(T), x, 1.0, 0.0) == correct_result
+        @test result == correct_result
+        @test x == xcopy
+
+        @test mul!(result, factorize(T), x, 1.0, 0.0) == correct_result
+        # @test mul!(result, factorize(T), x, 1.0, 1.0) == correct_result
+
+    end
+
+    @testset "threaded mul!" begin
+        
+        T, x = getdata()
+        Tfac = factorize(T)
+        result = zeros(Float64, 1760)
+
+        correct_result = T * x
+
+        valid = Bool[]
+        Base.Threads.@threads for i = 1:100
+            push!(valid, mul!(result, factorize(T), x, 1.0, 0.0) == correct_result)
+        end
+        @test all(valid)
+    end
+
+
+    # @testset "threaded mul! (Broken!!!!)" begin
+        
+    #     T, x = getdata()
+    #     Tfac = factorize(T)
+    #     result = zeros(Float64, 1760)
+
+    #     correct_result = T * x
+
+    #     Tfac = factorize(T)
+    #     valid = Bool[]
+    #     Base.Threads.@threads for i = 1:100
+    #         push!(valid, mul!(result, Tfac, x, 1.0, 0.0) == correct_result)
+    #     end
+    #     @test all(valid)    broken=true
+    # end
+
+end

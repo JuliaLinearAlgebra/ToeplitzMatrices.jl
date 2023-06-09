@@ -39,8 +39,64 @@ function mul!(
 
     return y
 end
+
+
+# option 1
+# Requires a change to `mul!`.
+# could also duplicate version mul! (with changed name or signature) that doesn't modify factorization
+# this shortens the code overall but 
+# may have a small perforance overhead due to the additional argument and the if statement in `mul!`.
+# function Base.:*(A::ToeplitzFactorization, x::StridedVector)
+#     T = promote_type(eltype(A), eltype(x))
+#     result = similar(x, T)
+#     return mul!(result, A, x, 1.0, 1.0; dont_modify_A=true)
+# end
+
+# option 2
+# this makes the code longer (and have duplicates) but might be more efficient overall
+# If going for this option, mul! is unchanged.
+# However, it has a dirty hack to get output size, which might be a very bad idea...
+# Maybe there is a better way?
+function Base.:*(A::ToeplitzFactorization, x::StridedVector)
+    # adapted from
+    #      mul!(::StridedVector, A::ToeplitzFactorization, x::StridedVector, α::Number, β::Number)  
+    vcvr_dft = A.vcvr_dft
+    tmp = copy(A.tmp)  # avoid changing (using `mul!`, `copyto!` and `*=` )
+    dft = A.dft
+    
+    N = length(vcvr_dft)
+    n = length(x)
+    m = N - n + 1   # dirty hack to get output size.
+    if m > N || n > N
+        throw(DimensionMismatch(
+            "Toeplitz factorization size incompatible (max $(N-1)) with input vector (size $n)"
+        ))
+    end
+
+    T = Base.promote_eltype(A, x)
+    y = Vector{T}(undef, m)
+
+    @inbounds begin
+        copyto!(tmp, 1, x, 1, n)
+        for i in (n+1):N
+            tmp[i] = zero(eltype(tmp))
+        end
+        mul!(tmp, dft, tmp)
+        for i in eachindex(tmp)
+            tmp[i] *= vcvr_dft[i]
+        end
+        dft \ tmp
+
+        for i in eachindex(y)
+            y[i] = maybereal(T, tmp[i])
+        end
+    end
+
+    return y
+end
+
 function mul!(
-    y::StridedVector, A::ToeplitzFactorization, x::StridedVector, α::Number, β::Number
+    y::StridedVector, A::ToeplitzFactorization, x::StridedVector, α::Number, β::Number #; dont_modify_A=false,
 )
     n = length(x)
     m = length(y)
@@ -53,7 +109,13 @@ function mul!(
     end
 
     T = Base.promote_eltype(y, A, x, α, β)
-    tmp = A.tmp
+
+    #if dont_modify_A
+    #    tmp = copy(A.tmp)  # to make function thread-safe
+    #else
+        tmp = A.tmp
+    #end
+
     dft = A.dft
     @inbounds begin
         copyto!(tmp, 1, x, 1, n)
