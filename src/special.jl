@@ -116,11 +116,9 @@ function getproperty(A::UpperTriangularToeplitz, s::Symbol)
     end
 end
 
-_circulate(v::AbstractVector) = reverse(v, 2)
+_circulate(v::AbstractVector) = view(Circulant(v), 1, :)
 function _firstnonzero(v::AbstractVector)
-    w = zero(v)
-    w[1] = v[1]
-    w
+    OneElement(v[1], 1, length(v))
 end
 
 # transpose

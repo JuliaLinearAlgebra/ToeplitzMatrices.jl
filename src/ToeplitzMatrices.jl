@@ -14,6 +14,8 @@ import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric, Adjoint
 import AbstractFFTs: Plan, plan_fft!
 import StatsBase
 
+using FillArrays
+
 export AbstractToeplitz, Toeplitz, SymmetricToeplitz, Circulant, LowerTriangularToeplitz, UpperTriangularToeplitz, TriangularToeplitz, Hankel
 export durbin, trench, levinson
 
