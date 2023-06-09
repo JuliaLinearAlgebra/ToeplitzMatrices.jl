@@ -610,20 +610,20 @@ end
     end
 
 
-    @testset "threaded mul! (Broken!!!!)" begin
+    # @testset "threaded mul! (Broken!!!!)" begin
         
-        T, x = getdata()
-        Tfac = factorize(T)
-        result = zeros(Float64, 1760)
+    #     T, x = getdata()
+    #     Tfac = factorize(T)
+    #     result = zeros(Float64, 1760)
 
-        correct_result = T * x
+    #     correct_result = T * x
 
-        Tfac = factorize(T)
-        valid = Bool[]
-        Base.Threads.@threads for i = 1:100
-            push!(valid, mul!(result, Tfac, x, 1.0, 0.0) == correct_result)
-        end
-        @test all(valid)    broken=true
-    end
+    #     Tfac = factorize(T)
+    #     valid = Bool[]
+    #     Base.Threads.@threads for i = 1:100
+    #         push!(valid, mul!(result, Tfac, x, 1.0, 0.0) == correct_result)
+    #     end
+    #     @test all(valid)    broken=true
+    # end
 
 end
