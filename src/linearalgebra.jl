@@ -122,7 +122,7 @@ end
 function factorize(A::Toeplitz)
     T = eltype(A)
     m, n = size(A)
-    S = promote_type(T, Complex{Float32})
+    S = promote_type(float(T), Complex{Float32})
     tmp = Vector{S}(undef, m + n - 1)
     copyto!(tmp, A.vc)
     copyto!(tmp, m + 1, Iterators.reverse(A.vr), 1, n - 1)
@@ -142,7 +142,7 @@ StatsBase.levinson(A::AbstractToeplitz, B::AbstractVecOrMat) = StatsBase.levinso
 function factorize(A::SymmetricToeplitz{T}) where {T<:Number}
     vc = A.vc
     m = length(vc)
-    S = promote_type(T, Complex{Float32})
+    S = promote_type(float(T), Complex{Float32})
     tmp = Vector{S}(undef, 2 * m)
     copyto!(tmp, vc)
     @inbounds tmp[m + 1] = zero(T)
@@ -199,7 +199,7 @@ const CirculantFactorization{T, V<:AbstractVector{T}} = ToeplitzFactorization{T,
 function factorize(C::Circulant)
     T = eltype(C)
     vc = C.vc
-    S = promote_type(T, Complex{Float32})
+    S = promote_type(float(T), Complex{Float32})
     tmp = Vector{S}(undef, length(vc))
     copyto!(tmp, vc)
     dft = plan_fft!(tmp)
@@ -247,14 +247,12 @@ function ldiv!(C::CirculantFactorization, b::AbstractVector)
         ))
     end
     dft = C.dft
-    @inbounds begin
-        copyto!(tmp, b)
-        dft * tmp
-        tmp ./= vcvr_dft
-        dft \ tmp
-        T = eltype(C)
-        b .= maybereal.(T, tmp)
-    end
+    copyto!(tmp, b)
+    dft * tmp
+    tmp ./= vcvr_dft
+    dft \ tmp
+    T = eltype(C)
+    b .= maybereal.(T, tmp)
     return b
 end
 
@@ -302,6 +300,28 @@ end
 
 eigvals(C::Circulant) = eigvals(factorize(C))
 eigvals(C::CirculantFactorization) = copy(C.vcvr_dft)
+_det(C) = prod(eigvals(C))
+det(C::Circulant) = _det(C)
+det(C::Circulant{<:Real}) = real(_det(C))
+@static if VERSION <= v"1.6"
+    _cispi(x) = cis(pi*x)
+else
+    _cispi(x) = cispi(x)
+end
+function eigvecs(C::Circulant)
+    n = size(C,1)
+    M = Array{complex(float(eltype(C)))}(undef, size(C))
+    x = 2/n
+    invnorm = 1/√n
+    for CI in CartesianIndices(M)
+        k, j = Tuple(CI)
+        M[CI] = _cispi((k-1) * (j-1) * x) * invnorm
+    end
+    return M
+end
+function eigen(C::Circulant)
+    Eigen(eigvals(C), eigvecs(C))
+end
 
 sqrt(C::Circulant) = sqrt(factorize(C))
 function sqrt(C::CirculantFactorization)
@@ -394,7 +414,7 @@ function factorize(A::LowerTriangularToeplitz)
     T = eltype(A)
     v = A.v
     n = length(v)
-    S = promote_type(T, Complex{Float32})
+    S = promote_type(float(T), Complex{Float32})
     tmp = zeros(S, 2 * n - 1)
     copyto!(tmp, v)
     dft = plan_fft!(tmp)
@@ -404,7 +424,7 @@ function factorize(A::UpperTriangularToeplitz)
     T = eltype(A)
     v = A.v
     n = length(v)
-    S = promote_type(T, Complex{Float32})
+    S = promote_type(float(T), Complex{Float32})
     tmp = zeros(S, 2 * n - 1)
     tmp[1] = v[1]
     copyto!(tmp, n + 1, Iterators.reverse(v), 1, n - 1)

@@ -1,12 +1,5 @@
 using Pkg
 
-# Activate test environment on older Julia versions
-@static if VERSION < v"1.2"
-    Pkg.activate(@__DIR__)
-    Pkg.develop(PackageSpec(; path=dirname(@__DIR__)))
-    Pkg.instantiate()
-end
-
 using ToeplitzMatrices, Test, LinearAlgebra, Aqua, FillArrays, Random
 import StatsBase
 
@@ -69,6 +62,15 @@ for (As, Al, st) in cases
         @test Matrix(As') == Matrix(As)'
         @test Matrix(transpose(As)) == transpose(Matrix(As))
     end
+end
+
+@testset "vector indexing" begin
+    T = Toeplitz(rand(3,3))
+    @test T[1:2, 1:2] == Matrix(T)[1:2, 1:2]
+    @test AbstractMatrix{ComplexF64}(T) == Toeplitz{ComplexF64}(T.vc, T.vr)
+    C = Circulant(1:4)
+    @test C[1:2, 1:2] == Matrix(C)[1:2, 1:2]
+    @test AbstractMatrix{ComplexF64}(C) == Circulant{ComplexF64}(C.vc)
 end
 
 @testset "Mixed types" begin
@@ -167,6 +169,11 @@ end
         @test H[2,2] == 3
         @test H[7]  == 3
         @test diag(H) == [1,3,5,7,9]
+
+        @test H[1:2, 1:2] == Matrix(H)[1:2, 1:2]
+        Hc = AbstractMatrix{ComplexF64}(H)
+        @test Hc isa Hankel{ComplexF64}
+        @test size(Hc) == size(H)
 
         @test copy(H) == copyto!(similar(H), H)
 
@@ -340,6 +347,9 @@ end
         @test TA+TB == A+B
         @test TA-TB == A-B
 
+        @test all(k -> istril(TA, k) == istril(A, k), -5:5)
+        @test all(k -> istriu(TA, k) == istriu(A, k), -5:5)
+
         @test_throws ArgumentError reverse(TA,dims=3)
         if isa(TA,AbstractToeplitz)
             @test isa(reverse(TA),Hankel)
@@ -364,20 +374,44 @@ end
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
+	
+	@testset "diag" begin
+		H = Hankel(1:11, 4, 8)
+		@test diag(H) ≡ 1:2:7
+		@test diag(H, 1) ≡ 2:2:8
+		@test diag(H, -1) ≡ 2:2:6
+		@test diag(H, 5) ≡ 6:2:10
+		@test diag(H, 100) == diag(H, -100) == []
 
-    H = Hankel(1:11, 4, 8)
-    @test diag(H) ≡ 1:2:7
-    @test diag(H, 1) ≡ 2:2:8
-    @test diag(H, -1) ≡ 2:2:6
-    @test diag(H, 5) ≡ 6:2:10
-    @test diag(H, 100) == diag(H, -100) == []
+		T = Toeplitz(1:4, 1:8)
+		@test diag(T) ≡ Fill(1, 4)
+		@test diag(T, 1) ≡ Fill(2, 4)
+		@test diag(T, -1) ≡ Fill(2, 3)
+		@test diag(T, 5) ≡ Fill(6, 3)
+		@test diag(T, 100) == diag(T, -100) == []
+	end
 
-    T = Toeplitz(1:4, 1:8)
-    @test diag(T) ≡ Fill(1, 4)
-    @test diag(T, 1) ≡ Fill(2, 4)
-    @test diag(T, -1) ≡ Fill(2, 3)
-    @test diag(T, 5) ≡ Fill(6, 3)
-    @test diag(T, 100) == diag(T, -100) == []
+    @testset "istril/istriu/isdiag" begin
+        for (vc,vr) in (([1,2,0,0], [1,4,5,0]), ([0,0,0], [0,5,0]), ([3,0,0], [3,0,0]), ([0], [0]))
+            for T in (Toeplitz(vc, vr), Circulant(vr),
+                            SymmetricToeplitz(vc), LowerTriangularToeplitz(vc),
+                            UpperTriangularToeplitz(vr))
+                M = Matrix(T)
+                for k in -5:5, f in [istriu, istril]
+                    @test f(T, k) == f(M, k)
+                end
+                @test isdiag(T) == isdiag(M)
+            end
+        end
+
+        for (vr, vc) in (([1,2], [1,2,3,4]), ([1,2,3,4], [1,2]))
+            T = Toeplitz(vr, vc)
+            M = Matrix(T)
+            @testset for f in (istril, istriu)
+                @test all(k -> f(T,k) == f(M,k), -5:5)
+            end
+        end
+    end
 
     @testset "aliasing" begin
         v = [1,2,3]
@@ -476,6 +510,12 @@ end
     for v1i in v1
         @test minimum(abs.(v1i .- v2)) < sqrt(eps(Float64))
     end
+    for (C,M) in ((C1,M1), (C3,M3), (C5,M5))
+        λ, V = eigen(C)
+        @test C * V ≈ V * Diagonal(λ)
+        @test V'V ≈ LinearAlgebra.I
+        @test det(C) ≈ det(M)
+    end
 
     # Test for issue #47
     I = inv(C1)*C1
@@ -483,6 +523,9 @@ end
     e = rand(5)
     # I should be close to identity
     @test I*e ≈ I2*e ≈ e
+
+    D = Diagonal(axes(C1,2))
+    @test mul!(similar(C1), C1, D) ≈ C1 * D
 end
 
 @testset "TriangularToeplitz" begin

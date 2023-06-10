@@ -9,6 +9,7 @@ struct Toeplitz{T, VC<:AbstractVector{T}, VR<:AbstractVector{T}} <: AbstractToep
     vr::VR
 
     function Toeplitz{T, VC, VR}(vc::VC, vr::VR) where {T, VC<:AbstractVector{T}, VR<:AbstractVector{T}}
+        require_one_based_indexing(vr, vc)
         if first(vc) != first(vr)
             error("First element of the vectors must be the same")
         end
@@ -104,10 +105,9 @@ end
 
 adjoint(A::AbstractToeplitz) = transpose(conj(A))
 transpose(A::AbstractToeplitz) = Toeplitz(A.vr, A.vc)
-function similar(A::AbstractToeplitz, T::Type, dims::Dims{2})
-    vc=similar(A.vc, T, dims[1])
-    vr=similar(A.vr, T, dims[2])
-    vr[1]=vc[1]
+function AbstractMatrix{T}(A::AbstractToeplitz) where {T}
+    vc = AbstractVector{T}(_vc(A))
+    vr = AbstractVector{T}(_vr(A))
     Toeplitz{T}(vc,vr)
 end
 for fun in (:zero, :conj, :copy, :-, :real, :imag)
