@@ -577,7 +577,7 @@ end
                 ev = Fill(3, max(0,n-1))
                 for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
                     evST = eigvals(ST)
-                    evSTM = eigvals(Matrix(ST); sortby)
+                    evSTM = eigvals(Matrix(ST))
                     @test sort(evST, by=sortby) ≈ sort(evSTM, by=sortby)
                     @test eltype(evST) <: Real
                     λ, V = eigen(ST)
@@ -600,7 +600,7 @@ end
                                     (Fill(2, n), Fill(3, max(0, n-1))))
                     HT = Hermitian(Tridiagonal(ev, dv, ev))
                     λHT = eigvals(HT)
-                    λHTM = eigvals(Matrix(HT); sortby)
+                    λHTM = eigvals(Matrix(HT))
                     @test sort(λHT, by=sortby) ≈ sort(λHTM, by=sortby)
                     @test eltype(λHT) <: Real
                     λ, V = eigen(HT)
