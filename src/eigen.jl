@@ -50,6 +50,10 @@ _eigvec_prefactors(A::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, cm
 _eigvec_eltype(A::SymTridiagonal) = float(eltype(A))
 _eigvec_eltype(A) = complex(float(eltype(A)))
 
+@static if !isdefined(Base, :eachcol)
+    eachcol(A) = (view(A,:,i) for i in axes(A,2))
+end
+
 _normalizecols!(M, T) = foreach(normalize!, eachcol(M))
 function _normalizecols!(M, T::Union{SymTridiagonal, Symmetric{<:Number, <:Tridiagonal}})
     n = size(M,1)
