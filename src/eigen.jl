@@ -10,7 +10,14 @@ for MT in (:(Tridiagonal{<:Union{Real, Complex}, <:AbstractFillVector}),
             :(SymTridiagonal{<:Union{Real, Complex}, <:AbstractFillVector}),
             :(HermOrSym{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real, Complex}})
             )
-    @eval eigvals(A::$MT) = _eigvals_toeplitz(A)
+    @eval function eigvals(A::$MT)
+        n = size(A,1)
+        if n <= 2 # repeated roots possible
+            eigvals(Matrix(A))
+        else
+            _eigvals_toeplitz(A)
+        end
+    end
 end
 
 ___eigvals_toeplitz(a, sqrtbc, n) = [a + 2 * sqrtbc * cospi(q/(n+1)) for q in n:-1:1]
@@ -85,17 +92,31 @@ function _eigvecs_toeplitz(T)
     return M
 end
 
+function _eigvecs(A)
+    n = size(A,1)
+    if n <= 2 # repeated roots possible
+        eigvecs(Matrix(A))
+    else
+        _eigvecs_toeplitz(A)
+    end
+end
+
+function _eigen(A)
+    n = size(A,1)
+    if n <= 2 # repeated roots possible
+        eigen(Matrix(A))
+    else
+        Eigen(eigvals(A), eigvecs(A))
+    end
+end
+
 for MT in (:(Tridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
             :(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
             :(HermOrSym{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}}),
             )
 
     @eval begin
-        function eigvecs(A::$MT)
-            _eigvecs_toeplitz(A)
-        end
-        function eigen(T::$MT)
-            Eigen(eigvals(T), eigvecs(T))
-        end
+        eigvecs(A::$MT) = _eigvecs(A)
+        eigen(A::$MT) = _eigen(A)
     end
 end
