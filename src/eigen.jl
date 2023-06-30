@@ -24,7 +24,7 @@ __eigvals_toeplitz(::Hermitian{<:Any, <:Tridiagonal}, a, b, c, n) =
 
 # triangular Toeplitz
 function _eigvals_toeplitz(T)
-    Base.require_one_based_indexing(T)
+    require_one_based_indexing(T)
     n = checksquare(T)
     # extra care to handle 0x0 and 1x1 matrices
     # diagonal
@@ -59,7 +59,7 @@ function _normalizecols!(M, T::Union{SymTridiagonal, Symmetric{<:Number, <:Tridi
 end
 
 function _eigvecs_toeplitz(T)
-    Base.require_one_based_indexing(T)
+    require_one_based_indexing(T)
     n = checksquare(T)
     M = Matrix{_eigvec_eltype(T)}(undef, n, n)
     n == 0 && return M
