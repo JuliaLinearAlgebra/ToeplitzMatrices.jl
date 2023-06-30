@@ -118,7 +118,9 @@ end
 
 _circulate(v::AbstractVector) = view(Circulant(v), 1, :)
 function _firstnonzero(v::AbstractVector)
-    OneElement(v[1], 1, length(v))
+    w = zero(v)
+    w[1] = v[1]
+    w
 end
 
 # transpose
