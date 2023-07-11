@@ -1,21 +1,14 @@
 using Pkg
 
-# Activate test environment on older Julia versions
-@static if VERSION < v"1.2"
-    Pkg.activate(@__DIR__)
-    Pkg.develop(PackageSpec(; path=dirname(@__DIR__)))
-    Pkg.instantiate()
-end
-
 using ToeplitzMatrices, Test, LinearAlgebra, Aqua, Random
 import StatsBase
-
+using FillArrays
 using FFTW: fft
 
 @testset "code quality" begin
     Aqua.test_ambiguities(ToeplitzMatrices, recursive=false)
     # Aqua.test_all includes Base and Core in ambiguity testing
-    Aqua.test_all(ToeplitzMatrices, ambiguities=false)
+    Aqua.test_all(ToeplitzMatrices, ambiguities=false, piracy=false)
 end
 
 ns = 101
@@ -91,6 +84,15 @@ end
         @test Adjoint(T).vc == vec(ToeplitzMatrices._vr(M)')
         @test Adjoint(T).vr == vec(ToeplitzMatrices._vc(M)')
     end
+end
+
+@testset "vector indexing" begin
+    T = Toeplitz(rand(3,3))
+    @test T[1:2, 1:2] == Matrix(T)[1:2, 1:2]
+    @test AbstractMatrix{ComplexF64}(T) == Toeplitz{ComplexF64}(T.vc, T.vr)
+    C = Circulant(1:4)
+    @test C[1:2, 1:2] == Matrix(C)[1:2, 1:2]
+    @test AbstractMatrix{ComplexF64}(C) == Circulant{ComplexF64}(C.vc)
 end
 
 @testset "Mixed types" begin
@@ -189,6 +191,11 @@ end
         @test H[2,2] == 3
         @test H[7]  == 3
         @test diag(H) == [1,3,5,7,9]
+
+        @test H[1:2, 1:2] == Matrix(H)[1:2, 1:2]
+        Hc = AbstractMatrix{ComplexF64}(H)
+        @test Hc isa Hankel{ComplexF64}
+        @test size(Hc) == size(H)
 
         @test copy(H) == copyto!(similar(H), H)
 
@@ -362,6 +369,9 @@ end
         @test TA+TB == A+B
         @test TA-TB == A-B
 
+        @test all(k -> istril(TA, k) == istril(A, k), -5:5)
+        @test all(k -> istriu(TA, k) == istriu(A, k), -5:5)
+
         @test_throws ArgumentError reverse(TA,dims=3)
         if isa(TA,AbstractToeplitz)
             @test isa(reverse(TA),Hankel)
@@ -386,6 +396,28 @@ end
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
+
+    @testset "istril/istriu/isdiag" begin
+        for (vc,vr) in (([1,2,0,0], [1,4,5,0]), ([0,0,0], [0,5,0]), ([3,0,0], [3,0,0]), ([0], [0]))
+            for T in (Toeplitz(vc, vr), Circulant(vr),
+                            SymmetricToeplitz(vc), LowerTriangularToeplitz(vc),
+                            UpperTriangularToeplitz(vr))
+                M = Matrix(T)
+                for k in -5:5, f in [istriu, istril]
+                    @test f(T, k) == f(M, k)
+                end
+                @test isdiag(T) == isdiag(M)
+            end
+        end
+
+        for (vr, vc) in (([1,2], [1,2,3,4]), ([1,2,3,4], [1,2]))
+            T = Toeplitz(vr, vc)
+            M = Matrix(T)
+            @testset for f in (istril, istriu)
+                @test all(k -> f(T,k) == f(M,k), -5:5)
+            end
+        end
+    end
 
     @testset "aliasing" begin
         v = [1,2,3]
@@ -484,6 +516,12 @@ end
     for v1i in v1
         @test minimum(abs.(v1i .- v2)) < sqrt(eps(Float64))
     end
+    for (C,M) in ((C1,M1), (C3,M3), (C5,M5))
+        λ, V = eigen(C)
+        @test C * V ≈ V * Diagonal(λ)
+        @test V'V ≈ LinearAlgebra.I
+        @test det(C) ≈ det(M)
+    end
 
     # Test for issue #47
     I = inv(C1)*C1
@@ -491,6 +529,9 @@ end
     e = rand(5)
     # I should be close to identity
     @test I*e ≈ I2*e ≈ e
+
+    D = Diagonal(axes(C1,2))
+    @test mul!(similar(C1), C1, D) ≈ C1 * D
 end
 
 @testset "TriangularToeplitz" begin
@@ -533,4 +574,64 @@ end
     T = SymmetricToeplitz(exp.(-0.5 .* range(0, stop=5, length=100)))
     @test cholesky(T).U ≈ cholesky(Matrix(T)).U
     @test cholesky(T).L ≈ cholesky(Matrix(T)).L
+end
+
+@testset "eigen" begin
+    sortby = x -> (real(x), imag(x))
+    @testset "Tridiagonal Toeplitz" begin
+        _sizes = (1, 2, 6, 10)
+        sizes = VERSION >= v"1.6" ? (0, _sizes...) : _sizes
+        @testset for n in sizes
+            @testset "Tridiagonal" begin
+                for (dl, d, du) in (
+                    (Fill(2, max(0, n-1)), Fill(-4, n), Fill(3, max(0,n-1))),
+                    (Fill(2+3im, max(0, n-1)), Fill(-4+4im, n), Fill(3im, max(0,n-1)))
+                    )
+                    T = Tridiagonal(dl, d, du)
+                    λT = eigvals(T)
+                    λTM = eigvals(Matrix(T))
+                    @test sort(λT, by=sortby) ≈ sort(λTM, by=sortby)
+                    λ, V = eigen(T)
+                    @test T * V ≈ V * Diagonal(λ)
+                end
+            end
+
+            @testset "SymTridiagonal/Symmetric" begin
+                dv = Fill(1, n)
+                ev = Fill(3, max(0,n-1))
+                for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                    evST = eigvals(ST)
+                    evSTM = eigvals(Matrix(ST))
+                    @test sort(evST, by=sortby) ≈ sort(evSTM, by=sortby)
+                    @test eltype(evST) <: Real
+                    λ, V = eigen(ST)
+                    @test V'V ≈ I
+                    @test V' * ST * V ≈ Diagonal(λ)
+                end
+                dv = Fill(-4+4im, n)
+                ev = Fill(2+3im, max(0,n-1))
+                for ST2 in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                    λST = eigvals(ST2)
+                    λSTM = eigvals(Matrix(ST2))
+                    @test sort(λST, by=sortby) ≈ sort(λSTM, by=sortby)
+                    λ, V = eigen(ST2)
+                    @test ST2 * V ≈ V * Diagonal(λ)
+                end
+            end
+
+            @testset "Hermitian Tridiagonal" begin
+                for (dv, ev) in ((Fill(2+0im, n), Fill(3-4im, max(0, n-1))),
+                                    (Fill(2, n), Fill(3, max(0, n-1))))
+                    HT = Hermitian(Tridiagonal(ev, dv, ev))
+                    λHT = eigvals(HT)
+                    λHTM = eigvals(Matrix(HT))
+                    @test sort(λHT, by=sortby) ≈ sort(λHTM, by=sortby)
+                    @test eltype(λHT) <: Real
+                    λ, V = eigen(HT)
+                    @test V'V ≈ I
+                    @test V' * HT * V ≈ Diagonal(λ)
+                end
+            end
+        end
+    end
 end

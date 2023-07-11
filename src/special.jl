@@ -1,50 +1,71 @@
 # special Toeplitz types that can be represented by a single vector
 # Symmetric, Circulant, LowerTriangular, UpperTriangular
+
+abstract type AbstractToeplitzSingleVector{T} <: AbstractToeplitz{T} end
+
+parent(A::AbstractToeplitzSingleVector) = A.v
+basetype(x) = basetype(typeof(x))
+
+function size(A::AbstractToeplitzSingleVector)
+    n = length(parent(A))
+    (n,n)
+end
+
+adjoint(A::AbstractToeplitzSingleVector) = transpose(conj(A))
+function zero!(A::AbstractToeplitzSingleVector)
+    fill!(parent(A), zero(eltype(A)))
+    return A
+end
+
+function lmul!(x::Number, A::AbstractToeplitzSingleVector)
+    lmul!(x,parent(A))
+    A
+end
+function rmul!(A::AbstractToeplitzSingleVector, x::Number)
+    rmul!(parent(A),x)
+    A
+end
+
+for fun in (:iszero,)
+    @eval $fun(A::AbstractToeplitzSingleVector) = $fun(parent(A))
+end
+
+AbstractToeplitz{T}(A::AbstractToeplitzSingleVector) where T = basetype(A){T}(A)
+
+(*)(scalar::Number, C::AbstractToeplitzSingleVector) = basetype(C)(scalar * parent(C))
+(*)(C::AbstractToeplitzSingleVector, scalar::Number) = basetype(C)(parent(C) * scalar)
+
+AbstractMatrix{T}(A::AbstractToeplitzSingleVector) where {T} = basetype(A){T}(AbstractVector{T}(A.v))
+
+for fun in (:zero, :conj, :copy, :-, :real, :imag)
+    @eval $fun(A::AbstractToeplitzSingleVector) = basetype(A)($fun(parent(A)))
+end
+
 for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTriangularToeplitz)
     @eval begin
-        struct $TYPE{T, V<:AbstractVector{T}} <: AbstractToeplitz{T}
+        struct $TYPE{T, V<:AbstractVector{T}} <: AbstractToeplitzSingleVector{T}
             v::V
-        end
-        $TYPE{T}(v::V) where {T,V<:AbstractVector{T}} = $TYPE{T,V}(v)
-        $TYPE{T}(v::AbstractVector) where T = $TYPE{T}(convert(AbstractVector{T},v))
-
-        AbstractToeplitz{T}(A::$TYPE) where T = $TYPE{T}(A)
-        $TYPE{T}(A::$TYPE) where T = $TYPE{T}(convert(AbstractVector{T},A.v))
-        convert(::Type{$TYPE{T}}, A::$TYPE) where {T} = $TYPE{T}(A)
-
-        size(A::$TYPE) = (length(A.v),length(A.v))
-
-        adjoint(A::$TYPE) = transpose(conj(A))
-        (*)(scalar::Number, C::$TYPE) = $TYPE(scalar * C.v)
-        (*)(C::$TYPE, scalar::Number) = $TYPE(C.v * scalar)
-        (==)(A::$TYPE,B::$TYPE) = A.v==B.v
-        function zero!(A::$TYPE)
-            if isconcrete(A)
-                fill!(A.v,zero(eltype(A)))
-            else
-                A.v=zero(A.v)
+            function $TYPE{T,V}(v::V) where {T,V<:AbstractVector{T}}
+                require_one_based_indexing(v)
+                new{T,V}(v)
             end
         end
+        function $TYPE{T}(v::AbstractVector) where T
+            vT = convert(AbstractVector{T},v)
+            $TYPE{T, typeof(vT)}(vT)
+        end
+        $TYPE(v::V) where {T,V<:AbstractVector{T}} = $TYPE{T,V}(v)
+
+        basetype(::Type{T}) where {T<:$TYPE} = $TYPE
+
+        (==)(A::$TYPE, B::$TYPE) = A.v == B.v
+
+        convert(::Type{$TYPE{T}}, A::$TYPE) where {T} = A isa $TYPE{T} ? A : $TYPE{T}(A)::$TYPE{T}
 
         function copyto!(A::$TYPE,B::$TYPE)
             copyto!(A.v,B.v)
             A
         end
-        similar(A::$TYPE, T::Type) = $TYPE{T}(similar(A.v, T))
-        function lmul!(x::Number, A::$TYPE)
-            lmul!(x,A.v)
-            A
-        end
-        function rmul!(A::$TYPE, x::Number)
-            rmul!(A.v,x)
-            A
-        end
-    end
-    for fun in (:zero, :conj, :copy, :-, :real, :imag)
-        @eval $fun(A::$TYPE) = $TYPE($fun(A.v))
-    end
-    for fun in (:iszero,)
-        @eval $fun(A::$TYPE) = $fun(A.v)
     end
     for op in (:+, :-)
         @eval $op(A::$TYPE,B::$TYPE) = $TYPE($op(A.v,B.v))
@@ -95,8 +116,12 @@ function getproperty(A::UpperTriangularToeplitz, s::Symbol)
     end
 end
 
-_circulate(v::AbstractVector) = vcat(v[1],v[end:-1:2])
-_firstnonzero(v::AbstractVector) = vcat(v[1],zero(view(v,2:lastindex(v))))
+_circulate(v::AbstractVector) = reverse(v, 2)
+function _firstnonzero(v::AbstractVector)
+    w = zero(v)
+    w[1] = v[1]
+    w
+end
 
 # transpose
 transpose(A::SymmetricToeplitz) = A
@@ -226,3 +251,6 @@ function _trisame!(A::TriangularToeplitz, k::Integer)
 end
 tril!(A::LowerTriangularToeplitz, k::Integer) = _trisame!(A,k)
 triu!(A::UpperTriangularToeplitz, k::Integer) = _trisame!(A,-k)
+
+isdiag(A::Union{Circulant, LowerTriangularToeplitz, SymmetricToeplitz}) = all(iszero, @view _vc(A)[2:end])
+isdiag(A::UpperTriangularToeplitz) = all(iszero, @view _vr(A)[2:end])
