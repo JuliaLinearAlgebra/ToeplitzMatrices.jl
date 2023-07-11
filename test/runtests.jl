@@ -2,13 +2,13 @@ using Pkg
 
 using ToeplitzMatrices, Test, LinearAlgebra, Aqua, Random
 import StatsBase
-
+using FillArrays
 using FFTW: fft
 
 @testset "code quality" begin
     Aqua.test_ambiguities(ToeplitzMatrices, recursive=false)
     # Aqua.test_all includes Base and Core in ambiguity testing
-    Aqua.test_all(ToeplitzMatrices, ambiguities=false)
+    Aqua.test_all(ToeplitzMatrices, ambiguities=false, piracy=false)
 end
 
 ns = 101
@@ -552,4 +552,64 @@ end
     T = SymmetricToeplitz(exp.(-0.5 .* range(0, stop=5, length=100)))
     @test cholesky(T).U ≈ cholesky(Matrix(T)).U
     @test cholesky(T).L ≈ cholesky(Matrix(T)).L
+end
+
+@testset "eigen" begin
+    sortby = x -> (real(x), imag(x))
+    @testset "Tridiagonal Toeplitz" begin
+        _sizes = (1, 2, 6, 10)
+        sizes = VERSION >= v"1.6" ? (0, _sizes...) : _sizes
+        @testset for n in sizes
+            @testset "Tridiagonal" begin
+                for (dl, d, du) in (
+                    (Fill(2, max(0, n-1)), Fill(-4, n), Fill(3, max(0,n-1))),
+                    (Fill(2+3im, max(0, n-1)), Fill(-4+4im, n), Fill(3im, max(0,n-1)))
+                    )
+                    T = Tridiagonal(dl, d, du)
+                    λT = eigvals(T)
+                    λTM = eigvals(Matrix(T))
+                    @test sort(λT, by=sortby) ≈ sort(λTM, by=sortby)
+                    λ, V = eigen(T)
+                    @test T * V ≈ V * Diagonal(λ)
+                end
+            end
+
+            @testset "SymTridiagonal/Symmetric" begin
+                dv = Fill(1, n)
+                ev = Fill(3, max(0,n-1))
+                for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                    evST = eigvals(ST)
+                    evSTM = eigvals(Matrix(ST))
+                    @test sort(evST, by=sortby) ≈ sort(evSTM, by=sortby)
+                    @test eltype(evST) <: Real
+                    λ, V = eigen(ST)
+                    @test V'V ≈ I
+                    @test V' * ST * V ≈ Diagonal(λ)
+                end
+                dv = Fill(-4+4im, n)
+                ev = Fill(2+3im, max(0,n-1))
+                for ST2 in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                    λST = eigvals(ST2)
+                    λSTM = eigvals(Matrix(ST2))
+                    @test sort(λST, by=sortby) ≈ sort(λSTM, by=sortby)
+                    λ, V = eigen(ST2)
+                    @test ST2 * V ≈ V * Diagonal(λ)
+                end
+            end
+
+            @testset "Hermitian Tridiagonal" begin
+                for (dv, ev) in ((Fill(2+0im, n), Fill(3-4im, max(0, n-1))),
+                                    (Fill(2, n), Fill(3, max(0, n-1))))
+                    HT = Hermitian(Tridiagonal(ev, dv, ev))
+                    λHT = eigvals(HT)
+                    λHTM = eigvals(Matrix(HT))
+                    @test sort(λHT, by=sortby) ≈ sort(λHTM, by=sortby)
+                    @test eltype(λHT) <: Real
+                    λ, V = eigen(HT)
+                    @test V'V ≈ I
+                    @test V' * HT * V ≈ Diagonal(λ)
+                end
+            end
+        end
+    end
 end

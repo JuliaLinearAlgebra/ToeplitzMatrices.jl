@@ -11,8 +11,14 @@ import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, eigvecs, eigen, Ei
 import LinearAlgebra: cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu
 import LinearAlgebra: istriu, istril, isdiag
 import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric, Adjoint
+import LinearAlgebra: eigvals, eigvecs, eigen
 import AbstractFFTs: Plan, plan_fft!
 import StatsBase
+
+using FillArrays
+using LinearAlgebra
+const AbstractFillVector{T} = FillArrays.AbstractFill{T,1}
+const HermOrSym{T,M} = Union{Hermitian{T,M}, Symmetric{T,M}}
 
 export AbstractToeplitz, Toeplitz, SymmetricToeplitz, Circulant, LowerTriangularToeplitz, UpperTriangularToeplitz, TriangularToeplitz, Hankel
 export durbin, trench, levinson
@@ -72,6 +78,7 @@ include("toeplitz.jl")
 include("special.jl")
 include("hankel.jl")
 include("linearalgebra.jl")
+include("eigen.jl")
 
 """
     maybereal(::Type{T}, x)
