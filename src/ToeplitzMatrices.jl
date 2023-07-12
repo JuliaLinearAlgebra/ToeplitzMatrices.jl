@@ -11,7 +11,9 @@ import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, eigvecs, eigen, Ei
 import LinearAlgebra: cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu
 import LinearAlgebra: istriu, istril, isdiag
 import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric, Adjoint
+import LinearAlgebra: issymmetric, ishermitian
 import LinearAlgebra: eigvals, eigvecs, eigen
+
 import AbstractFFTs: Plan, plan_fft!
 import StatsBase
 
