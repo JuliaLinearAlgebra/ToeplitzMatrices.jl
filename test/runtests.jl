@@ -532,6 +532,33 @@ end
 
     D = Diagonal(axes(C1,2))
     @test mul!(similar(C1), C1, D) ≈ C1 * D
+
+    @testset "issymmetric/ishermitian" begin
+        C = Circulant([1,2,3,0,3,2])
+        @test issymmetric(C)
+        @test ishermitian(C)
+        C = Circulant([1,2])
+        @test issymmetric(C)
+        @test ishermitian(C)
+        C = Circulant([1,2,3])
+        @test !issymmetric(C)
+        @test !ishermitian(C)
+
+        C = Circulant([1,im,2-3im,0,2+3im,-im])
+        @test ishermitian(C)
+        @test !issymmetric(C)
+        C = Circulant([1,im])
+        @test !ishermitian(C)
+        @test issymmetric(C)
+
+        C = Circulant([2])
+        @test issymmetric(C)
+        @test ishermitian(C)
+
+        C = Circulant([NaN])
+        @test !issymmetric(C)
+        @test !ishermitian(C)
+    end
 end
 
 @testset "TriangularToeplitz" begin
