@@ -28,6 +28,7 @@ jobs:
           - '1.0'
           - '1.6'
           - '1'
+          - '~1.10.0-0'
           - 'nightly'
         os:
           - ubuntu-latest
