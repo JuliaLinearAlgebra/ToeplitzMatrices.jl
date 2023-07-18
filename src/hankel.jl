@@ -5,7 +5,8 @@ struct Hankel{T, V<:AbstractVector{T}, S<:DimsInteger} <: AbstractMatrix{T}
 
     function Hankel{T,V,S}(v::V, (m,n)::DimsInteger) where {T, V<:AbstractVector{T}, S<:DimsInteger}
         (m < 0 || n < 0) && throw(ArgumentError("negative size: $s"))
-        length(v) ≥ m+n-1 || throw(ArgumentError("inconsistency between size and number of anti-diagonals"))
+        require_one_based_indexing(v)
+        length(v) ≥ m+n-1 || throw(ArgumentError("inconsistency between size and number of anti-diagonals"))
         new{T,V,S}(v, (m,n))
     end
 end
@@ -72,8 +73,7 @@ Base.@propagate_inbounds function getindex(A::Hankel, i::Integer, j::Integer)
     @boundscheck checkbounds(A, i, j)
     return A.v[i+j-1]
 end
-similar(A::Hankel, T::Type = eltype(A), dims::DimsInteger{2} = size(A)) = Hankel{T}(similar(A.v, T, dims[1]+dims[2]-true), dims)
-similar(A::Hankel, T::Type = eltype(A), dims::Tuple{Int64,Int64} = size(A)) = Hankel{T}(similar(A.v, T, dims[1]+dims[2]-true), dims) # for ambiguity with `similar(a::AbstractArray, ::Type{T}, dims::Tuple{Vararg{Int64, N}}) where {T, N}` in Base
+AbstractMatrix{T}(A::Hankel) where {T} = Hankel{T}(AbstractVector{T}(A.v), A.size)
 for fun in (:zero, :copy)
     @eval $fun(A::Hankel) = Hankel($fun(A.v), size(A))
 end
