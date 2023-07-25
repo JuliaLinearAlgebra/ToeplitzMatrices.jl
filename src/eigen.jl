@@ -79,13 +79,55 @@ function _eigvecs_toeplitz(T)
     c1 = T[1,2]  # superdiagonal
     prefactors = _eigvec_prefactors(T, cm1, c1)
     for q in axes(M,2)
-        qrev = n+1-q # match the default eigenvalue sorting
         for j in 1:cld(n,2)
-            M[j, q] = prefactors[j] * sinpi(j*qrev/(n+1))
+            jphase = 2isodd(j) - 1
+            M[j, q] = prefactors[j] * jphase * sinpi(j * q/(n+1))
         end
         phase = iseven(n+q) ? 1 : -1
         for j in cld(n,2)+1:n
             M[j, q] = phase * prefactors[2j-n] * M[n+1-j,q]
+        end
+    end
+    _normalizecols!(M, T)
+    return M
+end
+
+function _eigvecs_toeplitz(T::Union{SymTridiagonal, Symmetric{<:Any,<:Tridiagonal}})
+    require_one_based_indexing(T)
+    n = checksquare(T)
+    M = Matrix{_eigvec_eltype(T)}(undef, n, n)
+    n == 0 && return M
+    n == 1 && return fill!(M, oneunit(eltype(M)))
+    for q in 1:cld(n,2)
+        for j in 1:q
+            jphase = 2isodd(j) - 1
+            M[j, q] = jphase * sinpi(j * q/(n+1))
+        end
+    end
+    for q in 1:cld(n,2)
+        for j in q+1:cld(n,2)
+            qphase = 2isodd(q) - 1
+            jphase = 2isodd(j) - 1
+            phase = qphase * jphase
+            M[j, q] = phase * M[q, j]
+        end
+    end
+    for q in 1:cld(n,2)
+        phase = iseven(n+q) ? 1 : -1
+        for j in cld(n,2)+1:n
+            M[j, q] = phase * M[n+1-j,q]
+        end
+    end
+    for q in cld(n,2)+1:n
+        for j in 1:cld(n,2)
+            qphase = 2isodd(q) - 1
+            jphase = 2isodd(j) - 1
+            phase = qphase * jphase
+            M[j, q] = phase * M[q, j]
+        end
+        phase = iseven(n+q) ? 1 : -1
+        for j in cld(n,2)+1:n
+            M[j, q] = phase * M[n+1-j,q]
         end
     end
     _normalizecols!(M, T)
