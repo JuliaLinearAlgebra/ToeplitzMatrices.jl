@@ -44,6 +44,10 @@ function _eigvals_toeplitz(T)
     return vals
 end
 
+_eigvec_eltype(A::Union{SymTridiagonal,
+                    Symmetric{<:Any,<:Tridiagonal}}) = float(eltype(A))
+_eigvec_eltype(A) = complex(float(eltype(A)))
+
 _eigvec_prefactor(A, cm1, c1, m) = sqrt(complex(cm1/c1))^m
 _eigvec_prefactor(A::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, cm1, c1, m) = oneunit(_eigvec_eltype(A))
 
@@ -53,9 +57,6 @@ function _eigvec_prefactors(A, cm1, c1)
 end
 _eigvec_prefactors(A::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, cm1, c1) =
     Fill(_eigvec_prefactor(A, cm1, c1, 1), size(A,1))
-
-_eigvec_eltype(A::SymTridiagonal) = float(eltype(A))
-_eigvec_eltype(A) = complex(float(eltype(A)))
 
 @static if !isdefined(Base, :eachcol)
     eachcol(A) = (view(A,:,i) for i in axes(A,2))
