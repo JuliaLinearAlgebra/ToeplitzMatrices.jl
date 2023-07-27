@@ -584,7 +584,7 @@ end
 @testset "eigen" begin
     sortby = x -> (real(x), imag(x))
     @testset "Tridiagonal Toeplitz" begin
-        _sizes = (1, 2, 6, 10)
+        _sizes = (1, 2, 5, 6, 10, 15)
         sizes = VERSION >= v"1.6" ? (0, _sizes...) : _sizes
         @testset for n in sizes
             @testset "Tridiagonal" begin
