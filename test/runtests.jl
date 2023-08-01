@@ -599,6 +599,13 @@ end
                         @test sort(λT, by=sortby) ≈ sort(λTM, by=sortby)
                         λ, V = eigen(T)
                         @test T * V ≈ V * Diagonal(λ)
+                        λT2 = ToeplitzMatrices._eigvals(T)
+                        @test all(x -> any(y -> y ≈ x, λTM), λT2)
+                        V2 = ToeplitzMatrices._eigvecs(T)
+                        for v in eachcol(V2)
+                            w = T * v
+                            @test any(λ -> w ≈ λ * v, λT2)
+                        end
                     end
                 end
             end
@@ -646,6 +653,13 @@ end
                         λ, V = eigen(HT)
                         @test V'V ≈ I
                         @test V' * HT * V ≈ Diagonal(λ)
+                        λHT2 = ToeplitzMatrices._eigvals(HT)
+                        @test all(x -> any(y -> y ≈ x, λHTM), λHT2)
+                        V2 = ToeplitzMatrices._eigvecs(HT)
+                        for v in eachcol(V2)
+                            w = HT * v
+                            @test any(λ -> w ≈ λ * v, λHT2)
+                        end
                     end
                 end
             end
