@@ -1,5 +1,4 @@
 module ToeplitzMatrices
-# import StatsBase: levinson!, levinson
 import DSP: conv
 
 import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds, real, imag, isfinite, DimsInteger, iszero
@@ -15,7 +14,6 @@ import LinearAlgebra: issymmetric, ishermitian
 import LinearAlgebra: eigvals, eigvecs, eigen
 
 import AbstractFFTs: Plan, plan_fft!
-import StatsBase
 
 using FillArrays
 using LinearAlgebra
@@ -91,5 +89,9 @@ maybereal(::Type, x) = x
 maybereal(::Type{<:Real}, x) = real(x)
 
 include("directLinearSolvers.jl")
+
+if !isdefined(Base, :get_extension)
+    include("../ext/ToeplitzMatricesStatsBaseExt.jl")
+end
 
 end #module
