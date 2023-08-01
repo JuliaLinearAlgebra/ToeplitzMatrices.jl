@@ -586,18 +586,20 @@ end
     @testset "Tridiagonal Toeplitz" begin
         sizes = (1, 2, 5, 6, 10, 15)
         @testset for n in sizes
-            @testset "Tridiagonal" begin
-                for (dl, d, du) in (
-                    (Fill(2, max(0, n-1)), Fill(-4, n), Fill(3, max(0,n-1))),
-                    (Fill(2, max(0, n-1)), Fill(-4, n), Fill(-3, max(0,n-1))),
-                    (Fill(2+3im, max(0, n-1)), Fill(-4+4im, n), Fill(3im, max(0,n-1)))
-                    )
-                    T = Tridiagonal(dl, d, du)
-                    λT = eigvals(T)
-                    λTM = eigvals(Matrix(T))
-                    @test sort(λT, by=sortby) ≈ sort(λTM, by=sortby)
-                    λ, V = eigen(T)
-                    @test T * V ≈ V * Diagonal(λ)
+            if VERSION >= v"1.9"
+                @testset "Tridiagonal" begin
+                    for (dl, d, du) in (
+                        (Fill(2, max(0, n-1)), Fill(-4, n), Fill(3, max(0,n-1))),
+                        (Fill(2, max(0, n-1)), Fill(-4, n), Fill(-3, max(0,n-1))),
+                        (Fill(2+3im, max(0, n-1)), Fill(-4+4im, n), Fill(3im, max(0,n-1)))
+                        )
+                        T = Tridiagonal(dl, d, du)
+                        λT = eigvals(T)
+                        λTM = eigvals(Matrix(T))
+                        @test sort(λT, by=sortby) ≈ sort(λTM, by=sortby)
+                        λ, V = eigen(T)
+                        @test T * V ≈ V * Diagonal(λ)
+                    end
                 end
             end
 
@@ -628,21 +630,23 @@ end
                 end
             end
 
-            @testset "Hermitian Tridiagonal" begin
-                _dvR = Fill(2, n)
-                _evR = Fill(3, max(0, n-1))
-                _dvc = complex(_dvR)
-                _evc = Fill(3-4im, max(0, n-1))
-                for (dv, ev) in ((_dvc, _evc), (_dvc, conj(_evc)),
-                                    (_dvR, _evR), (_dvR, -_evR))
-                    HT = Hermitian(Tridiagonal(ev, dv, ev))
-                    λHT = eigvals(HT)
-                    λHTM = eigvals(Matrix(HT))
-                    @test sort(λHT, by=sortby) ≈ sort(λHTM, by=sortby)
-                    @test eltype(λHT) <: Real
-                    λ, V = eigen(HT)
-                    @test V'V ≈ I
-                    @test V' * HT * V ≈ Diagonal(λ)
+            if VERSION >= v"1.9"
+                @testset "Hermitian Tridiagonal" begin
+                    _dvR = Fill(2, n)
+                    _evR = Fill(3, max(0, n-1))
+                    _dvc = complex(_dvR)
+                    _evc = Fill(3-4im, max(0, n-1))
+                    for (dv, ev) in ((_dvc, _evc), (_dvc, conj(_evc)),
+                                        (_dvR, _evR), (_dvR, -_evR))
+                        HT = Hermitian(Tridiagonal(ev, dv, ev))
+                        λHT = eigvals(HT)
+                        λHTM = eigvals(Matrix(HT))
+                        @test sort(λHT, by=sortby) ≈ sort(λHTM, by=sortby)
+                        @test eltype(λHT) <: Real
+                        λ, V = eigen(HT)
+                        @test V'V ≈ I
+                        @test V' * HT * V ≈ Diagonal(λ)
+                    end
                 end
             end
         end
