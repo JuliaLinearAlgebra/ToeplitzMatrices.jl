@@ -584,12 +584,12 @@ end
 @testset "eigen" begin
     sortby = x -> (real(x), imag(x))
     @testset "Tridiagonal Toeplitz" begin
-        _sizes = (1, 2, 5, 6, 10, 15)
-        sizes = VERSION >= v"1.6" ? (0, _sizes...) : _sizes
+        sizes = (1, 2, 5, 6, 10, 15)
         @testset for n in sizes
             @testset "Tridiagonal" begin
                 for (dl, d, du) in (
                     (Fill(2, max(0, n-1)), Fill(-4, n), Fill(3, max(0,n-1))),
+                    (Fill(2, max(0, n-1)), Fill(-4, n), Fill(-3, max(0,n-1))),
                     (Fill(2+3im, max(0, n-1)), Fill(-4+4im, n), Fill(3im, max(0,n-1)))
                     )
                     T = Tridiagonal(dl, d, du)
@@ -603,30 +603,38 @@ end
 
             @testset "SymTridiagonal/Symmetric" begin
                 dv = Fill(1, n)
-                ev = Fill(3, max(0,n-1))
-                for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
-                    evST = eigvals(ST)
-                    evSTM = eigvals(Matrix(ST))
-                    @test sort(evST, by=sortby) ≈ sort(evSTM, by=sortby)
-                    @test eltype(evST) <: Real
-                    λ, V = eigen(ST)
-                    @test V'V ≈ I
-                    @test V' * ST * V ≈ Diagonal(λ)
+                _ev = Fill(3, max(0,n-1))
+                for ev in (_ev, -_ev)
+                    for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                        evST = eigvals(ST)
+                        evSTM = eigvals(Matrix(ST))
+                        @test sort(evST, by=sortby) ≈ sort(evSTM, by=sortby)
+                        @test eltype(evST) <: Real
+                        λ, V = eigen(ST)
+                        @test V'V ≈ I
+                        @test V' * ST * V ≈ Diagonal(λ)
+                    end
                 end
-                dv = Fill(-4+4im, n)
-                ev = Fill(2+3im, max(0,n-1))
-                for ST2 in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
-                    λST = eigvals(ST2)
-                    λSTM = eigvals(Matrix(ST2))
-                    @test sort(λST, by=sortby) ≈ sort(λSTM, by=sortby)
-                    λ, V = eigen(ST2)
-                    @test ST2 * V ≈ V * Diagonal(λ)
+                _dv = Fill(-4+4im, n)
+                _ev = Fill(2+3im, max(0,n-1))
+                for dv in (_dv, -_dv, conj(_dv)), ev in (_ev, -_ev, conj(_ev))
+                    for ST2 in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                        λST = eigvals(ST2)
+                        λSTM = eigvals(Matrix(ST2))
+                        @test sort(λST, by=sortby) ≈ sort(λSTM, by=sortby)
+                        λ, V = eigen(ST2)
+                        @test ST2 * V ≈ V * Diagonal(λ)
+                    end
                 end
             end
 
             @testset "Hermitian Tridiagonal" begin
-                for (dv, ev) in ((Fill(2+0im, n), Fill(3-4im, max(0, n-1))),
-                                    (Fill(2, n), Fill(3, max(0, n-1))))
+                _dvR = Fill(2, n)
+                _evR = Fill(3, max(0, n-1))
+                _dvc = complex(_dvR)
+                _evc = Fill(3-4im, max(0, n-1))
+                for (dv, ev) in ((_dvc, _evc), (_dvc, conj(_evc)),
+                                    (_dvR, _evR), (_dvR, -_evR))
                     HT = Hermitian(Tridiagonal(ev, dv, ev))
                     λHT = eigvals(HT)
                     λHTM = eigvals(Matrix(HT))

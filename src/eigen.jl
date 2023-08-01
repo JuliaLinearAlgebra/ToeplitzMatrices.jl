@@ -6,9 +6,10 @@
 # complex for that package, so they were shifted here
 # See https://github.com/JuliaArrays/FillArrays.jl/pull/256
 
-for MT in (:(Tridiagonal{<:Union{Real, Complex}, <:AbstractFillVector}),
-            :(SymTridiagonal{<:Union{Real, Complex}, <:AbstractFillVector}),
-            :(HermOrSym{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real, Complex}})
+# The methods aren't defined for general Tridiagonal or Hermitian, as the
+# ordering of eigenvectors needs fixing
+for MT in (:(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
+            :(Symmetric{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}})
             )
     @eval function eigvals(A::$MT)
         n = size(A,1)
@@ -19,6 +20,17 @@ for MT in (:(Tridiagonal{<:Union{Real, Complex}, <:AbstractFillVector}),
         end
     end
 end
+
+for MT in (:(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
+            :(Symmetric{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}}),
+            )
+
+    @eval begin
+        eigvecs(A::$MT) = _eigvecs(A)
+        eigen(A::$MT) = _eigen(A)
+    end
+end
+
 
 ___eigvals_toeplitz(a, sqrtbc, n) = [a + 2 * sqrtbc * cospi(q/(n+1)) for q in n:-1:1]
 
@@ -150,16 +162,5 @@ function _eigen(A)
         eigen(Matrix(A))
     else
         Eigen(eigvals(A), eigvecs(A))
-    end
-end
-
-for MT in (:(Tridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
-            :(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
-            :(HermOrSym{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}}),
-            )
-
-    @eval begin
-        eigvecs(A::$MT) = _eigvecs(A)
-        eigen(A::$MT) = _eigen(A)
     end
 end
