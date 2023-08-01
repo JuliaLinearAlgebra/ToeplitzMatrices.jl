@@ -6,31 +6,43 @@
 # complex for that package, so they were shifted here
 # See https://github.com/JuliaArrays/FillArrays.jl/pull/256
 
-for MT in (:(Tridiagonal{<:Union{Real, Complex}, <:AbstractFillVector}),
-            :(SymTridiagonal{<:Union{Real, Complex}, <:AbstractFillVector}),
-            :(HermOrSym{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real, Complex}})
+# The methods aren't defined for general Tridiagonal or Hermitian, as the
+# ordering of eigenvectors needs fixing
+for MT in (:(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
+            :(Symmetric{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}})
             )
     @eval function eigvals(A::$MT)
         n = size(A,1)
         if n <= 2 # repeated roots possible
             eigvals(Matrix(A))
         else
-            _eigvals_toeplitz(A)
+            _eigvals(A)
         end
     end
 end
 
-___eigvals_toeplitz(a, sqrtbc, n) = [a + 2 * sqrtbc * cospi(q/(n+1)) for q in n:-1:1]
+for MT in (:(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
+            :(Symmetric{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}}),
+            )
 
-__eigvals_toeplitz(::AbstractMatrix, a, b, c, n) =
-    ___eigvals_toeplitz(a, √(b*c), n)
-__eigvals_toeplitz(::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, a, b, c, n) =
-    ___eigvals_toeplitz(a, b, n)
-__eigvals_toeplitz(::Hermitian{<:Any, <:Tridiagonal}, a, b, c, n) =
-    ___eigvals_toeplitz(real(a), abs(b), n)
+    @eval begin
+        eigvecs(A::$MT) = _eigvecs(A)
+        eigen(A::$MT) = _eigen(A)
+    end
+end
+
+
+___eigvals(a, sqrtbc, n) = [a + 2 * sqrtbc * cospi(q/(n+1)) for q in n:-1:1]
+
+__eigvals(::AbstractMatrix, a, b, c, n) =
+    ___eigvals(a, √(complex(b*c)), n)
+__eigvals(::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, a, b, c, n) =
+    ___eigvals(a, b, n)
+__eigvals(::Hermitian{<:Any, <:Tridiagonal}, a, b, c, n) =
+    ___eigvals(real(a), abs(b), n)
 
 # triangular Toeplitz
-function _eigvals_toeplitz(T)
+function _eigvals(T)
     require_one_based_indexing(T)
     n = checksquare(T)
     # extra care to handle 0x0 and 1x1 matrices
@@ -40,7 +52,7 @@ function _eigvals_toeplitz(T)
     b = get(T, (2,1), zero(eltype(T)))
     # superdiagonal
     c = get(T, (1,2), zero(eltype(T)))
-    vals = __eigvals_toeplitz(T, a, b, c, n)
+    vals = __eigvals(T, a, b, c, n)
     return vals
 end
 
@@ -150,16 +162,5 @@ function _eigen(A)
         eigen(Matrix(A))
     else
         Eigen(eigvals(A), eigvecs(A))
-    end
-end
-
-for MT in (:(Tridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
-            :(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
-            :(HermOrSym{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}}),
-            )
-
-    @eval begin
-        eigvecs(A::$MT) = _eigvecs(A)
-        eigen(A::$MT) = _eigen(A)
     end
 end
