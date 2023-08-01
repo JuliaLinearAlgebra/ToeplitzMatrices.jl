@@ -611,9 +611,9 @@ end
             end
 
             @testset "SymTridiagonal/Symmetric" begin
-                dv = Fill(1, n)
+                _dv = Fill(1, n)
                 _ev = Fill(3, max(0,n-1))
-                for ev in (_ev, -_ev)
+                for dv in (_dv, -_dv), ev in (_ev, -_ev)
                     for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
                         evST = eigvals(ST)
                         evSTM = eigvals(Matrix(ST))
