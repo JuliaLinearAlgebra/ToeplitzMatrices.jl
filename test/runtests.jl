@@ -582,7 +582,6 @@ end
 end
 
 @testset "eigen" begin
-    sortby = x -> (real(x), imag(x))
     @testset "Tridiagonal Toeplitz" begin
         sizes = (1, 2, 5, 6, 10, 15)
         @testset for n in sizes
@@ -596,9 +595,12 @@ end
                         T = Tridiagonal(dl, d, du)
                         λT = eigvals(T)
                         λTM = eigvals(Matrix(T))
-                        @test sort(λT, by=sortby) ≈ sort(λTM, by=sortby)
+                        @test all(x -> any(y -> y ≈ x, λTM), λT)
                         λ, V = eigen(T)
                         @test T * V ≈ V * Diagonal(λ)
+
+                        # Test that internal methods are correct,
+                        # aside from the ordering of eigenvectors
                         λT2 = ToeplitzMatrices._eigvals(T)
                         @test all(x -> any(y -> y ≈ x, λTM), λT2)
                         V2 = ToeplitzMatrices._eigvecs(T)
@@ -615,10 +617,10 @@ end
                 _ev = Fill(3, max(0,n-1))
                 for dv in (_dv, -_dv), ev in (_ev, -_ev)
                     for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
-                        evST = eigvals(ST)
-                        evSTM = eigvals(Matrix(ST))
-                        @test sort(evST, by=sortby) ≈ sort(evSTM, by=sortby)
-                        @test eltype(evST) <: Real
+                        λST = eigvals(ST)
+                        λSTM = eigvals(Matrix(ST))
+                        @test all(x -> any(y -> y ≈ x, λSTM), λST)
+                        @test eltype(λST) <: Real
                         λ, V = eigen(ST)
                         @test V'V ≈ I
                         @test V' * ST * V ≈ Diagonal(λ)
@@ -630,7 +632,7 @@ end
                     for ST2 in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
                         λST = eigvals(ST2)
                         λSTM = eigvals(Matrix(ST2))
-                        @test sort(λST, by=sortby) ≈ sort(λSTM, by=sortby)
+                        @test all(x -> any(y -> y ≈ x, λSTM), λST)
                         λ, V = eigen(ST2)
                         @test ST2 * V ≈ V * Diagonal(λ)
                     end
@@ -648,11 +650,14 @@ end
                         HT = Hermitian(Tridiagonal(ev, dv, ev))
                         λHT = eigvals(HT)
                         λHTM = eigvals(Matrix(HT))
-                        @test sort(λHT, by=sortby) ≈ sort(λHTM, by=sortby)
+                        @test all(x -> any(y -> y ≈ x, λHTM), λHT)
                         @test eltype(λHT) <: Real
                         λ, V = eigen(HT)
                         @test V'V ≈ I
                         @test V' * HT * V ≈ Diagonal(λ)
+
+                        # Test that internal methods are correct,
+                        # aside from the ordering of eigenvectors
                         λHT2 = ToeplitzMatrices._eigvals(HT)
                         @test all(x -> any(y -> y ≈ x, λHTM), λHT2)
                         V2 = ToeplitzMatrices._eigvecs(HT)
