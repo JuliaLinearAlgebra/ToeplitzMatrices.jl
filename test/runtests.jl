@@ -587,11 +587,19 @@ end
         @testset for n in sizes
             if VERSION >= v"1.9"
                 @testset "Tridiagonal" begin
+                    evm1r = Fill(2, max(0, n-1))
+                    ev1r = Fill(3, max(0,n-1))
+                    dvr = Fill(-4, n)
+                    evm1c = Fill(2+3im, max(0, n-1))
+                    dvc = Fill(-4+4im, n)
+                    ev1c = Fill(3im, max(0,n-1))
+
                     for (dl, d, du) in (
-                        (Fill(2, max(0, n-1)), Fill(-4, n), Fill(3, max(0,n-1))),
-                        (Fill(2, max(0, n-1)), Fill(-4, n), Fill(-3, max(0,n-1))),
-                        (Fill(2+3im, max(0, n-1)), Fill(-4+4im, n), Fill(3im, max(0,n-1)))
-                        )
+                            (evm1r, dvr, ev1r),
+                            (evm1r, dvr, -ev1r),
+                            (evm1c, dvc, ev1c),
+                            )
+
                         T = Tridiagonal(dl, d, du)
                         λT = eigvals(T)
                         λTM = eigvals(Matrix(T))
