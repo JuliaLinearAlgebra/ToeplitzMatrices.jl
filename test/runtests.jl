@@ -2,13 +2,16 @@ using Pkg
 
 using ToeplitzMatrices, Test, LinearAlgebra, Aqua, FillArrays, Random
 import StatsBase
-
+using FillArrays
 using FFTW: fft
 
 @testset "code quality" begin
     Aqua.test_ambiguities(ToeplitzMatrices, recursive=false)
     # Aqua.test_all includes Base and Core in ambiguity testing
-    Aqua.test_all(ToeplitzMatrices, ambiguities=false)
+    Aqua.test_all(ToeplitzMatrices, ambiguities=false, piracy=false,
+        # only test formatting on VERSION >= v1.7
+        # https://github.com/JuliaTesting/Aqua.jl/issues/105#issuecomment-1551405866
+        project_toml_formatting = VERSION >= v"1.7")
 end
 
 ns = 101
@@ -526,6 +529,33 @@ end
 
     D = Diagonal(axes(C1,2))
     @test mul!(similar(C1), C1, D) ≈ C1 * D
+
+    @testset "issymmetric/ishermitian" begin
+        C = Circulant([1,2,3,0,3,2])
+        @test issymmetric(C)
+        @test ishermitian(C)
+        C = Circulant([1,2])
+        @test issymmetric(C)
+        @test ishermitian(C)
+        C = Circulant([1,2,3])
+        @test !issymmetric(C)
+        @test !ishermitian(C)
+
+        C = Circulant([1,im,2-3im,0,2+3im,-im])
+        @test ishermitian(C)
+        @test !issymmetric(C)
+        C = Circulant([1,im])
+        @test !ishermitian(C)
+        @test issymmetric(C)
+
+        C = Circulant([2])
+        @test issymmetric(C)
+        @test ishermitian(C)
+
+        C = Circulant([NaN])
+        @test !issymmetric(C)
+        @test !ishermitian(C)
+    end
 end
 
 @testset "TriangularToeplitz" begin
@@ -568,4 +598,103 @@ end
     T = SymmetricToeplitz(exp.(-0.5 .* range(0, stop=5, length=100)))
     @test cholesky(T).U ≈ cholesky(Matrix(T)).U
     @test cholesky(T).L ≈ cholesky(Matrix(T)).L
+end
+
+@testset "eigen" begin
+    @testset "Tridiagonal Toeplitz" begin
+        sizes = (1, 2, 5, 6, 10, 15)
+        @testset for n in sizes
+            if VERSION >= v"1.9"
+                @testset "Tridiagonal" begin
+                    evm1r = Fill(2, max(0, n-1))
+                    ev1r = Fill(3, max(0,n-1))
+                    dvr = Fill(-4, n)
+                    evm1c = Fill(2+3im, max(0, n-1))
+                    dvc = Fill(-4+4im, n)
+                    ev1c = Fill(3im, max(0,n-1))
+
+                    for (dl, d, du) in (
+                            (evm1r, dvr, ev1r),
+                            (evm1r, dvr, -ev1r),
+                            (evm1c, dvc, ev1c),
+                            )
+
+                        T = Tridiagonal(dl, d, du)
+                        λT = eigvals(T)
+                        λTM = eigvals(Matrix(T))
+                        @test all(x -> any(y -> y ≈ x, λTM), λT)
+                        λ, V = eigen(T)
+                        @test T * V ≈ V * Diagonal(λ)
+
+                        # Test that internal methods are correct,
+                        # aside from the ordering of eigenvectors
+                        λT2 = ToeplitzMatrices._eigvals(T)
+                        @test all(x -> any(y -> y ≈ x, λTM), λT2)
+                        V2 = ToeplitzMatrices._eigvecs(T)
+                        for v in eachcol(V2)
+                            w = T * v
+                            @test any(λ -> w ≈ λ * v, λT2)
+                        end
+                    end
+                end
+            end
+
+            @testset "SymTridiagonal/Symmetric" begin
+                _dv = Fill(1, n)
+                _ev = Fill(3, max(0,n-1))
+                for dv in (_dv, -_dv), ev in (_ev, -_ev)
+                    for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                        λST = eigvals(ST)
+                        λSTM = eigvals(Matrix(ST))
+                        @test all(x -> any(y -> y ≈ x, λSTM), λST)
+                        @test eltype(λST) <: Real
+                        λ, V = eigen(ST)
+                        @test V'V ≈ I
+                        @test V' * ST * V ≈ Diagonal(λ)
+                    end
+                end
+                _dv = Fill(-4+4im, n)
+                _ev = Fill(2+3im, max(0,n-1))
+                for dv in (_dv, -_dv, conj(_dv)), ev in (_ev, -_ev, conj(_ev))
+                    for ST2 in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                        λST = eigvals(ST2)
+                        λSTM = eigvals(Matrix(ST2))
+                        @test all(x -> any(y -> y ≈ x, λSTM), λST)
+                        λ, V = eigen(ST2)
+                        @test ST2 * V ≈ V * Diagonal(λ)
+                    end
+                end
+            end
+
+            if VERSION >= v"1.9"
+                @testset "Hermitian Tridiagonal" begin
+                    _dvR = Fill(2, n)
+                    _evR = Fill(3, max(0, n-1))
+                    _dvc = complex(_dvR)
+                    _evc = Fill(3-4im, max(0, n-1))
+                    for (dv, ev) in ((_dvc, _evc), (_dvc, conj(_evc)),
+                                        (_dvR, _evR), (_dvR, -_evR))
+                        HT = Hermitian(Tridiagonal(ev, dv, ev))
+                        λHT = eigvals(HT)
+                        λHTM = eigvals(Matrix(HT))
+                        @test all(x -> any(y -> y ≈ x, λHTM), λHT)
+                        @test eltype(λHT) <: Real
+                        λ, V = eigen(HT)
+                        @test V'V ≈ I
+                        @test V' * HT * V ≈ Diagonal(λ)
+
+                        # Test that internal methods are correct,
+                        # aside from the ordering of eigenvectors
+                        λHT2 = ToeplitzMatrices._eigvals(HT)
+                        @test all(x -> any(y -> y ≈ x, λHTM), λHT2)
+                        V2 = ToeplitzMatrices._eigvecs(HT)
+                        for v in eachcol(V2)
+                            w = HT * v
+                            @test any(λ -> w ≈ λ * v, λHT2)
+                        end
+                    end
+                end
+            end
+        end
+    end
 end

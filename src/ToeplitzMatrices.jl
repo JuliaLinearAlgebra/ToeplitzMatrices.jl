@@ -1,5 +1,4 @@
 module ToeplitzMatrices
-# import StatsBase: levinson!, levinson
 import DSP: conv
 
 import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds, real, imag, isfinite, DimsInteger, iszero
@@ -11,9 +10,15 @@ import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, eigvecs, eigen, Ei
 import LinearAlgebra: cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu, diag
 import LinearAlgebra: istriu, istril, isdiag
 import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric, Adjoint
+import LinearAlgebra: issymmetric, ishermitian
+import LinearAlgebra: eigvals, eigvecs, eigen
+
 import AbstractFFTs: Plan, plan_fft!
-import StatsBase
-import FillArrays: Fill
+
+using FillArrays
+using LinearAlgebra
+const AbstractFillVector{T} = FillArrays.AbstractFill{T,1}
+const HermOrSym{T,M} = Union{Hermitian{T,M}, Symmetric{T,M}}
 
 export AbstractToeplitz, Toeplitz, SymmetricToeplitz, Circulant, LowerTriangularToeplitz, UpperTriangularToeplitz, TriangularToeplitz, Hankel
 export durbin, trench, levinson
@@ -82,6 +87,7 @@ include("toeplitz.jl")
 include("special.jl")
 include("hankel.jl")
 include("linearalgebra.jl")
+include("eigen.jl")
 
 """
     maybereal(::Type{T}, x)
@@ -96,5 +102,9 @@ maybereal(::Type{<:Real}, x) = real(x)
 @inline diaglenneg(m::Integer, n::Integer, k::Integer=0) = min(m+k, n)
 
 include("directLinearSolvers.jl")
+
+if !isdefined(Base, :get_extension)
+    include("../ext/ToeplitzMatricesStatsBaseExt.jl")
+end
 
 end #module
