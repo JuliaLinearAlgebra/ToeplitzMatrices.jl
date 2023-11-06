@@ -1,6 +1,6 @@
 using Pkg
 
-using ToeplitzMatrices, Test, LinearAlgebra, Aqua, Random
+using ToeplitzMatrices, Test, LinearAlgebra, Aqua, FillArrays, Random
 import StatsBase
 using FillArrays
 using FFTW: fft
@@ -377,6 +377,22 @@ end
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
+	
+	@testset "diag" begin
+		H = Hankel(1:11, 4, 8)
+		@test diag(H) ≡ 1:2:7
+		@test diag(H, 1) ≡ 2:2:8
+		@test diag(H, -1) ≡ 2:2:6
+		@test diag(H, 5) ≡ 6:2:10
+		@test diag(H, 100) == diag(H, -100) == []
+
+		T = Toeplitz(1:4, 1:8)
+		@test diag(T) ≡ Fill(1, 4)
+		@test diag(T, 1) ≡ Fill(2, 4)
+		@test diag(T, -1) ≡ Fill(2, 3)
+		@test diag(T, 5) ≡ Fill(6, 3)
+		@test diag(T, 100) == diag(T, -100) == []
+	end
 
     @testset "istril/istriu/isdiag" begin
         for (vc,vr) in (([1,2,0,0], [1,4,5,0]), ([0,0,0], [0,5,0]), ([3,0,0], [3,0,0]), ([0], [0]))
