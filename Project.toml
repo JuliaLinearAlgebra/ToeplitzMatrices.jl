@@ -1,6 +1,6 @@
 name = "ToeplitzMatrices"
 uuid = "c751599d-da0a-543b-9d20-d0a503d91d24"
-version = "0.8.1"
+version = "0.8.3"
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
@@ -9,12 +9,19 @@ FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
+[weakdeps]
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+
+[extensions]
+ToeplitzMatricesStatsBaseExt = "StatsBase"
+
 [compat]
 AbstractFFTs = "0.4, 0.5, 1"
-Aqua = "0.6"
+Aqua = "0.7"
 DSP = "0.7.7"
 FFTW = "1"
 FillArrays = "0.12, 0.13, 1"
+LinearAlgebra = "<0.0.1, 1"
 StatsBase = "0.32, 0.33, 0.34"
 julia = "1.0"
 
@@ -23,7 +30,8 @@ Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "FFTW", "Pkg", "Random", "Test"]
+test = ["Aqua", "FFTW", "Pkg", "Random", "StatsBase", "Test"]

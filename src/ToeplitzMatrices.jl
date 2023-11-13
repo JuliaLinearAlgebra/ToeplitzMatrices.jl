@@ -1,5 +1,4 @@
 module ToeplitzMatrices
-# import StatsBase: levinson!, levinson
 import DSP: conv
 
 import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds, real, imag, isfinite, DimsInteger, iszero
@@ -9,14 +8,13 @@ import Base: AbstractMatrix
 import Base.Broadcast: broadcasted, DefaultMatrixStyle
 import LinearAlgebra: Cholesky, Factorization
 import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, eigvecs, eigen, Eigen, det
-import LinearAlgebra: cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu
+import LinearAlgebra: cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu, diag
 import LinearAlgebra: istriu, istril, isdiag
 import LinearAlgebra: UpperTriangular, LowerTriangular, Symmetric, Adjoint
 import LinearAlgebra: issymmetric, ishermitian
 import LinearAlgebra: eigvals, eigvecs, eigen
 
 import AbstractFFTs: Plan, plan_fft!
-import StatsBase
 
 using FillArrays
 using LinearAlgebra
@@ -50,6 +48,16 @@ convert(::Type{AbstractToeplitz{T}}, A::AbstractToeplitz) where T = AbstractToep
 
 isconcrete(A::AbstractToeplitz) = isconcretetype(typeof(A.vc)) && isconcretetype(typeof(A.vr))
 all(f, A::AbstractToeplitz, ::Colon) = all(f, A.vc, :) && all(f, A.vr, :)
+iszero(A::AbstractToeplitz) = iszero(A.vc) && iszero(A.vr)
+function diag(A::AbstractToeplitz, k::Integer=0)
+    if k >= size(A, 2) || -k >= size(A, 1)
+        Fill(zero(eltype(A)), 0)
+    elseif k >= 0
+        Fill(A.vr[k + 1], diaglenpos(size(A)..., k))
+    else
+        Fill(A.vc[-k + 1], diaglenneg(size(A)..., k))
+    end
+end
 
 function istril(A::AbstractToeplitz, k::Integer=0)
     vr, vc = _vr(A), _vc(A)
@@ -91,6 +99,14 @@ Return real-valued part of `x` if `T` is a type of a real number, and `x` otherw
 maybereal(::Type, x) = x
 maybereal(::Type{<:Real}, x) = real(x)
 
+# length of LinearAlgebra.diagind, for positive and negative k respectively
+@inline diaglenpos(m::Integer, n::Integer, k::Integer=0) = min(m, n-k)
+@inline diaglenneg(m::Integer, n::Integer, k::Integer=0) = min(m+k, n)
+
 include("directLinearSolvers.jl")
+
+if !isdefined(Base, :get_extension)
+    include("../ext/ToeplitzMatricesStatsBaseExt.jl")
+end
 
 end #module

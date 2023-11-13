@@ -65,6 +65,10 @@ The `reverse` can transform between Hankel and Toeplitz. It is used to achieve f
 ## Implemented interface
 
 ### Operations
+
+<details>
+  <summary>Full list</summary>
+  
 - ✓ implemented
 - ✗ error
 - _ fall back to `Matrix`
@@ -92,12 +96,15 @@ The `reverse` can transform between Hankel and Toeplitz. It is used to achieve f
 |istriu|||||||
 |istril|||||||
 |isone|||||||
+|diag|✓|✓|✓|✓|✓|✓|
 |copyto!|✓|✓|✓|✓|✓|✓|
 |reverse|✓|✓|✓|✓|✓|✓|
 |\_all|✓|✓|✓|✓|✓|✓|
 |unary broadcast|✓|✓|✓|✓|✓|✓|
 |number broadcast|✓|✓|✓|✓|✓|✓|
 |broadcast!|||||||
+  
+</details>
 
 Note that `+` and `-` could be removed once binary `broadcast` is implemented.
 

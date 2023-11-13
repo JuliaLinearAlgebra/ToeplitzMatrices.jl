@@ -135,8 +135,6 @@ function ldiv!(A::Toeplitz, b::StridedVector)
     copyto!(b, IterativeLinearSolvers.cgs(A, zeros(eltype(b), length(b)), b, preconditioner, 1000, 100eps())[1])
 end
 
-StatsBase.levinson(A::AbstractToeplitz, B::AbstractVecOrMat) = StatsBase.levinson!(zeros(size(B)), A, copy(B))
-
 # SymmetricToeplitz
 
 function factorize(A::SymmetricToeplitz{T}) where {T<:Number}
@@ -174,24 +172,11 @@ end
 """
     cholesky(T::SymmetricToeplitz)
 
-Implementation of the Bareiss Algorhithm, adapted from "On the stability of the Bareiss and
+Implementation of the Bareiss Algorithm, adapted from "On the stability of the Bareiss and
 related Toeplitz factorization algorithms", Bojanczyk et al, 1993.
 """
 function cholesky(T::SymmetricToeplitz)
     return cholesky!(Matrix{eltype(T)}(undef, size(T, 1), size(T, 1)), T)
-end
-
-# extend levinson
-StatsBase.levinson!(x::StridedVector, A::SymmetricToeplitz, b::StridedVector) = StatsBase.levinson!(A.vc, b, x)
-function StatsBase.levinson!(C::StridedMatrix, A::SymmetricToeplitz, B::StridedMatrix)
-    n = size(B, 2)
-    if n != size(C, 2)
-        throw(DimensionMismatch("input and output matrices must have same number of columns"))
-    end
-    for j = 1:n
-        StatsBase.levinson!(view(C, :, j), A, view(B, :, j))
-    end
-    C
 end
 
 # circulant

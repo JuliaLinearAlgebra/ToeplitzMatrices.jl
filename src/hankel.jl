@@ -67,6 +67,8 @@ all(f, A::Hankel, ::Colon) = all(f, A.v, :)
 
 # Size
 size(H::Hankel) = H.size
+diag(H::Hankel, k::Integer=0) = H.v[hankeldiagind(size(H)..., k)]
+@inline hankeldiagind(m::Integer, n::Integer, k::Integer=0) = k ≥ 0 ? range(1 + k, step = 2, length = diaglenpos(m, n, k)) : range(1 - k, step = 2, length = diaglenneg(m, n, k))
 
 # Retrieve an entry by two indices
 Base.@propagate_inbounds function getindex(A::Hankel, i::Integer, j::Integer)

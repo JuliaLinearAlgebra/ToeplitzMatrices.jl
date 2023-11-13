@@ -1,6 +1,6 @@
 using Pkg
 
-using ToeplitzMatrices, Test, LinearAlgebra, Aqua, Random
+using ToeplitzMatrices, Test, LinearAlgebra, Aqua, FillArrays, Random
 import StatsBase
 using FillArrays
 using FFTW: fft
@@ -8,7 +8,10 @@ using FFTW: fft
 @testset "code quality" begin
     Aqua.test_ambiguities(ToeplitzMatrices, recursive=false)
     # Aqua.test_all includes Base and Core in ambiguity testing
-    Aqua.test_all(ToeplitzMatrices, ambiguities=false, piracy=false)
+    Aqua.test_all(ToeplitzMatrices, ambiguities=false, piracy=false,
+        # only test formatting on VERSION >= v1.7
+        # https://github.com/JuliaTesting/Aqua.jl/issues/105#issuecomment-1551405866
+        project_toml_formatting = VERSION >= v"1.7")
 end
 
 ns = 101
@@ -375,6 +378,22 @@ end
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
     @test isa(similar(Toeplitz{Int, Vector{Int}, Vector{Int}}, 5, 3), Toeplitz)
+	
+	@testset "diag" begin
+		H = Hankel(1:11, 4, 8)
+		@test diag(H) ≡ 1:2:7
+		@test diag(H, 1) ≡ 2:2:8
+		@test diag(H, -1) ≡ 2:2:6
+		@test diag(H, 5) ≡ 6:2:10
+		@test diag(H, 100) == diag(H, -100) == []
+
+		T = Toeplitz(1:4, 1:8)
+		@test diag(T) ≡ Fill(1, 4)
+		@test diag(T, 1) ≡ Fill(2, 4)
+		@test diag(T, -1) ≡ Fill(2, 3)
+		@test diag(T, 5) ≡ Fill(6, 3)
+		@test diag(T, 100) == diag(T, -100) == []
+	end
 
     @testset "istril/istriu/isdiag" begin
         for (vc,vr) in (([1,2,0,0], [1,4,5,0]), ([0,0,0], [0,5,0]), ([3,0,0], [3,0,0]), ([0], [0]))
@@ -600,59 +619,98 @@ end
 end
 
 @testset "eigen" begin
-    sortby = x -> (real(x), imag(x))
     @testset "Tridiagonal Toeplitz" begin
-        _sizes = (1, 2, 6, 10)
-        sizes = VERSION >= v"1.6" ? (0, _sizes...) : _sizes
+        sizes = (1, 2, 5, 6, 10, 15)
         @testset for n in sizes
-            @testset "Tridiagonal" begin
-                for (dl, d, du) in (
-                    (Fill(2, max(0, n-1)), Fill(-4, n), Fill(3, max(0,n-1))),
-                    (Fill(2+3im, max(0, n-1)), Fill(-4+4im, n), Fill(3im, max(0,n-1)))
-                    )
-                    T = Tridiagonal(dl, d, du)
-                    λT = eigvals(T)
-                    λTM = eigvals(Matrix(T))
-                    @test sort(λT, by=sortby) ≈ sort(λTM, by=sortby)
-                    λ, V = eigen(T)
-                    @test T * V ≈ V * Diagonal(λ)
+            if VERSION >= v"1.9"
+                @testset "Tridiagonal" begin
+                    evm1r = Fill(2, max(0, n-1))
+                    ev1r = Fill(3, max(0,n-1))
+                    dvr = Fill(-4, n)
+                    evm1c = Fill(2+3im, max(0, n-1))
+                    dvc = Fill(-4+4im, n)
+                    ev1c = Fill(3im, max(0,n-1))
+
+                    for (dl, d, du) in (
+                            (evm1r, dvr, ev1r),
+                            (evm1r, dvr, -ev1r),
+                            (evm1c, dvc, ev1c),
+                            )
+
+                        T = Tridiagonal(dl, d, du)
+                        λT = eigvals(T)
+                        λTM = eigvals(Matrix(T))
+                        @test all(x -> any(y -> y ≈ x, λTM), λT)
+                        λ, V = eigen(T)
+                        @test T * V ≈ V * Diagonal(λ)
+
+                        # Test that internal methods are correct,
+                        # aside from the ordering of eigenvectors
+                        λT2 = ToeplitzMatrices._eigvals(T)
+                        @test all(x -> any(y -> y ≈ x, λTM), λT2)
+                        V2 = ToeplitzMatrices._eigvecs(T)
+                        for v in eachcol(V2)
+                            w = T * v
+                            @test any(λ -> w ≈ λ * v, λT2)
+                        end
+                    end
                 end
             end
 
             @testset "SymTridiagonal/Symmetric" begin
-                dv = Fill(1, n)
-                ev = Fill(3, max(0,n-1))
-                for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
-                    evST = eigvals(ST)
-                    evSTM = eigvals(Matrix(ST))
-                    @test sort(evST, by=sortby) ≈ sort(evSTM, by=sortby)
-                    @test eltype(evST) <: Real
-                    λ, V = eigen(ST)
-                    @test V'V ≈ I
-                    @test V' * ST * V ≈ Diagonal(λ)
+                _dv = Fill(1, n)
+                _ev = Fill(3, max(0,n-1))
+                for dv in (_dv, -_dv), ev in (_ev, -_ev)
+                    for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                        λST = eigvals(ST)
+                        λSTM = eigvals(Matrix(ST))
+                        @test all(x -> any(y -> y ≈ x, λSTM), λST)
+                        @test eltype(λST) <: Real
+                        λ, V = eigen(ST)
+                        @test V'V ≈ I
+                        @test V' * ST * V ≈ Diagonal(λ)
+                    end
                 end
-                dv = Fill(-4+4im, n)
-                ev = Fill(2+3im, max(0,n-1))
-                for ST2 in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
-                    λST = eigvals(ST2)
-                    λSTM = eigvals(Matrix(ST2))
-                    @test sort(λST, by=sortby) ≈ sort(λSTM, by=sortby)
-                    λ, V = eigen(ST2)
-                    @test ST2 * V ≈ V * Diagonal(λ)
+                _dv = Fill(-4+4im, n)
+                _ev = Fill(2+3im, max(0,n-1))
+                for dv in (_dv, -_dv, conj(_dv)), ev in (_ev, -_ev, conj(_ev))
+                    for ST2 in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                        λST = eigvals(ST2)
+                        λSTM = eigvals(Matrix(ST2))
+                        @test all(x -> any(y -> y ≈ x, λSTM), λST)
+                        λ, V = eigen(ST2)
+                        @test ST2 * V ≈ V * Diagonal(λ)
+                    end
                 end
             end
 
-            @testset "Hermitian Tridiagonal" begin
-                for (dv, ev) in ((Fill(2+0im, n), Fill(3-4im, max(0, n-1))),
-                                    (Fill(2, n), Fill(3, max(0, n-1))))
-                    HT = Hermitian(Tridiagonal(ev, dv, ev))
-                    λHT = eigvals(HT)
-                    λHTM = eigvals(Matrix(HT))
-                    @test sort(λHT, by=sortby) ≈ sort(λHTM, by=sortby)
-                    @test eltype(λHT) <: Real
-                    λ, V = eigen(HT)
-                    @test V'V ≈ I
-                    @test V' * HT * V ≈ Diagonal(λ)
+            if VERSION >= v"1.9"
+                @testset "Hermitian Tridiagonal" begin
+                    _dvR = Fill(2, n)
+                    _evR = Fill(3, max(0, n-1))
+                    _dvc = complex(_dvR)
+                    _evc = Fill(3-4im, max(0, n-1))
+                    for (dv, ev) in ((_dvc, _evc), (_dvc, conj(_evc)),
+                                        (_dvR, _evR), (_dvR, -_evR))
+                        HT = Hermitian(Tridiagonal(ev, dv, ev))
+                        λHT = eigvals(HT)
+                        λHTM = eigvals(Matrix(HT))
+                        @test all(x -> any(y -> y ≈ x, λHTM), λHT)
+                        @test eltype(λHT) <: Real
+                        λ, V = eigen(HT)
+                        @test V'V ≈ I
+                        @test V' * HT * V ≈ Diagonal(λ)
+
+                        # Test that internal methods are correct,
+                        # aside from the ordering of eigenvectors
+                        λHT2 = ToeplitzMatrices._eigvals(HT)
+                        @test all(x -> any(y -> y ≈ x, λHTM), λHT2)
+                        V2 = ToeplitzMatrices._eigvecs(HT)
+                        for v in eachcol(V2)
+                            w = HT * v
+                            @test any(λ -> w ≈ λ * v, λHT2)
+                        end
+                    end
                 end
             end
         end

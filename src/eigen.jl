@@ -6,31 +6,43 @@
 # complex for that package, so they were shifted here
 # See https://github.com/JuliaArrays/FillArrays.jl/pull/256
 
-for MT in (:(Tridiagonal{<:Union{Real, Complex}, <:AbstractFillVector}),
-            :(SymTridiagonal{<:Union{Real, Complex}, <:AbstractFillVector}),
-            :(HermOrSym{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real, Complex}})
+# The methods aren't defined for general Tridiagonal or Hermitian, as the
+# ordering of eigenvectors needs fixing
+for MT in (:(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
+            :(Symmetric{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}})
             )
     @eval function eigvals(A::$MT)
         n = size(A,1)
         if n <= 2 # repeated roots possible
             eigvals(Matrix(A))
         else
-            _eigvals_toeplitz(A)
+            _eigvals(A)
         end
     end
 end
 
-___eigvals_toeplitz(a, sqrtbc, n) = [a + 2 * sqrtbc * cospi(q/(n+1)) for q in n:-1:1]
+for MT in (:(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
+            :(Symmetric{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}}),
+            )
 
-__eigvals_toeplitz(::AbstractMatrix, a, b, c, n) =
-    ___eigvals_toeplitz(a, √(b*c), n)
-__eigvals_toeplitz(::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, a, b, c, n) =
-    ___eigvals_toeplitz(a, b, n)
-__eigvals_toeplitz(::Hermitian{<:Any, <:Tridiagonal}, a, b, c, n) =
-    ___eigvals_toeplitz(real(a), abs(b), n)
+    @eval begin
+        eigvecs(A::$MT) = _eigvecs(A)
+        eigen(A::$MT) = _eigen(A)
+    end
+end
+
+
+___eigvals(a, sqrtbc, n) = [a + 2 * sqrtbc * cospi(q/(n+1)) for q in n:-1:1]
+
+__eigvals(::AbstractMatrix, a, b, c, n) =
+    ___eigvals(a, √(complex(b*c)), n)
+__eigvals(::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, a, b, c, n) =
+    ___eigvals(a, b, n)
+__eigvals(::Hermitian{<:Any, <:Tridiagonal}, a, b, c, n) =
+    ___eigvals(real(a), abs(b), n)
 
 # triangular Toeplitz
-function _eigvals_toeplitz(T)
+function _eigvals(T)
     require_one_based_indexing(T)
     n = checksquare(T)
     # extra care to handle 0x0 and 1x1 matrices
@@ -40,9 +52,13 @@ function _eigvals_toeplitz(T)
     b = get(T, (2,1), zero(eltype(T)))
     # superdiagonal
     c = get(T, (1,2), zero(eltype(T)))
-    vals = __eigvals_toeplitz(T, a, b, c, n)
+    vals = __eigvals(T, a, b, c, n)
     return vals
 end
+
+_eigvec_eltype(A::Union{SymTridiagonal,
+                    Symmetric{<:Any,<:Tridiagonal}}) = float(eltype(A))
+_eigvec_eltype(A) = complex(float(eltype(A)))
 
 _eigvec_prefactor(A, cm1, c1, m) = sqrt(complex(cm1/c1))^m
 _eigvec_prefactor(A::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, cm1, c1, m) = oneunit(_eigvec_eltype(A))
@@ -53,9 +69,6 @@ function _eigvec_prefactors(A, cm1, c1)
 end
 _eigvec_prefactors(A::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, cm1, c1) =
     Fill(_eigvec_prefactor(A, cm1, c1, 1), size(A,1))
-
-_eigvec_eltype(A::SymTridiagonal) = float(eltype(A))
-_eigvec_eltype(A) = complex(float(eltype(A)))
 
 @static if !isdefined(Base, :eachcol)
     eachcol(A) = (view(A,:,i) for i in axes(A,2))
@@ -79,13 +92,55 @@ function _eigvecs_toeplitz(T)
     c1 = T[1,2]  # superdiagonal
     prefactors = _eigvec_prefactors(T, cm1, c1)
     for q in axes(M,2)
-        qrev = n+1-q # match the default eigenvalue sorting
         for j in 1:cld(n,2)
-            M[j, q] = prefactors[j] * sinpi(j*qrev/(n+1))
+            jphase = 2isodd(j) - 1
+            M[j, q] = prefactors[j] * jphase * sinpi(j * q/(n+1))
         end
         phase = iseven(n+q) ? 1 : -1
         for j in cld(n,2)+1:n
             M[j, q] = phase * prefactors[2j-n] * M[n+1-j,q]
+        end
+    end
+    _normalizecols!(M, T)
+    return M
+end
+
+function _eigvecs_toeplitz(T::Union{SymTridiagonal, Symmetric{<:Any,<:Tridiagonal}})
+    require_one_based_indexing(T)
+    n = checksquare(T)
+    M = Matrix{_eigvec_eltype(T)}(undef, n, n)
+    n == 0 && return M
+    n == 1 && return fill!(M, oneunit(eltype(M)))
+    for q in 1:cld(n,2)
+        for j in 1:q
+            jphase = 2isodd(j) - 1
+            M[j, q] = jphase * sinpi(j * q/(n+1))
+        end
+    end
+    for q in 1:cld(n,2)
+        for j in q+1:cld(n,2)
+            qphase = 2isodd(q) - 1
+            jphase = 2isodd(j) - 1
+            phase = qphase * jphase
+            M[j, q] = phase * M[q, j]
+        end
+    end
+    for q in 1:cld(n,2)
+        phase = iseven(n+q) ? 1 : -1
+        for j in cld(n,2)+1:n
+            M[j, q] = phase * M[n+1-j,q]
+        end
+    end
+    for q in cld(n,2)+1:n
+        for j in 1:cld(n,2)
+            qphase = 2isodd(q) - 1
+            jphase = 2isodd(j) - 1
+            phase = qphase * jphase
+            M[j, q] = phase * M[q, j]
+        end
+        phase = iseven(n+q) ? 1 : -1
+        for j in cld(n,2)+1:n
+            M[j, q] = phase * M[n+1-j,q]
         end
     end
     _normalizecols!(M, T)
@@ -107,16 +162,5 @@ function _eigen(A)
         eigen(Matrix(A))
     else
         Eigen(eigvals(A), eigvecs(A))
-    end
-end
-
-for MT in (:(Tridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
-            :(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
-            :(HermOrSym{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}}),
-            )
-
-    @eval begin
-        eigvecs(A::$MT) = _eigvecs(A)
-        eigen(A::$MT) = _eigen(A)
     end
 end
