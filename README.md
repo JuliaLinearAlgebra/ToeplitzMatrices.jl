@@ -82,10 +82,7 @@ The `reverse` can transform between Hankel and Toeplitz. It is used to achieve f
 |copy|✓|✓|✓|✓|✓|✓|
 |similar|✓|✓|✓|✓|✓|✓|
 |zero|✓|✓|✓|✓|✓|✓|
-|real|✓|✓|✓|✓|✓|✓|
-|imag|✓|✓|✓|✓|✓|✓|
 |fill!|✓|✗|✗|✗|✗|✓|
-|conj|✓|✓|✓|✓|✓|✓|
 |transpose|✓|✓|✓|✓|✓|✓|
 |adjoint|✓|✓|✓|✓|✓|✓|
 |tril!|✓|✗|✗|✓|✓|✗|
@@ -94,22 +91,22 @@ The `reverse` can transform between Hankel and Toeplitz. It is used to achieve f
 |triu|✓|✓|✓|✓|✓|✗|
 |+|✓|✓|✓|✓|✓|✓|
 |-|✓|✓|✓|✓|✓|✓|
-|scalar<br>mult|✓|✓|✓|✓|✓|✓|
 |==|✓|✓|✓|✓|✓|✓|
 |issymmetric|||||||
 |istriu|||||||
 |istril|||||||
-|iszero|✓|✓|✓|✓|✓||
 |isone|||||||
 |diag|✓|✓|✓|✓|✓|✓|
 |copyto!|✓|✓|✓|✓|✓|✓|
 |reverse|✓|✓|✓|✓|✓|✓|
-|broadcast|||||||
+|\_all|✓|✓|✓|✓|✓|✓|
+|unary broadcast|✓|✓|✓|✓|✓|✓|
+|number broadcast|✓|✓|✓|✓|✓|✓|
 |broadcast!|||||||
   
 </details>
 
-Note that scalar multiplication, `conj`, `+` and `-` could be removed once `broadcast` is implemented.
+Note that `+` and `-` could be removed once binary `broadcast` is implemented.
 
 `reverse(Hankel)` returns a `Toeplitz`, while `reverse(AbstractToeplitz)` returns a `Hankel`.
 

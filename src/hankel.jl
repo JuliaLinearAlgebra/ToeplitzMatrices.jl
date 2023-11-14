@@ -60,6 +60,10 @@ end
 convert(::Type{AbstractArray{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
 convert(::Type{AbstractMatrix{T}}, A::Hankel) where {T<:Number} = convert(Hankel{T}, A)
 convert(::Type{Hankel{T}}, A::Hankel) where {T<:Number} = Hankel{T}(convert(AbstractVector{T}, A.v), size(A))
+broadcasted(::DefaultMatrixStyle, f, A::Hankel) = Hankel(f.(A.v), A.size)
+broadcasted(::DefaultMatrixStyle, f, x::Number, A::Hankel) = Hankel(f.(x, A.v), A.size)
+broadcasted(::DefaultMatrixStyle, f, A::Hankel, x::Number) = Hankel(f.(A.v, x), A.size)
+all(f, A::Hankel, ::Colon) = all(f, A.v, :)
 
 # Size
 size(H::Hankel) = H.size
@@ -72,7 +76,7 @@ Base.@propagate_inbounds function getindex(A::Hankel, i::Integer, j::Integer)
     return A.v[i+j-1]
 end
 AbstractMatrix{T}(A::Hankel) where {T} = Hankel{T}(AbstractVector{T}(A.v), A.size)
-for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
+for fun in (:zero, :copy)
     @eval $fun(A::Hankel) = Hankel($fun(A.v), size(A))
 end
 for op in (:+, :-)
@@ -102,8 +106,6 @@ end
 transpose(A::Hankel) = Hankel(A.v, reverse(size(A)))
 adjoint(A::Hankel) = transpose(conj(A))
 (==)(A::Hankel, B::Hankel) = A.v == B.v && size(A) == size(B)
-(*)(scalar::Number, C::Hankel) = Hankel(scalar * C.v, size(C))
-(*)(C::Hankel,scalar::Number) = Hankel(C.v * scalar, size(C))
 
 isconcrete(A::Hankel) = isconcretetype(A.v)
 

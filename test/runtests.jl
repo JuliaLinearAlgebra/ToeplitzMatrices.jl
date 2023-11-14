@@ -430,6 +430,23 @@ end
     end
 end
 
+@testset "Broadcast" begin
+    A = rand(ComplexF64, 3, 3)
+    T = Toeplitz(A)
+    S = Symmetric(T)
+    C = Circulant(T)
+    U = UpperTriangular(T)
+    L = LowerTriangular(T)
+
+    for M in (T, S, C, U, L)
+        @testset "$(typeof(M))" begin
+            @test M .+ 1 == Matrix(M) .+ 1
+            @test exp.(M) == exp.(Matrix(M))
+            @test isa(M .* 2, typeof(M))
+        end
+    end
+end
+
 @testset "Circulant mathematics" begin
     C1 = Circulant(rand(5))
     C2 = Circulant(rand(5))

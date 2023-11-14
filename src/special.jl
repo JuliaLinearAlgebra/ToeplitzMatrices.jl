@@ -74,7 +74,8 @@ for TYPE in (:SymmetricToeplitz, :Circulant, :LowerTriangularToeplitz, :UpperTri
         @eval $TYPE(v::$TY) = $TYPE{eltype(v)}(v)
     end
 end
-TriangularToeplitz{T}=Union{UpperTriangularToeplitz{T},LowerTriangularToeplitz{T}}
+SymToeplitzOrCirc{T} = Union{SymmetricToeplitz{T}, Circulant{T}}
+TriangularToeplitz{T} = Union{UpperTriangularToeplitz{T}, LowerTriangularToeplitz{T}}
 
 # vc and vr
 function getproperty(A::SymmetricToeplitz, s::Symbol)
@@ -128,6 +129,22 @@ transpose(A::SymmetricToeplitz) = A
 transpose(A::Circulant) = Circulant(A.vr)
 transpose(A::LowerTriangularToeplitz) = UpperTriangularToeplitz(A.v)
 transpose(A::UpperTriangularToeplitz) = LowerTriangularToeplitz(A.v)
+
+# _all
+all(f, A::SymToeplitzOrCirc, ::Colon) = all(f, A.v, :)
+all(f, A::TriangularToeplitz, ::Colon) = f(zero(eltype(A))) && all(f, A.v, :)
+
+# broadcast
+for TYPE in (:SymmetricToeplitz, :Circulant)
+    @eval broadcasted(::DefaultMatrixStyle, f, A::$TYPE) = $TYPE(f.(A.v))
+    @eval broadcasted(::DefaultMatrixStyle, f, x::Number, A::$TYPE) = $TYPE(f.(x, A.v))
+    @eval broadcasted(::DefaultMatrixStyle, f, A::$TYPE, x::Number) = $TYPE(f.(A.v, x))
+end
+for TYPE in (:UpperTriangularToeplitz, :LowerTriangularToeplitz)
+    @eval broadcasted(::DefaultMatrixStyle, f, A::$TYPE) = iszero(f(zero(eltype(A)))) ? $TYPE(f.(A.v)) : _toep_broadcast(f, A)
+    @eval broadcasted(::DefaultMatrixStyle, f, x::Number, A::$TYPE) = iszero(f(x, zero(eltype(A)))) ? $TYPE(f.(x, A.v)) : _toep_broadcast(f, x, A)
+    @eval broadcasted(::DefaultMatrixStyle, f, A::$TYPE, x::Number) = iszero(f(zero(eltype(A)), x)) ? $TYPE(f.(A.v, x)) : _toep_broadcast(f, A, x)
+end
 
 # getindex
 Base.@propagate_inbounds function getindex(A::SymmetricToeplitz, i::Integer, j::Integer)

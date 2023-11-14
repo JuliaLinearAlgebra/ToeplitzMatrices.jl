@@ -10,7 +10,7 @@ struct Toeplitz{T, VC<:AbstractVector{T}, VR<:AbstractVector{T}} <: AbstractToep
 
     function Toeplitz{T, VC, VR}(vc::VC, vr::VR) where {T, VC<:AbstractVector{T}, VR<:AbstractVector{T}}
         require_one_based_indexing(vr, vc)
-        if first(vc) != first(vr)
+        if !isequal(first(vc), first(vr))
             error("First element of the vectors must be the same")
         end
         return new{T,VC,VR}(vc, vr)
@@ -53,6 +53,13 @@ Base.@propagate_inbounds function getindex(A::AbstractToeplitz, i::Integer, j::I
         return A.vr[1 - d]
     end
 end
+
+broadcasted(::DefaultMatrixStyle, f, A::AbstractToeplitz) = _toep_broadcast(f, A)
+broadcasted(::DefaultMatrixStyle, f, x::Number, A::AbstractToeplitz) = _toep_broadcast(f, x, A)
+broadcasted(::DefaultMatrixStyle, f, A::AbstractToeplitz, x::Number) = _toep_broadcast(f, A, x)
+_toep_broadcast(f, A::AbstractToeplitz) = Toeplitz(f.(A.vc), f.(A.vr))
+_toep_broadcast(f, x::Number, A::AbstractToeplitz) = Toeplitz(f.(x, A.vc), f.(x, A.vr))
+_toep_broadcast(f, A::AbstractToeplitz, x::Number) = Toeplitz(f.(A.vc, x), f.(A.vr, x))
 
 checknonaliased(A::Toeplitz) = Base.mightalias(A.vc, A.vr) && throw(ArgumentError("Cannot modify Toeplitz matrices in place with aliased data"))
 
@@ -110,7 +117,7 @@ function AbstractMatrix{T}(A::AbstractToeplitz) where {T}
     vr = AbstractVector{T}(_vr(A))
     Toeplitz{T}(vc,vr)
 end
-for fun in (:zero, :conj, :copy, :-, :real, :imag)
+for fun in (:zero, :copy)
     @eval $fun(A::AbstractToeplitz)=Toeplitz($fun(A.vc),$fun(A.vr))
 end
 for op in (:+, :-)
@@ -129,8 +136,6 @@ function fill!(A::Toeplitz, x::Number)
     fill!(A.vr,x)
     A
 end
-(*)(scalar::Number, C::AbstractToeplitz) = Toeplitz(scalar * C.vc, scalar * C.vr)
-(*)(C::AbstractToeplitz,scalar::Number) = Toeplitz(C.vc * scalar, C.vr * scalar)
 
 function lmul!(x::Number, A::Toeplitz)
     checknonaliased(A)

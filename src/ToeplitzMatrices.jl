@@ -1,10 +1,12 @@
 module ToeplitzMatrices
 import DSP: conv
 
-import Base: adjoint, convert, transpose, size, getindex, similar, copy, getproperty, inv, sqrt, copyto!, reverse, conj, zero, fill!, checkbounds, real, imag, isfinite, DimsInteger, iszero
+import Base: convert, size, getindex, similar, copy, getproperty, copyto!, reverse, zero, fill!, checkbounds, isfinite, DimsInteger, iszero
+import Base: all, adjoint, transpose, real, imag, inv, sqrt, conj
 import Base: parent
 import Base: ==, +, -, *, \
 import Base: AbstractMatrix
+import Base.Broadcast: broadcasted, DefaultMatrixStyle
 import LinearAlgebra: Cholesky, Factorization
 import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, eigvecs, eigen, Eigen, det
 import LinearAlgebra: cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu, diag
@@ -34,7 +36,7 @@ end
 include("iterativeLinearSolvers.jl")
 
 # Abstract
-abstract type AbstractToeplitz{T<:Number} <: AbstractMatrix{T} end
+abstract type AbstractToeplitz{T} <: AbstractMatrix{T} end
 
 size(A::AbstractToeplitz) = (length(A.vc),length(A.vr))
 @inline _vr(A::AbstractToeplitz) = A.vr
@@ -46,6 +48,11 @@ AbstractArray{T}(A::AbstractToeplitz) where T = AbstractToeplitz{T}(A)
 convert(::Type{AbstractToeplitz{T}}, A::AbstractToeplitz) where T = AbstractToeplitz{T}(A)
 
 isconcrete(A::AbstractToeplitz) = isconcretetype(typeof(A.vc)) && isconcretetype(typeof(A.vr))
+
+for op in (:+, :max)
+    @eval mapreduce(f, ::typeof($op), A::AbstractToeplitz) = mapreduce(identity, $op, [mapreduce(f, $op, diag(A, k)) for k in -size(A,1)+1:size(A,2)-1])
+end
+all(f, A::AbstractToeplitz, ::Colon) = all(f, A.vc, :) && all(f, A.vr, :)
 iszero(A::AbstractToeplitz) = iszero(A.vc) && iszero(A.vr)
 function diag(A::AbstractToeplitz, k::Integer=0)
     if k >= size(A, 2) || -k >= size(A, 1)
