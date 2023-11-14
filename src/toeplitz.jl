@@ -43,22 +43,6 @@ AbstractToeplitz{T}(A::Toeplitz) where T = Toeplitz{T}(A)
 convert(::Type{Toeplitz{T}}, A::AbstractToeplitz) where {T} = Toeplitz{T}(A)
 convert(::Type{Toeplitz}, A::AbstractToeplitz) = Toeplitz(A)
 
-# Dims for disambiguity
-for DIM in (:DimsInteger, :Dims)
-    @eval function similar(::Type{Toeplitz{T, VC, VR}}, dims::$DIM{2}) where {T, VC, VR}
-        vc = similar(VC, dims[1])
-        vr = similar(VR, dims[2])
-        vr[1] = vc[1]
-        Toeplitz(vc, vr)
-    end
-    @eval function similar(A::AbstractToeplitz, T::Type = eltype(A), dims::$DIM{2} = size(A))
-        vc = similar(A.vc, T, dims[1])
-        vr = similar(A.vr, T, dims[2])
-        vr[1] = vc[1]
-        Toeplitz{T}(vc, vr)
-    end
-end
-
 # Retrieve an entry
 Base.@propagate_inbounds function getindex(A::AbstractToeplitz, i::Integer, j::Integer)
     @boundscheck checkbounds(A,i,j)

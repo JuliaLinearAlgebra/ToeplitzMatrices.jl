@@ -377,7 +377,6 @@ end
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
-    @test isa(similar(Toeplitz{Int, Vector{Int}, Vector{Int}}, 5, 3), Toeplitz)
 	
 	@testset "diag" begin
 		H = Hankel(1:11, 4, 8)
