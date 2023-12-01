@@ -1,5 +1,3 @@
-# using Pkg
-
 using ToeplitzMatrices, Test, LinearAlgebra, Aqua, FillArrays, Random
 import StatsBase
 using FillArrays
