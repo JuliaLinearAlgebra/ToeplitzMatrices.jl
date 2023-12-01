@@ -1,4 +1,4 @@
-using Pkg
+# using Pkg
 
 using ToeplitzMatrices, Test, LinearAlgebra, Aqua, FillArrays, Random
 import StatsBase
@@ -8,10 +8,7 @@ using FFTW: fft
 @testset "code quality" begin
     Aqua.test_ambiguities(ToeplitzMatrices, recursive=false)
     # Aqua.test_all includes Base and Core in ambiguity testing
-    Aqua.test_all(ToeplitzMatrices, ambiguities=false, piracy=false,
-        # only test formatting on VERSION >= v1.7
-        # https://github.com/JuliaTesting/Aqua.jl/issues/105#issuecomment-1551405866
-        project_toml_formatting = VERSION >= v"1.7")
+    Aqua.test_all(ToeplitzMatrices, ambiguities=false, piracies=(; broken=true))
 end
 
 ns = 101
