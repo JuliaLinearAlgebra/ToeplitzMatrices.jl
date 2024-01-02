@@ -66,52 +66,30 @@ _copymutable(A::Toeplitz) = Toeplitz(_copymutable(A.vc), _copymutable(A.vr))
 function tril!(A::Toeplitz, k::Integer=0)
     checknonaliased(A)
 
-    @views begin
-        if k >= 0
-            i1, iend = firstindex(A.vr), lastindex(A.vr)
-            inds = max(k+2,i1):iend
-            if eltype(A) <: Number && isconcretetype(eltype(A.vr))
-                A.vr[inds] .= zero(eltype(A))
-            else
-                A.vr[inds] .= zero.(A.vr[inds])
-            end
-        else
-            i1, iend = firstindex(A.vc), lastindex(A.vc)
-            inds = i1:min(-k,iend)
-            if eltype(A) <: Number && isconcretetype(eltype(A.vc))
-                fill!(A.vr, zero(eltype(A)))
-                A.vc[inds] .= zero(eltype(A))
-            else
-                A.vr .= zero.(A.vr)
-                A.vc[inds] .= zero.(A.vc[inds])
-            end
-        end
+    if k >= 0
+        i1, iend = firstindex(A.vr), lastindex(A.vr)
+        inds = max(k+2,i1):iend
+        zero!(A.vr, inds)
+    else
+        i1, iend = firstindex(A.vc), lastindex(A.vc)
+        inds = i1:min(-k,iend)
+        zero!(A.vr)
+        zero!(A.vc, inds)
     end
     A
 end
 function triu!(A::Toeplitz, k::Integer=0)
     checknonaliased(A)
 
-    @views begin
-        if k <= 0
-            i1, iend = firstindex(A.vc), lastindex(A.vc)
-            inds = max(-k+2,i1):iend
-            if eltype(A) <: Number && isconcretetype(eltype(A.vc))
-                A.vc[inds] .= zero(eltype(A))
-            else
-                A.vc[inds] .= zero.(A.vc[inds])
-            end
-        else
-            i1, iend = firstindex(A.vr), lastindex(A.vr)
-            inds = i1:min(k,iend)
-            if eltype(A) <: Number && isconcretetype(eltype(A.vr))
-                fill!(A.vc, zero(eltype(A)))
-                A.vr[inds] .= zero(eltype(A))
-            else
-                A.vc .= zero.(A.vc)
-                A.vr[inds] .= zero.(A.vr[inds])
-            end
-        end
+    if k <= 0
+        i1, iend = firstindex(A.vc), lastindex(A.vc)
+        inds = max(-k+2,i1):iend
+        zero!(A.vc, inds)
+    else
+        i1, iend = firstindex(A.vr), lastindex(A.vr)
+        inds = i1:min(k,iend)
+        zero!(A.vc)
+        zero!(A.vr, inds)
     end
     A
 end

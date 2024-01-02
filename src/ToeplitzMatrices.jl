@@ -72,6 +72,23 @@ function isdiag(A::AbstractToeplitz)
     all(iszero, @view vr[2:end]) && all(iszero, @view vc[2:end])
 end
 
+function zero!(v::AbstractVector, inds = eachindex(v))
+    if eltype(v) <: Number && isconcretetype(eltype(v))
+        if inds == eachindex(v)
+            v .= zero(eltype(v))
+        else
+            v[inds] .= zero(eltype(v))
+        end
+    else
+        if inds == eachindex(v)
+            v .= zero.(v)
+        else
+            @views v[inds] .= zero.(v[inds])
+        end
+    end
+    return v
+end
+
 """
     ToeplitzFactorization
 

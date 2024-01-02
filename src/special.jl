@@ -13,20 +13,7 @@ end
 
 adjoint(A::AbstractToeplitzSingleVector) = transpose(conj(A))
 function zero!(A::AbstractToeplitzSingleVector, inds = eachindex(parent(A)))
-    v = parent(A)
-    if eltype(A) <: Number && isconcretetype(eltype(A))
-        if inds == eachindex(v)
-            v .= zero(eltype(A))
-        else
-            v[inds] .= zero(eltype(A))
-        end
-    else
-        if inds == eachindex(v)
-            v .= zero.(v)
-        else
-            @views v[inds] .= zero.(v[inds])
-        end
-    end
+    zero!(parent(A), inds)
     return A
 end
 
@@ -236,12 +223,10 @@ end
 function _tridiff!(A::TriangularToeplitz, k::Integer)
     i1, iend = firstindex(A.v), lastindex(A.v)
     inds = max(i1, k+2):iend
-    @views begin
-        if k >= 0
-            zero!(A, inds)
-        else
-            zero!(A)
-        end
+    if k >= 0
+        zero!(A, inds)
+    else
+        zero!(A)
     end
     A
 end
@@ -251,10 +236,8 @@ triu!(A::LowerTriangularToeplitz, k::Integer=0) = _tridiff!(A,-k)
 function _trisame!(A::TriangularToeplitz, k::Integer)
     i1, iend = firstindex(A.v), lastindex(A.v)
     inds = i1:min(-k,iend)
-    @views begin
-        if k < 0
-            zero!(A, inds)
-        end
+    if k < 0
+        zero!(A, inds)
     end
     A
 end
