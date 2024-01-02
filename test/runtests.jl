@@ -405,6 +405,15 @@ end
                 @test tril(A, k) == tril(M, k)
             end
         end
+
+        A = UpperTriangularToeplitz{Union{Float64,ComplexF64}}(Float64.(1:3))
+        @test triu(A) == A
+        @test triu(A, -1) == A
+        @test triu(A, 1) == UpperTriangularToeplitz([0,2,3])
+        A = LowerTriangularToeplitz{Union{Float64,ComplexF64}}(Float64.(1:3))
+        @test tril(A) == A
+        @test tril(A,1) == A
+        @test tril(A,-1) == LowerTriangularToeplitz([0,2,3])
     end
 
 	@testset "diag" begin
