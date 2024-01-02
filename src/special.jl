@@ -13,7 +13,12 @@ end
 
 adjoint(A::AbstractToeplitzSingleVector) = transpose(conj(A))
 function zero!(A::AbstractToeplitzSingleVector)
-    fill!(parent(A), zero(eltype(A)))
+    v = parent(A)
+    if eltype(A) <: Number && isconcretetype(eltype(A))
+        v .= zero(eltype(A))
+    else
+        v .= zero.(v)
+    end
     return A
 end
 
@@ -221,16 +226,18 @@ end
 
 # tril and triu
 function _tridiff!(A::TriangularToeplitz, k::Integer)
-    if k >= 0
-        if isconcretetype(typeof(A.v))
-            for i in k+2:lastindex(A.v)
-                A.v[i] = zero(eltype(A))
+    i1, iend = firstindex(A.v), lastindex(A.v)
+    inds = max(i1, k+2):iend
+    @views begin
+        if k >= 0
+            if eltype(A) <: Number && isconcretetype(eltype(A.v))
+                A.v[inds] .= zero(eltype(A))
+            else
+                A.v[inds] .= zero.(A.v[inds])
             end
         else
-            A.v = vcat(A.v[1:k+1], zero(A.v[k+2:end]))
+            zero!(A)
         end
-    else
-        zero!(A)
     end
     A
 end
@@ -238,13 +245,15 @@ tril!(A::UpperTriangularToeplitz, k::Integer=0) = _tridiff!(A,k)
 triu!(A::LowerTriangularToeplitz, k::Integer=0) = _tridiff!(A,-k)
 
 function _trisame!(A::TriangularToeplitz, k::Integer)
-    if k < 0
-        if isconcretetype(typeof(A.v))
-            for i in 1:-k
-                A.v[i] = zero(eltype(A))
+    i1, iend = firstindex(A.v), lastindex(A.v)
+    inds = i1:min(-k,iend)
+    @views begin
+        if k < 0
+            if eltype(A) <: Number && isconcretetype(eltype(A.v))
+                A.v[inds] .= zero(eltype(A))
+            else
+                A.v[inds] .= zero.(A.v[inds])
             end
-        else
-            A.v=vcat(A.v[1:-k+1], zero(A.v[-k+2:end]))
         end
     end
     A
