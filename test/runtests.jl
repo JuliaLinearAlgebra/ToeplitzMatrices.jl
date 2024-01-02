@@ -332,7 +332,7 @@ end
 end
 
 @testset "General Interface" begin
-    for Toep in (:Toeplitz, :Circulant, :SymmetricToeplitz, :UpperTriangularToeplitz, :LowerTriangularToeplitz, :Hankel)
+    @testset for Toep in (:Toeplitz, :Circulant, :SymmetricToeplitz, :UpperTriangularToeplitz, :LowerTriangularToeplitz, :Hankel)
         @eval (A = [1.0 3.0; 3.0 4.0]; TA=$Toep(A); A = Matrix(TA))
         @eval (B = [2   1  ; 1   5  ]; TB=$Toep(B); B = Matrix(TB))
 

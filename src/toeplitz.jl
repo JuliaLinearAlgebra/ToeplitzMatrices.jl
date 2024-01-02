@@ -56,6 +56,15 @@ end
 
 checknonaliased(A::Toeplitz) = Base.mightalias(A.vc, A.vr) && throw(ArgumentError("Cannot modify Toeplitz matrices in place with aliased data"))
 
+function _copymutable(v::AbstractVector)
+    w = similar(v)
+    w .= v
+    return w
+end
+_copymutable(A::Toeplitz) = Toeplitz(_copymutable(A.vc), _copymutable(A.vr))
+
+tril(A::Toeplitz, k::Integer=0) = tril!(_copymutable(A), k)
+triu(A::Toeplitz, k::Integer=0) = triu!(_copymutable(A), k)
 function tril!(A::Toeplitz, k::Integer=0)
     checknonaliased(A)
 

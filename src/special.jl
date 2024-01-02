@@ -201,6 +201,8 @@ for TYPE in (:UpperTriangular, :LowerTriangular)
     end
 end
 
+_copymutable(A::AbstractToeplitzSingleVector) = basetype(A)(_copymutable(parent(A)))
+
 # Triangular
 for TYPE in (:AbstractMatrix, :AbstractVector)
     @eval begin
@@ -218,8 +220,8 @@ for TYPE in (:AbstractMatrix, :AbstractVector)
 end
 
 # tril and triu
-tril(A::Union{SymmetricToeplitz,Circulant}, k::Integer=0) = tril!(Toeplitz(A),k)
-triu(A::Union{SymmetricToeplitz,Circulant}, k::Integer=0) = triu!(Toeplitz(A),k)
+tril(A::Union{SymmetricToeplitz,Circulant}, k::Integer=0) = tril!(Toeplitz(_copymutable(A)),k)
+triu(A::Union{SymmetricToeplitz,Circulant}, k::Integer=0) = triu!(Toeplitz(_copymutable(A)),k)
 function _tridiff!(A::TriangularToeplitz, k::Integer)
     if k >= 0
         if isconcretetype(typeof(A.v))
@@ -234,8 +236,8 @@ function _tridiff!(A::TriangularToeplitz, k::Integer)
     end
     A
 end
-tril!(A::UpperTriangularToeplitz, k::Integer) = _tridiff!(A,k)
-triu!(A::LowerTriangularToeplitz, k::Integer) = _tridiff!(A,-k)
+tril!(A::UpperTriangularToeplitz, k::Integer=0) = _tridiff!(A,k)
+triu!(A::LowerTriangularToeplitz, k::Integer=0) = _tridiff!(A,-k)
 
 function _trisame!(A::TriangularToeplitz, k::Integer)
     if k < 0
@@ -249,8 +251,11 @@ function _trisame!(A::TriangularToeplitz, k::Integer)
     end
     A
 end
-tril!(A::LowerTriangularToeplitz, k::Integer) = _trisame!(A,k)
-triu!(A::UpperTriangularToeplitz, k::Integer) = _trisame!(A,-k)
+tril!(A::LowerTriangularToeplitz, k::Integer=0) = _trisame!(A,k)
+triu!(A::UpperTriangularToeplitz, k::Integer=0) = _trisame!(A,-k)
+
+tril(A::TriangularToeplitz, k::Integer=0) = tril!(_copymutable(A), k)
+triu(A::TriangularToeplitz, k::Integer=0) = triu!(_copymutable(A), k)
 
 isdiag(A::Union{Circulant, LowerTriangularToeplitz, SymmetricToeplitz}) = all(iszero, @view _vc(A)[2:end])
 isdiag(A::UpperTriangularToeplitz) = all(iszero, @view _vr(A)[2:end])
