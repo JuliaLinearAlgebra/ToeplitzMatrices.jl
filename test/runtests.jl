@@ -376,7 +376,7 @@ end
     @testset "triu/tril for immutable" begin
         A = Toeplitz(1:3, 1:4)
         M = Matrix(A)
-        for k in -2:2
+        for k in -5:5
             @test triu(A, k) == triu(M, k)
             @test tril(A, k) == tril(M, k)
         end
@@ -387,6 +387,15 @@ end
                 @test triu(A, k) == triu(M, k)
                 @test tril(A, k) == tril(M, k)
             end
+        end
+    end
+
+    @testset "triu/tril for non-concrete eltype" begin
+        T = Toeplitz{Union{Float64,ComplexF64}}(Float64.(1:3), Float64.(1:3))
+        M = Matrix(T)
+        for k in -5:5
+            @test tril(T, k) == tril(M, k)
+            @test triu(T, k) == triu(M, k)
         end
     end
 

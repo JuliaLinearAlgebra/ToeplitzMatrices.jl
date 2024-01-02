@@ -66,22 +66,25 @@ _copymutable(A::Toeplitz) = Toeplitz(_copymutable(A.vc), _copymutable(A.vr))
 function tril!(A::Toeplitz, k::Integer=0)
     checknonaliased(A)
 
-    if k >= 0
-        if isconcretetype(typeof(A.vr))
-            for i in k+2:lastindex(A.vr)
-                A.vr[i] = zero(eltype(A))
+    @views begin
+        if k >= 0
+            i1, iend = firstindex(A.vr), lastindex(A.vr)
+            inds = max(k+2,i1):iend
+            if eltype(A) <: Number && isconcretetype(eltype(A.vr))
+                A.vr[inds] .= zero(eltype(A))
+            else
+                A.vr[inds] .= zero.(A.vr[inds])
             end
         else
-            A.vr=vcat(A.vr[1:k+1], zero(A.vr[k+2:end]))
-        end
-    else
-        fill!(A.vr, zero(eltype(A)))
-        if isconcretetype(typeof(A.vc))
-            for i in 1:-k
-                A.vc[i]=zero(eltype(A))
+            i1, iend = firstindex(A.vc), lastindex(A.vc)
+            inds = i1:min(-k,iend)
+            if eltype(A) <: Number && isconcretetype(eltype(A.vc))
+                fill!(A.vr, zero(eltype(A)))
+                A.vc[inds] .= zero(eltype(A))
+            else
+                A.vr .= zero.(A.vr)
+                A.vc[inds] .= zero.(A.vc[inds])
             end
-        else
-            A.vc=vcat(zero(A.vc[1:-k]), A.vc[-k+1:end])
         end
     end
     A
@@ -89,22 +92,25 @@ end
 function triu!(A::Toeplitz, k::Integer=0)
     checknonaliased(A)
 
-    if k <= 0
-        if isconcretetype(typeof(A.vc))
-            for i in -k+2:lastindex(A.vc)
-                A.vc[i] = zero(eltype(A))
+    @views begin
+        if k <= 0
+            i1, iend = firstindex(A.vc), lastindex(A.vc)
+            inds = max(-k+2,i1):iend
+            if eltype(A) <: Number && isconcretetype(eltype(A.vc))
+                A.vc[inds] .= zero(eltype(A))
+            else
+                A.vc[inds] .= zero.(A.vc[inds])
             end
         else
-            A.vc=vcat(A.vc[1:-k+1], zero(A.vc[-k+2:end]))
-        end
-    else
-        fill!(A.vc, zero(eltype(A)))
-        if isconcretetype(typeof(A.vr))
-            for i in 1:k
-                A.vr[i]=zero(eltype(A))
+            i1, iend = firstindex(A.vr), lastindex(A.vr)
+            inds = i1:min(k,iend)
+            if eltype(A) <: Number && isconcretetype(eltype(A.vr))
+                fill!(A.vc, zero(eltype(A)))
+                A.vr[inds] .= zero(eltype(A))
+            else
+                A.vc .= zero.(A.vc)
+                A.vr[inds] .= zero.(A.vr[inds])
             end
-        else
-            A.vr=vcat(zero(A.vr[1:k]), A.vr[k+1:end])
         end
     end
     A
