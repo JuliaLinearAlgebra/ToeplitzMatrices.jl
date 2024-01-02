@@ -372,7 +372,24 @@ end
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
-	
+
+    @testset "triu/tril for immutable" begin
+        A = Toeplitz(1:3, 1:4)
+        M = Matrix(A)
+        for k in -2:2
+            @test triu(A, k) == triu(M, k)
+            @test tril(A, k) == tril(M, k)
+        end
+        @testset for T in (Circulant, UpperTriangularToeplitz, LowerTriangularToeplitz, SymmetricToeplitz)
+            A = T(1:3)
+            M = Matrix(A)
+            for k in -2:2
+                @test triu(A, k) == triu(M, k)
+                @test tril(A, k) == tril(M, k)
+            end
+        end
+    end
+
 	@testset "diag" begin
 		H = Hankel(1:11, 4, 8)
 		@test diag(H) ≡ 1:2:7

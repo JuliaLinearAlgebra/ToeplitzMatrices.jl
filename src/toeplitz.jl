@@ -40,8 +40,8 @@ Toeplitz(A::AbstractMatrix) = Toeplitz{eltype(A)}(A)
 Toeplitz{T}(A::AbstractMatrix) where {T} = Toeplitz{T}(copy(_vc(A)), copy(_vr(A)))
 
 AbstractToeplitz{T}(A::Toeplitz) where T = Toeplitz{T}(A)
-convert(::Type{Toeplitz{T}}, A::AbstractToeplitz) where {T} = Toeplitz{T}(A)
-convert(::Type{Toeplitz}, A::AbstractToeplitz) = Toeplitz(A)
+convert(::Type{Toeplitz{T}}, A::AbstractToeplitz) where {T} = A isa Toeplitz{T} ? A : Toeplitz{T}(A)
+convert(::Type{Toeplitz}, A::AbstractToeplitz) = A isa Toeplitz ? A : Toeplitz(A)
 
 # Retrieve an entry
 Base.@propagate_inbounds function getindex(A::AbstractToeplitz, i::Integer, j::Integer)
@@ -63,8 +63,6 @@ function _copymutable(v::AbstractVector)
 end
 _copymutable(A::Toeplitz) = Toeplitz(_copymutable(A.vc), _copymutable(A.vr))
 
-tril(A::Toeplitz, k::Integer=0) = tril!(_copymutable(A), k)
-triu(A::Toeplitz, k::Integer=0) = triu!(_copymutable(A), k)
 function tril!(A::Toeplitz, k::Integer=0)
     checknonaliased(A)
 
@@ -111,6 +109,9 @@ function triu!(A::Toeplitz, k::Integer=0)
     end
     A
 end
+
+tril(A::AbstractToeplitz, k::Integer=0) = tril!(convert(Toeplitz, _copymutable(A)), k)
+triu(A::AbstractToeplitz, k::Integer=0) = triu!(convert(Toeplitz, _copymutable(A)), k)
 
 adjoint(A::AbstractToeplitz) = transpose(conj(A))
 transpose(A::AbstractToeplitz) = Toeplitz(A.vr, A.vc)

@@ -220,8 +220,6 @@ for TYPE in (:AbstractMatrix, :AbstractVector)
 end
 
 # tril and triu
-tril(A::Union{SymmetricToeplitz,Circulant}, k::Integer=0) = tril!(Toeplitz(_copymutable(A)),k)
-triu(A::Union{SymmetricToeplitz,Circulant}, k::Integer=0) = triu!(Toeplitz(_copymutable(A)),k)
 function _tridiff!(A::TriangularToeplitz, k::Integer)
     if k >= 0
         if isconcretetype(typeof(A.v))
