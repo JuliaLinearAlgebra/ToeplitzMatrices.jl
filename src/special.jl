@@ -182,7 +182,6 @@ function SymmetricToeplitz{T}(A::AbstractMatrix, uplo::Symbol = :U) where T
     end
 end
 SymmetricToeplitz(A::AbstractMatrix, uplo::Symbol) = SymmetricToeplitz{eltype(A)}(A,uplo)
-Symmetric(A::AbstractToeplitz, uplo::Symbol = :U) = SymmetricToeplitz(A,uplo)
 
 function UpperTriangularToeplitz{T}(A::AbstractMatrix) where T
     checksquare(A)
