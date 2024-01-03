@@ -433,3 +433,9 @@ function factorize(A::UpperTriangularToeplitz)
     dft = plan_fft!(tmp)
     return ToeplitzFactorization{T,typeof(A),S,typeof(dft)}(dft * tmp, similar(tmp), dft)
 end
+
+# triangular
+eigvals(T::TriangularToeplitz) = diag(T)
+eigvecs(U::UpperTriangularToeplitz) = eigvecs(UpperTriangular(Matrix(U)))
+eigvecs(L::LowerTriangularToeplitz) = eigvecs(LowerTriangular(Matrix(L)))
+eigen(U::TriangularToeplitz) = Eigen(eigvals(U), eigvecs(U))
