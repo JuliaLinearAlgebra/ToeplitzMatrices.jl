@@ -40,8 +40,8 @@ Toeplitz(A::AbstractMatrix) = Toeplitz{eltype(A)}(A)
 Toeplitz{T}(A::AbstractMatrix) where {T} = Toeplitz{T}(copy(_vc(A)), copy(_vr(A)))
 
 AbstractToeplitz{T}(A::Toeplitz) where T = Toeplitz{T}(A)
-convert(::Type{Toeplitz{T}}, A::AbstractToeplitz) where {T} = Toeplitz{T}(A)
-convert(::Type{Toeplitz}, A::AbstractToeplitz) = Toeplitz(A)
+convert(::Type{Toeplitz{T}}, A::AbstractToeplitz) where {T} = A isa Toeplitz{T} ? A : Toeplitz{T}(A)
+convert(::Type{Toeplitz}, A::AbstractToeplitz) = A isa Toeplitz ? A : Toeplitz(A)
 
 # Retrieve an entry
 Base.@propagate_inbounds function getindex(A::AbstractToeplitz, i::Integer, j::Integer)
@@ -56,26 +56,25 @@ end
 
 checknonaliased(A::Toeplitz) = Base.mightalias(A.vc, A.vr) && throw(ArgumentError("Cannot modify Toeplitz matrices in place with aliased data"))
 
+function _copymutable(v::AbstractVector)
+    w = similar(v)
+    w .= v
+    return w
+end
+_copymutable(A::Toeplitz) = Toeplitz(_copymutable(A.vc), _copymutable(A.vr))
+
 function tril!(A::Toeplitz, k::Integer=0)
     checknonaliased(A)
 
     if k >= 0
-        if isconcretetype(typeof(A.vr))
-            for i in k+2:lastindex(A.vr)
-                A.vr[i] = zero(eltype(A))
-            end
-        else
-            A.vr=vcat(A.vr[1:k+1], zero(A.vr[k+2:end]))
-        end
+        i1, iend = firstindex(A.vr), lastindex(A.vr)
+        inds = max(k+2,i1):iend
+        zero!(A.vr, inds)
     else
-        fill!(A.vr, zero(eltype(A)))
-        if isconcretetype(typeof(A.vc))
-            for i in 1:-k
-                A.vc[i]=zero(eltype(A))
-            end
-        else
-            A.vc=vcat(zero(A.vc[1:-k]), A.vc[-k+1:end])
-        end
+        i1, iend = firstindex(A.vc), lastindex(A.vc)
+        inds = i1:min(-k,iend)
+        zero!(A.vr)
+        zero!(A.vc, inds)
     end
     A
 end
@@ -83,25 +82,20 @@ function triu!(A::Toeplitz, k::Integer=0)
     checknonaliased(A)
 
     if k <= 0
-        if isconcretetype(typeof(A.vc))
-            for i in -k+2:lastindex(A.vc)
-                A.vc[i] = zero(eltype(A))
-            end
-        else
-            A.vc=vcat(A.vc[1:-k+1], zero(A.vc[-k+2:end]))
-        end
+        i1, iend = firstindex(A.vc), lastindex(A.vc)
+        inds = max(-k+2,i1):iend
+        zero!(A.vc, inds)
     else
-        fill!(A.vc, zero(eltype(A)))
-        if isconcretetype(typeof(A.vr))
-            for i in 1:k
-                A.vr[i]=zero(eltype(A))
-            end
-        else
-            A.vr=vcat(zero(A.vr[1:k]), A.vr[k+1:end])
-        end
+        i1, iend = firstindex(A.vr), lastindex(A.vr)
+        inds = i1:min(k,iend)
+        zero!(A.vc)
+        zero!(A.vr, inds)
     end
     A
 end
+
+tril(A::AbstractToeplitz, k::Integer=0) = tril!(convert(Toeplitz, _copymutable(A)), k)
+triu(A::AbstractToeplitz, k::Integer=0) = triu!(convert(Toeplitz, _copymutable(A)), k)
 
 adjoint(A::AbstractToeplitz) = transpose(conj(A))
 transpose(A::AbstractToeplitz) = Toeplitz(A.vr, A.vc)

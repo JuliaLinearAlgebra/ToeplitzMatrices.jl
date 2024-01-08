@@ -332,7 +332,7 @@ end
 end
 
 @testset "General Interface" begin
-    for Toep in (:Toeplitz, :Circulant, :SymmetricToeplitz, :UpperTriangularToeplitz, :LowerTriangularToeplitz, :Hankel)
+    @testset for Toep in (:Toeplitz, :Circulant, :SymmetricToeplitz, :UpperTriangularToeplitz, :LowerTriangularToeplitz, :Hankel)
         @eval (A = [1.0 3.0; 3.0 4.0]; TA=$Toep(A); A = Matrix(TA))
         @eval (B = [2   1  ; 1   5  ]; TB=$Toep(B); B = Matrix(TB))
 
@@ -372,7 +372,54 @@ end
         T=copy(TA)
     end
     @test fill!(Toeplitz(zeros(2,2)),1) == ones(2,2)
-	
+
+    @testset "triu/tril for immutable" begin
+        A = Toeplitz(1:3, 1:4)
+        M = Matrix(A)
+        for k in -5:5
+            @test triu(A, k) == triu(M, k)
+            @test tril(A, k) == tril(M, k)
+        end
+        @testset for T in (Circulant, UpperTriangularToeplitz, LowerTriangularToeplitz, SymmetricToeplitz)
+            A = T(1:3)
+            M = Matrix(A)
+            for k in -5:5
+                @test triu(A, k) == triu(M, k)
+                @test tril(A, k) == tril(M, k)
+            end
+        end
+    end
+
+    @testset "triu/tril for non-concrete eltype" begin
+        T = Toeplitz{Union{Float64,ComplexF64}}(Float64.(1:3), Float64.(1:3))
+        M = Matrix(T)
+        for k in -5:5
+            @test tril(T, k) == tril(M, k)
+            @test triu(T, k) == triu(M, k)
+        end
+        @testset for T in (Circulant, SymmetricToeplitz)
+            A = T{Union{Float64,ComplexF64}}(Float64.(1:3))
+            M = Matrix(A)
+            for k in -5:5
+                @test triu(A, k) == triu(M, k)
+                @test tril(A, k) == tril(M, k)
+            end
+        end
+
+        A = UpperTriangularToeplitz{Union{Float64,ComplexF64}}(Float64.(1:3))
+        @test triu(A) == A
+        @test triu(A, -1) == A
+        @test triu(A, 1) == UpperTriangularToeplitz([0,2,3])
+        @test tril(A, 1) == UpperTriangularToeplitz([1,2,0])
+        @test tril(A, -1) == UpperTriangularToeplitz(zeros(3))
+        A = LowerTriangularToeplitz{Union{Float64,ComplexF64}}(Float64.(1:3))
+        @test tril(A) == A
+        @test tril(A,1) == A
+        @test tril(A,-1) == LowerTriangularToeplitz([0,2,3])
+        @test triu(A, 1) == LowerTriangularToeplitz(zeros(3))
+        @test triu(A, -1) == LowerTriangularToeplitz([1,2,0])
+    end
+
 	@testset "diag" begin
 		H = Hankel(1:11, 4, 8)
 		@test diag(H) ≡ 1:2:7
