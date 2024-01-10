@@ -634,6 +634,16 @@ end
         @test_broken inv(TU)::TriangularToeplitz ≈ inv(Matrix(TU))
         @test inv(TL)::TriangularToeplitz ≈ inv(Matrix(TL))
     end
+
+    @testset "eigen" begin
+        for T in (UpperTriangularToeplitz, LowerTriangularToeplitz)
+            for p in ([1:6;], rand(ComplexF64, 5))
+                M = T(p)
+                λ, V = eigen(M)
+                @test M * V ≈ V * Diagonal(λ)
+            end
+        end
+    end
 end
 
 @testset "Cholesky" begin
