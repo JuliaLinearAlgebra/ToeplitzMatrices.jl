@@ -233,6 +233,12 @@ end
         @test_throws ArgumentError Hankel(Int[], (3,4))
         @test_throws ArgumentError Hankel(1:5, (3,4))
     end
+
+    @testset "similar" begin
+        H = Hankel(1:4)
+        M = copyto!(similar(H), H)
+        @test triu(M) == triu(Matrix(H))
+    end
 end
 
 @testset "Convert" begin
@@ -647,6 +653,16 @@ end
         st = sprint(show, "text/plain", LT)
         s = sprint(show, "text/plain", L)
         @test split(st, '\n')[2:end] == split(s, '\n')[2:end]
+    end
+
+    @testset "eigen" begin
+        for T in (UpperTriangularToeplitz, LowerTriangularToeplitz)
+            for p in ([1:6;], rand(ComplexF64, 5))
+                M = T(p)
+                λ, V = eigen(M)
+                @test M * V ≈ V * Diagonal(λ)
+            end
+        end
     end
 end
 

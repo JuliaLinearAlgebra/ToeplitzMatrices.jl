@@ -72,7 +72,7 @@ Base.@propagate_inbounds function getindex(A::Hankel, i::Integer, j::Integer)
     return A.v[i+j-1]
 end
 AbstractMatrix{T}(A::Hankel) where {T} = Hankel{T}(AbstractVector{T}(A.v), A.size)
-for fun in (:zero, :conj, :copy, :-, :similar, :real, :imag)
+for fun in (:zero, :conj, :copy, :-, :real, :imag)
     @eval $fun(A::Hankel) = Hankel($fun(A.v), size(A))
 end
 for op in (:+, :-)
