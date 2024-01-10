@@ -641,6 +641,20 @@ end
         @test inv(TL)::TriangularToeplitz ≈ inv(Matrix(TL))
     end
 
+    @testset "display" begin
+        UT = UpperTriangularToeplitz([1,2,3,4])
+        U = UpperTriangular(Matrix(UT))
+        st = sprint(show, "text/plain", UT)
+        s = sprint(show, "text/plain", U)
+        @test split(st, '\n')[2:end] == split(s, '\n')[2:end]
+
+        LT = LowerTriangularToeplitz([1,2,3,4])
+        L = LowerTriangular(Matrix(LT))
+        st = sprint(show, "text/plain", LT)
+        s = sprint(show, "text/plain", L)
+        @test split(st, '\n')[2:end] == split(s, '\n')[2:end]
+    end
+
     @testset "eigen" begin
         for T in (UpperTriangularToeplitz, LowerTriangularToeplitz)
             for p in ([1:6;], rand(ComplexF64, 5))
