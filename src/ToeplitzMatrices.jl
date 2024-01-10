@@ -5,6 +5,7 @@ import Base: adjoint, convert, transpose, size, getindex, similar, copy, getprop
 import Base: parent
 import Base: ==, +, -, *, \
 import Base: AbstractMatrix
+import Base: require_one_based_indexing
 import LinearAlgebra: Cholesky, Factorization
 import LinearAlgebra: ldiv!, factorize, lmul!, pinv, eigvals, eigvecs, eigen, Eigen, det
 import LinearAlgebra: cholesky!, cholesky, tril!, triu!, checksquare, rmul!, dot, mul!, tril, triu, diag
@@ -22,14 +23,6 @@ const HermOrSym{T,M} = Union{Hermitian{T,M}, Symmetric{T,M}}
 
 export AbstractToeplitz, Toeplitz, SymmetricToeplitz, Circulant, LowerTriangularToeplitz, UpperTriangularToeplitz, TriangularToeplitz, Hankel
 export durbin, trench, levinson
-
-@static if isdefined(Base, :require_one_based_indexing)
-    const require_one_based_indexing = Base.require_one_based_indexing
-else
-    function require_one_based_indexing(A...)
-        !Base.has_offset_axes(A...) || throw(ArgumentError("offset arrays are not supported but got an array with index other than 1"))
-    end
-end
 
 include("iterativeLinearSolvers.jl")
 

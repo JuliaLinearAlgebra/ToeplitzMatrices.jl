@@ -182,7 +182,6 @@ function SymmetricToeplitz{T}(A::AbstractMatrix, uplo::Symbol = :U) where T
     end
 end
 SymmetricToeplitz(A::AbstractMatrix, uplo::Symbol) = SymmetricToeplitz{eltype(A)}(A,uplo)
-Symmetric(A::AbstractToeplitz, uplo::Symbol = :U) = SymmetricToeplitz(A,uplo)
 
 function UpperTriangularToeplitz{T}(A::AbstractMatrix) where T
     checksquare(A)
@@ -192,11 +191,9 @@ function LowerTriangularToeplitz{T}(A::AbstractMatrix) where T
     checksquare(A)
     LowerTriangularToeplitz{T}(_vc(A))
 end
-_toeplitztype(s::Symbol) = Symbol(s,"Toeplitz")
+_toeplitztype(s::Symbol) = Symbol(s, :Toeplitz)
 for TYPE in (:UpperTriangular, :LowerTriangular)
     @eval begin
-        $TYPE{T}(A::AbstractToeplitz) where T = $(_toeplitztype(TYPE)){T}(A)
-        $TYPE(A::AbstractToeplitz) = $TYPE{eltype(A)}(A)
         convert(::Type{TriangularToeplitz{T}},A::$(_toeplitztype(TYPE))) where T<:Number = convert($(_toeplitztype(TYPE)){T},A)
     end
 end
