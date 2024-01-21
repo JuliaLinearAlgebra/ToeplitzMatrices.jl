@@ -770,3 +770,12 @@ end
         end
     end
 end
+
+@testset "ldiv! for ToeplitzFactorization (#73)" begin
+    b = rand(6)
+    x = zero(b)
+    P = Circulant([1., 0., 0., 0., 0., 0.])
+    Pfac = factorize(P)
+    ldiv!(x, Pfac, b)
+    @test x ≈ Pfac \ b
+end

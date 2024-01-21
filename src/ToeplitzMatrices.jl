@@ -106,6 +106,8 @@ include("hankel.jl")
 include("linearalgebra.jl")
 include("eigen.jl")
 
+Base.size(T::ToeplitzFactorization) = (s = size(T.dft,1); (s, s))
+
 """
     maybereal(::Type{T}, x)
 
