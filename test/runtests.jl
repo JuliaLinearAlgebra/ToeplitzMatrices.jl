@@ -776,6 +776,8 @@ end
     x = zero(b)
     P = Circulant([1., 0., 0., 0., 0., 0.])
     Pfac = factorize(P)
+    @test size(Pfac) == size(P)
+    @test size(Pfac, 1) == size(P, 1)
     ldiv!(x, Pfac, b)
     @test x ≈ Pfac \ b
 end
