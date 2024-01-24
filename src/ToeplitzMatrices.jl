@@ -99,6 +99,8 @@ struct ToeplitzFactorization{T,A<:AbstractToeplitz{T},S<:Number,P<:Plan{S}} <: F
     tmp::Vector{S}
     dft::P
 end
+Base.size(T::ToeplitzFactorization) = (s = size(T.dft,1); (s, s))
+Base.size(T::ToeplitzFactorization, i::Integer) = size(T)[i]
 
 include("toeplitz.jl")
 include("special.jl")
