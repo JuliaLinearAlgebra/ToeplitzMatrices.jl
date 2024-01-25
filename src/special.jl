@@ -257,3 +257,7 @@ end
 function Base.replace_in_print_matrix(A::LowerTriangularToeplitz, i::Integer, j::Integer, s::AbstractString)
     i >= j ? s : Base.replace_with_centered_mark(s)
 end
+
+# size for factorize
+size(T::ToeplitzFactorization{<:Any, <:Circulant}) = (s = size(T.dft,1); (s, s))
+size(T::ToeplitzFactorization{<:Any, <:Circulant}, i::Integer) = size(T)[i]
