@@ -9,6 +9,12 @@ FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
+[weakdeps]
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+
+[extensions]
+ToeplitzMatricesStatsBaseExt = "StatsBase"
+
 [compat]
 AbstractFFTs = "0.4, 0.5, 1"
 Aqua = "0.8"
@@ -21,9 +27,6 @@ StatsBase = "0.32, 0.33, 0.34"
 Test = "<0.0.1, 1"
 julia = "1.6"
 
-[extensions]
-ToeplitzMatricesStatsBaseExt = "StatsBase"
-
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
@@ -33,6 +36,3 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Aqua", "FFTW", "Random", "StatsBase", "Test"]
-
-[weakdeps]
-StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
