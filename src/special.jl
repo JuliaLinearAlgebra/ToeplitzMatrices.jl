@@ -246,3 +246,15 @@ triu(A::TriangularToeplitz, k::Integer=0) = triu!(_copymutable(A), k)
 
 isdiag(A::Union{Circulant, LowerTriangularToeplitz, SymmetricToeplitz}) = all(iszero, @view _vc(A)[2:end])
 isdiag(A::UpperTriangularToeplitz) = all(iszero, @view _vr(A)[2:end])
+
+# display triangular matrices with dots
+function Base.replace_in_print_matrix(A::UpperTriangularToeplitz, i::Integer, j::Integer, s::AbstractString)
+    i <= j ? s : Base.replace_with_centered_mark(s)
+end
+function Base.replace_in_print_matrix(A::LowerTriangularToeplitz, i::Integer, j::Integer, s::AbstractString)
+    i >= j ? s : Base.replace_with_centered_mark(s)
+end
+
+# size for factorize
+size(T::ToeplitzFactorization{<:Any, <:Circulant}) = (s = size(T.dft,1); (s, s))
+size(T::ToeplitzFactorization{<:Any, <:Circulant}, i::Integer) = size(T)[i]

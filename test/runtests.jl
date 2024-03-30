@@ -233,6 +233,12 @@ end
         @test_throws ArgumentError Hankel(Int[], (3,4))
         @test_throws ArgumentError Hankel(1:5, (3,4))
     end
+
+    @testset "similar" begin
+        H = Hankel(1:4)
+        M = copyto!(similar(H), H)
+        @test triu(M) == triu(Matrix(H))
+    end
 end
 
 @testset "Convert" begin
@@ -634,6 +640,30 @@ end
         @test_broken inv(TU)::TriangularToeplitz ≈ inv(Matrix(TU))
         @test inv(TL)::TriangularToeplitz ≈ inv(Matrix(TL))
     end
+
+    @testset "display" begin
+        UT = UpperTriangularToeplitz([1,2,3,4])
+        U = UpperTriangular(Matrix(UT))
+        st = sprint(show, "text/plain", UT)
+        s = sprint(show, "text/plain", U)
+        @test split(st, '\n')[2:end] == split(s, '\n')[2:end]
+
+        LT = LowerTriangularToeplitz([1,2,3,4])
+        L = LowerTriangular(Matrix(LT))
+        st = sprint(show, "text/plain", LT)
+        s = sprint(show, "text/plain", L)
+        @test split(st, '\n')[2:end] == split(s, '\n')[2:end]
+    end
+
+    @testset "eigen" begin
+        for T in (UpperTriangularToeplitz, LowerTriangularToeplitz)
+            for p in ([1:6;], rand(ComplexF64, 5))
+                M = T(p)
+                λ, V = eigen(M)
+                @test M * V ≈ V * Diagonal(λ)
+            end
+        end
+    end
 end
 
 @testset "Cholesky" begin
@@ -739,4 +769,15 @@ end
             end
         end
     end
+end
+
+@testset "ldiv! for ToeplitzFactorization (#73)" begin
+    b = rand(6)
+    x = zero(b)
+    P = Circulant([1., 0., 0., 0., 0., 0.])
+    Pfac = factorize(P)
+    @test size(Pfac) == size(P)
+    @test size(Pfac, 1) == size(P, 1)
+    ldiv!(x, Pfac, b)
+    @test x ≈ Pfac \ b
 end
