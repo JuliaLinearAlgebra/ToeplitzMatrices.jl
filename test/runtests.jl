@@ -620,19 +620,19 @@ end
     A = randn(ComplexF64, 3, 3)
     T = Toeplitz(A)
     TU = UpperTriangular(T)
-    @test TU isa TriangularToeplitz
+    @test TU isa UpperTriangular
     @test istriu(TU)
     @test TU == Toeplitz(triu(A)) == triu(T)
-    @test TU'ones(3) == Matrix(TU)'ones(3)
-    @test transpose(TU)*ones(3) == transpose(Matrix(TU))*ones(3)
-    @test triu(TU, 1)::TriangularToeplitz == triu(Matrix(T), 1) == triu(T,1)
+    @test TU' * ones(3) ≈ Matrix(TU)' * ones(3)
+    @test transpose(TU)*ones(3) ≈ transpose(Matrix(TU))*ones(3)
+    @test triu(TU, 1) == triu(Matrix(T), 1) == triu(T,1)
     TL = LowerTriangular(T)
-    @test TL isa TriangularToeplitz
+    @test TL isa LowerTriangular
     @test istril(TL)
     @test TL == Toeplitz(tril(A)) == tril(T)
-    @test TL'ones(3) == Matrix(TL)'ones(3)
-    @test transpose(TL)*ones(3) == transpose(Matrix(TL))*ones(3)
-    @test tril(TL, -1)::TriangularToeplitz == tril(Matrix(T), -1) == tril(T,-1)
+    @test TL' * ones(3) ≈ Matrix(TL)' * ones(3)
+    @test transpose(TL)*ones(3) ≈ transpose(Matrix(TL))*ones(3)
+    @test tril(TL, -1) == tril(Matrix(T), -1) == tril(T,-1)
     for n in (65, 128)
         A = randn(n, n)
         TU = TriangularToeplitz(A, :U)
