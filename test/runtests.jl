@@ -239,6 +239,24 @@ end
         M = copyto!(similar(H), H)
         @test triu(M) == triu(Matrix(H))
     end
+
+    @testset "issymmetric/ishermitian" begin
+        H = Hankel(1:4)
+        @test issymmetric(H)
+        @test ishermitian(H)
+        H = Hankel((1:4)*im)
+        @test issymmetric(H)
+        @test !ishermitian(H)
+    end
+
+    @testset "adjoint" begin
+        H = Hankel([(1:4)*im;])
+        H2 = H'
+        @test H2 isa Hankel
+        @test H2 == Matrix(H)'
+        H = Hankel([(1:4);])
+        @test H' === H
+    end
 end
 
 @testset "Convert" begin
