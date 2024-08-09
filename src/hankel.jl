@@ -100,7 +100,9 @@ for fun in (:fill!, :rmul!)
 end
 
 transpose(A::Hankel) = Hankel(A.v, reverse(size(A)))
-adjoint(A::Hankel) = transpose(conj(A))
+adjoint(A::Hankel) = Hankel(vec(adjoint(A.v)), reverse(size(A)))
+issymmetric(A::Hankel) = size(A,1) == size(A,2)
+ishermitian(A::Hankel{<:Number}) = isreal(A) && issymmetric(A)
 (==)(A::Hankel, B::Hankel) = A.v == B.v && size(A) == size(B)
 (*)(scalar::Number, C::Hankel) = Hankel(scalar * C.v, size(C))
 (*)(C::Hankel,scalar::Number) = Hankel(C.v * scalar, size(C))
