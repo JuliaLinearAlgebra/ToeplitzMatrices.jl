@@ -255,7 +255,9 @@ end
         @test H2 isa Hankel
         @test H2 == Matrix(H)'
         H = Hankel([(1:4);])
-        @test H' === H
+        H2 = H'
+        H.v[1] = 10
+        @test H2.v[1] == 10
     end
 end
 
