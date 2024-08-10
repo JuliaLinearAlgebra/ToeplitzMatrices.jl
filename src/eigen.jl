@@ -9,7 +9,8 @@
 # The methods aren't defined for general Tridiagonal or Hermitian, as the
 # ordering of eigenvectors needs fixing
 for MT in (:(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
-            :(Symmetric{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}})
+            :(Symmetric{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}}),
+            :(Symmetric{Float16, <:Tridiagonal{Float16, <:AbstractFillVector{Float16}}}),
             )
     @eval function eigvals(A::$MT)
         n = size(A,1)
@@ -23,6 +24,7 @@ end
 
 for MT in (:(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
             :(Symmetric{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}}),
+            :(Symmetric{Float16, <:Tridiagonal{Float16, <:AbstractFillVector{Float16}}}),
             )
 
     @eval begin
