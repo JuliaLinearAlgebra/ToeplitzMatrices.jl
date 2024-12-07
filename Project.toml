@@ -1,6 +1,6 @@
 name = "ToeplitzMatrices"
 uuid = "c751599d-da0a-543b-9d20-d0a503d91d24"
-version = "0.8.4"
+version = "0.8.5"
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
